@@ -12,9 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReelsRouteImport } from './routes/_authenticated/reels'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
+import { Route as AuthenticatedDmRouteImport } from './routes/_authenticated/dm'
+import { Route as AuthenticatedStoryUsernameRouteImport } from './routes/_authenticated/story.$username'
+import { Route as AuthenticatedProfileUsernameRouteImport } from './routes/_authenticated/profile.$username'
+import { Route as AuthenticatedPostIdRouteImport } from './routes/_authenticated/post.$id'
+import { Route as AuthenticatedDmUserIdRouteImport } from './routes/_authenticated/dm.$userId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -29,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedReelsRoute = AuthenticatedReelsRouteImport.update({
   id: '/reels',
@@ -45,43 +56,116 @@ const AuthenticatedExploreRoute = AuthenticatedExploreRouteImport.update({
   path: '/explore',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDmRoute = AuthenticatedDmRouteImport.update({
+  id: '/dm',
+  path: '/dm',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStoryUsernameRoute =
+  AuthenticatedStoryUsernameRouteImport.update({
+    id: '/story/$username',
+    path: '/story/$username',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProfileUsernameRoute =
+  AuthenticatedProfileUsernameRouteImport.update({
+    id: '/profile/$username',
+    path: '/profile/$username',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPostIdRoute = AuthenticatedPostIdRouteImport.update({
+  id: '/post/$id',
+  path: '/post/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDmUserIdRoute = AuthenticatedDmUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AuthenticatedDmRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dm': typeof AuthenticatedDmRouteWithChildren
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/reels': typeof AuthenticatedReelsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/dm/$userId': typeof AuthenticatedDmUserIdRoute
+  '/post/$id': typeof AuthenticatedPostIdRoute
+  '/profile/$username': typeof AuthenticatedProfileUsernameRoute
+  '/story/$username': typeof AuthenticatedStoryUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dm': typeof AuthenticatedDmRouteWithChildren
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
   '/reels': typeof AuthenticatedReelsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/dm/$userId': typeof AuthenticatedDmUserIdRoute
+  '/post/$id': typeof AuthenticatedPostIdRoute
+  '/profile/$username': typeof AuthenticatedProfileUsernameRoute
+  '/story/$username': typeof AuthenticatedStoryUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/dm': typeof AuthenticatedDmRouteWithChildren
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
   '/_authenticated/reels': typeof AuthenticatedReelsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/dm/$userId': typeof AuthenticatedDmUserIdRoute
+  '/_authenticated/post/$id': typeof AuthenticatedPostIdRoute
+  '/_authenticated/profile/$username': typeof AuthenticatedProfileUsernameRoute
+  '/_authenticated/story/$username': typeof AuthenticatedStoryUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/explore' | '/feed' | '/reels'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dm'
+    | '/explore'
+    | '/feed'
+    | '/reels'
+    | '/settings'
+    | '/dm/$userId'
+    | '/post/$id'
+    | '/profile/$username'
+    | '/story/$username'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/explore' | '/feed' | '/reels'
+  to:
+    | '/'
+    | '/auth'
+    | '/dm'
+    | '/explore'
+    | '/feed'
+    | '/reels'
+    | '/settings'
+    | '/dm/$userId'
+    | '/post/$id'
+    | '/profile/$username'
+    | '/story/$username'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/dm'
     | '/_authenticated/explore'
     | '/_authenticated/feed'
     | '/_authenticated/reels'
+    | '/_authenticated/settings'
+    | '/_authenticated/dm/$userId'
+    | '/_authenticated/post/$id'
+    | '/_authenticated/profile/$username'
+    | '/_authenticated/story/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reels': {
       id: '/_authenticated/reels'
       path: '/reels'
@@ -134,19 +225,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExploreRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/dm': {
+      id: '/_authenticated/dm'
+      path: '/dm'
+      fullPath: '/dm'
+      preLoaderRoute: typeof AuthenticatedDmRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/story/$username': {
+      id: '/_authenticated/story/$username'
+      path: '/story/$username'
+      fullPath: '/story/$username'
+      preLoaderRoute: typeof AuthenticatedStoryUsernameRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/profile/$username': {
+      id: '/_authenticated/profile/$username'
+      path: '/profile/$username'
+      fullPath: '/profile/$username'
+      preLoaderRoute: typeof AuthenticatedProfileUsernameRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/post/$id': {
+      id: '/_authenticated/post/$id'
+      path: '/post/$id'
+      fullPath: '/post/$id'
+      preLoaderRoute: typeof AuthenticatedPostIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dm/$userId': {
+      id: '/_authenticated/dm/$userId'
+      path: '/$userId'
+      fullPath: '/dm/$userId'
+      preLoaderRoute: typeof AuthenticatedDmUserIdRouteImport
+      parentRoute: typeof AuthenticatedDmRoute
+    }
   }
 }
 
+interface AuthenticatedDmRouteChildren {
+  AuthenticatedDmUserIdRoute: typeof AuthenticatedDmUserIdRoute
+}
+
+const AuthenticatedDmRouteChildren: AuthenticatedDmRouteChildren = {
+  AuthenticatedDmUserIdRoute: AuthenticatedDmUserIdRoute,
+}
+
+const AuthenticatedDmRouteWithChildren = AuthenticatedDmRoute._addFileChildren(
+  AuthenticatedDmRouteChildren,
+)
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDmRoute: typeof AuthenticatedDmRouteWithChildren
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
   AuthenticatedReelsRoute: typeof AuthenticatedReelsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedPostIdRoute: typeof AuthenticatedPostIdRoute
+  AuthenticatedProfileUsernameRoute: typeof AuthenticatedProfileUsernameRoute
+  AuthenticatedStoryUsernameRoute: typeof AuthenticatedStoryUsernameRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDmRoute: AuthenticatedDmRouteWithChildren,
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
   AuthenticatedReelsRoute: AuthenticatedReelsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedPostIdRoute: AuthenticatedPostIdRoute,
+  AuthenticatedProfileUsernameRoute: AuthenticatedProfileUsernameRoute,
+  AuthenticatedStoryUsernameRoute: AuthenticatedStoryUsernameRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
