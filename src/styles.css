@@ -184,6 +184,11 @@
   animation: heart-burst 220ms ease-out;
 }
 
+@keyframes progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
