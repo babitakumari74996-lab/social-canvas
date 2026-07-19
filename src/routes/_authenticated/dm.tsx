@@ -24,7 +24,8 @@ function DMLayout() {
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(200);
-      const byPeer = new Map<string, typeof data extends (infer T)[] | null ? T : never>();
+      type Msg = NonNullable<typeof data>[number];
+      const byPeer = new Map<string, Msg>();
       for (const m of data ?? []) {
         const peer = m.sender_id === userId ? m.receiver_id : m.sender_id;
         if (!byPeer.has(peer)) byPeer.set(peer, m);
