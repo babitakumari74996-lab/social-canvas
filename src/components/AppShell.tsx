@@ -1,10 +1,10 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Home, Compass, Film, Send, User, Settings, Sparkles } from "lucide-react";
+import { Home, Compass, Film, Send, User, Settings, Sparkles, type LucideIcon } from "lucide-react";
 import { useMyProfile } from "@/lib/auth";
 import { PlusProvider } from "./PlusModal";
 import { useSignedUrl } from "@/lib/media";
 
-function NavItem({ to, label, icon: Icon, active }: { to: string; label: string; icon: React.ComponentType<{ className?: string }>; active: boolean }) {
+function NavItem({ to, label, icon: Icon, active }: { to: string; label: string; icon: LucideIcon; active: boolean }) {
   return (
     <Link
       to={to}
