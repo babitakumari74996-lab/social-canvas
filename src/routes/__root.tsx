@@ -77,12 +77,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
       { title: "Socialverse — Share moments" },
+      { name: "author", content: "Socialverse" },
       { name: "description", content: "Socialverse is a minimal social network for photos, stories, reels, and direct messages." },
       { property: "og:title", content: "Socialverse" },
       { property: "og:description", content: "Share photos, stories, reels, and DMs on a clean, minimal social network." },
