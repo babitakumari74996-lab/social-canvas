@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/auth";
 import { Avatar } from "@/components/PostCard";
-import { Send, ArrowLeft, Sparkles } from "lucide-react";
+import { Send, ArrowLeft, Sparkles, Timer } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dm/$userId")({
   component: Thread,
@@ -15,6 +15,7 @@ function Thread() {
   const { userId: myId } = useSession();
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const [disappearing, setDisappearing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: peer } = useQuery({
@@ -73,6 +74,8 @@ function Thread() {
       sender_id: myId,
       receiver_id: peerId,
       content,
+      is_disappearing: disappearing,
+      expires_at: disappearing ? new Date(Date.now() + 60 * 60 * 1000).toISOString() : null,
     });
     qc.invalidateQueries({ queryKey: ["messages", myId, peerId] });
   };
@@ -86,6 +89,14 @@ function Thread() {
           <div className="font-semibold text-sm">@{peer?.username}</div>
           {peer?.subscription_tier === "plus" && <Sparkles className="inline h-3 w-3 text-primary" />}
         </div>
+        <button
+          type="button"
+          onClick={() => setDisappearing((v) => !v)}
+          className={`text-xs flex items-center gap-1 rounded-full px-2 py-1 border ${disappearing ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+          title="Disappearing messages (1h)"
+        >
+          <Timer className="h-3 w-3" /> {disappearing ? "1h" : "Off"}
+        </button>
       </header>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2">
         {messages?.map((m) => {
@@ -94,6 +105,11 @@ function Thread() {
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"} animate-in-fade`}>
               <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                 {m.content}
+                {m.is_disappearing && (
+                  <span className={`ml-2 inline-flex items-center gap-0.5 text-[10px] ${mine ? "opacity-80" : "text-muted-foreground"}`}>
+                    <Timer className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -103,7 +119,7 @@ function Thread() {
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Message…"
+          placeholder={disappearing ? "Disappearing message…" : "Message…"}
           className="flex-1 rounded-full bg-muted px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button type="submit" disabled={!text.trim()} className="text-primary disabled:opacity-30">
