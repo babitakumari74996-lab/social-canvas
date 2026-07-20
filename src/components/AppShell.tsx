@@ -1,4 +1,4 @@
-import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import {
   Home, Users, Clock, Rss, UsersRound, Megaphone, MessagesSquare, Flag,
   Calendar, History as HistoryIcon, Compass, Film, Send, User, Search,
@@ -65,7 +65,6 @@ function AppShellInner() {
   const { data: profile } = useMyProfile();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const avatar = useSignedUrl(profile?.avatar_url ?? undefined);
-  const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
