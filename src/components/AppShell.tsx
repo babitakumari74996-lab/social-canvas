@@ -161,12 +161,12 @@ function AppShellInner() {
       )}
 
       {/* Main content */}
-      <main className="pt-14 lg:pl-64 pb-24">
+      <main className="pt-14 lg:pl-64 pb-6 lg:pb-24">
         <Outlet />
       </main>
 
-      {/* Bottom nav (desktop + mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 lg:left-64 h-16 bg-card border-t border-border z-40 flex items-center justify-around px-2">
+      {/* Desktop bottom nav (>=1024px) */}
+      <nav className="hidden lg:flex fixed bottom-0 left-64 right-0 h-16 bg-card border-t border-border z-40 items-center justify-around px-2">
         <BottomBtn to="/explore" label="Explore" icon={Compass} active={isActive("/explore")} />
         <BottomBtn to="/reels" label="Reels" icon={Film} active={isActive("/reels")} />
         <button
