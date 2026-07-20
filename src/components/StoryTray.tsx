@@ -88,13 +88,13 @@ export function StoryTray() {
       <div className="flex gap-3 overflow-x-auto no-scrollbar">
         {/* Add story */}
         <button
-          onClick={() => fileRef.current?.click()}
+          onClick={() => window.dispatchEvent(new CustomEvent("open-today"))}
           className="flex flex-col items-center gap-1 w-16 shrink-0"
         >
           <div className="h-16 w-16 rounded-full border-2 border-dashed border-border flex items-center justify-center bg-background">
             <Plus className="h-6 w-6 text-muted-foreground" />
           </div>
-          <span className="text-xs">Your story</span>
+          <span className="text-xs">Your Today</span>
         </button>
         <input
           ref={fileRef}
