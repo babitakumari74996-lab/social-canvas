@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReelsRouteImport } from './routes/_authenticated/reels'
+import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticated/friends'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
 import { Route as AuthenticatedDmRouteImport } from './routes/_authenticated/dm'
@@ -44,6 +45,11 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
 const AuthenticatedReelsRoute = AuthenticatedReelsRouteImport.update({
   id: '/reels',
   path: '/reels',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFriendsRoute = AuthenticatedFriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/dm': typeof AuthenticatedDmRouteWithChildren
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/friends': typeof AuthenticatedFriendsRoute
   '/reels': typeof AuthenticatedReelsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/dm/$userId': typeof AuthenticatedDmUserIdRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/dm': typeof AuthenticatedDmRouteWithChildren
   '/explore': typeof AuthenticatedExploreRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/friends': typeof AuthenticatedFriendsRoute
   '/reels': typeof AuthenticatedReelsRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/dm/$userId': typeof AuthenticatedDmUserIdRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_authenticated/dm': typeof AuthenticatedDmRouteWithChildren
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/friends': typeof AuthenticatedFriendsRoute
   '/_authenticated/reels': typeof AuthenticatedReelsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/dm/$userId': typeof AuthenticatedDmUserIdRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/dm'
     | '/explore'
     | '/feed'
+    | '/friends'
     | '/reels'
     | '/settings'
     | '/dm/$userId'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/dm'
     | '/explore'
     | '/feed'
+    | '/friends'
     | '/reels'
     | '/settings'
     | '/dm/$userId'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dm'
     | '/_authenticated/explore'
     | '/_authenticated/feed'
+    | '/_authenticated/friends'
     | '/_authenticated/reels'
     | '/_authenticated/settings'
     | '/_authenticated/dm/$userId'
@@ -209,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/reels'
       fullPath: '/reels'
       preLoaderRoute: typeof AuthenticatedReelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/friends': {
+      id: '/_authenticated/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof AuthenticatedFriendsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feed': {
@@ -279,6 +298,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDmRoute: typeof AuthenticatedDmRouteWithChildren
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedFriendsRoute: typeof AuthenticatedFriendsRoute
   AuthenticatedReelsRoute: typeof AuthenticatedReelsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedPostIdRoute: typeof AuthenticatedPostIdRoute
@@ -290,6 +310,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDmRoute: AuthenticatedDmRouteWithChildren,
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedFriendsRoute: AuthenticatedFriendsRoute,
   AuthenticatedReelsRoute: AuthenticatedReelsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedPostIdRoute: AuthenticatedPostIdRoute,
