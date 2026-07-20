@@ -5,7 +5,7 @@ import { useMyProfile } from "@/lib/auth";
 import { PostCard, type FeedPost } from "@/components/PostCard";
 import { StoryTray } from "@/components/StoryTray";
 import { Link } from "@tanstack/react-router";
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useRef } from "react";
 import { uploadMedia } from "@/lib/media";
 import { toast } from "sonner";
