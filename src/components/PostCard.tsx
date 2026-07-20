@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Send, Sparkles, MoreHorizontal, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { useSignedUrl } from "@/lib/media";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,7 +100,7 @@ export function PostCard({ post, tier }: { post: FeedPost; tier: string }) {
         </Link>
         <div className="flex-1 min-w-0">
           <Link to="/profile/$username" params={{ username: post.profiles?.username ?? "" }} className="font-semibold text-sm">
-            {post.profiles?.username}
+            {post.profiles?.display_name ?? post.profiles?.username}
           </Link>
           {post.profiles?.subscription_tier === "plus" && (
             <Sparkles className="inline-block h-3.5 w-3.5 ml-1 text-primary" />
@@ -108,6 +109,13 @@ export function PostCard({ post, tier }: { post: FeedPost; tier: string }) {
             {formatDistanceToNowStrict(new Date(post.created_at))} ago
           </div>
         </div>
+        <button
+          className="h-8 w-8 grid place-items-center rounded-full hover:bg-muted text-muted-foreground"
+          onClick={() => toast.info("Post actions coming soon")}
+          aria-label="Post options"
+        >
+          <MoreHorizontal className="h-5 w-5" />
+        </button>
       </header>
 
       {post.media_urls[0] && <MediaImage path={post.media_urls[0]} />}
@@ -121,6 +129,17 @@ export function PostCard({ post, tier }: { post: FeedPost; tier: string }) {
         </button>
         <button onClick={() => setShowComments((s) => !s)} className="hover:opacity-70 transition-opacity">
           <MessageCircle className="h-6 w-6" strokeWidth={1.6} />
+        </button>
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/post/${post.id}`;
+            navigator.clipboard?.writeText(url);
+            toast.success("Link copied");
+          }}
+          className="hover:opacity-70 transition-opacity"
+          aria-label="Share"
+        >
+          <Share2 className="h-6 w-6" strokeWidth={1.6} />
         </button>
         {tier === "plus" && (
           <button
