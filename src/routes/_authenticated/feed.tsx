@@ -5,12 +5,14 @@ import { useMyProfile } from "@/lib/auth";
 import { PostCard, type FeedPost } from "@/components/PostCard";
 import { StoryTray } from "@/components/StoryTray";
 import { Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { useRef } from "react";
 import { uploadMedia } from "@/lib/media";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useServerFn } from "@tanstack/react-start";
+import { suggestCaption } from "@/lib/ai.functions";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   component: FeedPage,
@@ -20,6 +22,7 @@ function FeedPage() {
   const { data: me } = useMyProfile();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const suggest = useServerFn(suggestCaption);
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["feed", me?.id, me?.muted_users],
@@ -41,7 +44,18 @@ function FeedPage() {
     if (!me) return;
     try {
       const path = await uploadMedia(me.id, file);
-      const caption = window.prompt("Add a caption (optional)") ?? "";
+      let caption = window.prompt("Add a caption (or leave empty for AI suggestion)") ?? "";
+      if (!caption.trim()) {
+        try {
+          const t = toast.loading("AI writing caption…");
+          const res = await suggest({ data: { hint: "" } });
+          caption = res.caption;
+          toast.dismiss(t);
+          if (caption) toast.success("Caption suggested");
+        } catch {
+          /* ignore, post without caption */
+        }
+      }
       const { error } = await supabase.from("posts").insert({
         user_id: me.id,
         media_urls: [path],
