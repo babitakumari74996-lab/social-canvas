@@ -10,7 +10,7 @@ import { useSignedUrl } from "@/lib/media";
 import { SearchProvider, useSearch } from "./SearchContext";
 import { TodayModal } from "./TodayModal";
 import { ProfileEditModal } from "./ProfileEditModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavDef = { to: string; label: string; icon: LucideIcon };
 
@@ -68,6 +68,12 @@ function AppShellInner() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [todayOpen, setTodayOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    const openToday = () => setTodayOpen(true);
+    window.addEventListener("open-today", openToday);
+    return () => window.removeEventListener("open-today", openToday);
+  }, []);
 
   const isActive = (to: string) => path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/feed" && path === "/feed");
 
