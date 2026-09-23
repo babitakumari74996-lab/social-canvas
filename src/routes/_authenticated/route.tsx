@@ -1,23 +1,11 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useSession } from "@/lib/auth";
-import { AppShell, Wordmark } from "@/components/AppShell";
+import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/_authenticated")({
-  component: AuthLayout,
+  component: AppLayout,
 });
 
-function AuthLayout() {
-  const { loading } = useSession();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-background">
-        <div className="animate-pulse"><Wordmark /></div>
-      </div>
-    );
-  }
-
-  // No session → run the app in demo mode with pre-populated accounts,
-  // stories and reels. Real sign-in is available from the More menu /auth.
+// No auth guard — the app is open to everyone (demo world).
+function AppLayout() {
   return <AppShell />;
 }

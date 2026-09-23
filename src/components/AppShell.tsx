@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   Home, Search, Compass, Film, Send, Heart, Menu, Settings,
-  Bookmark, LogOut,
+  Bookmark, RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
@@ -59,19 +60,13 @@ function NavItem({
 export function AppShell() {
   const me = useMe();
   const overlay = useUI();
-  const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   const isDemo = !me?.id || me.id === "me";
 
-  const logout = async () => {
-    if (isDemo) {
-      if (confirm("Exit the demo world? You can log in with a real account next.")) {
-        resetDemo();
-        navigate({ to: "/auth" });
-      }
-    } else {
-      await supabase.auth.signOut();
-      navigate({ to: "/auth" });
+  const reset = () => {
+    if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
+      resetDemo();
+      toast("Demo data reset");
     }
   };
 
@@ -107,9 +102,9 @@ export function AppShell() {
               <button
                 type="button"
                 className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted w-full text-left border-t border-border"
-                onClick={() => { setMoreOpen(false); logout(); }}
+                onClick={() => { setMoreOpen(false); reset(); }}
               >
-                <LogOut className="h-5 w-5" /> {isDemo ? "Exit demo / Log in" : "Log out"}
+                <RotateCcw className="h-5 w-5" /> Reset demo data
               </button>
             </div>
           )}

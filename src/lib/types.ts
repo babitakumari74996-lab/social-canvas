@@ -8,6 +8,8 @@ export interface UProfile {
   is_verified: boolean | null;
   subscription_tier?: string | null;
   bio?: string | null;
+  close_friends?: string[] | null;
+  muted_users?: string[] | null;
 }
 
 export interface UPost {
