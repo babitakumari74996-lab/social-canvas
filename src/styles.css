@@ -197,3 +197,17 @@
     height: 100%;
   }
 }
+
+/* ---- Socialverse (IG-style) additions ---- */
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* hide scrollbars for snap carousels */
+.snap-y::-webkit-scrollbar, .snap-x::-webkit-scrollbar { display: none; }
+.snap-y, .snap-x { scrollbar-width: none; }
+
+/* reels like-burst pop */
+@keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }

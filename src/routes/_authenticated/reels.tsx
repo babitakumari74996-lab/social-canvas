@@ -1,133 +1,307 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useSignedUrl } from "@/lib/media";
-import { useMyProfile } from "@/lib/auth";
-import { useRef, useState } from "react";
-import { uploadMedia } from "@/lib/media";
+import { useEffect, useRef, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Plus, Heart, MessageCircle, Share2, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar } from "@/components/Avatar";
+import { MediaImg } from "@/components/PostCard";
+import { useActions, useMe, useReels } from "@/lib/data";
+import { ui } from "@/lib/demo-store";
+import { formatCount } from "@/lib/time";
+import { useSession } from "@/lib/auth";
+import { timeAgo } from "@/lib/time";
+import { useComments } from "@/lib/data";
+import type { UReel } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/reels")({
   component: ReelsPage,
 });
 
-function ReelCard({ path, caption, username }: { path: string; caption: string | null; username: string }) {
-  const { data } = useSignedUrl(path);
+function ReelsPage() {
+  const { reels, loading } = useReels();
+  const [muted, setMuted] = useState(true);
+
   return (
-    <div className="card-flat overflow-hidden animate-in-fade">
-      <div className="relative aspect-[9/16] bg-gradient-to-br from-primary/40 to-primary/10">
-        {data ? (
-          <video src={data} className="w-full h-full object-cover" controls playsInline loop />
-        ) : null}
-        <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs">
-          <div className="font-semibold">@{username}</div>
-          {caption && <div className="opacity-90 line-clamp-2">{caption}</div>}
-        </div>
+    <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
+      {/* header */}
+      <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
+        <span className="text-white font-bold text-lg">Reels</span>
+        <button
+          type="button"
+          onClick={() => ui.openCreate("video")}
+          className="flex items-center gap-1.5 text-white text-sm font-semibold bg-white/15 backdrop-blur rounded-full px-3 py-1.5"
+        >
+          <Plus className="h-4 w-4" /> Create reel
+        </button>
       </div>
-      <div className="flex items-center gap-4 px-3 py-2 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1"><Heart className="h-4 w-4" /> 0</span>
-        <span className="flex items-center gap-1"><MessageCircle className="h-4 w-4" /> 0</span>
-        <span className="flex items-center gap-1"><Share2 className="h-4 w-4" /> 0</span>
+      <button
+        type="button"
+        aria-label={muted ? "Unmute" : "Mute"}
+        onClick={() => setMuted((m) => !m)}
+        className="absolute right-3 top-14 z-30 grid place-items-center h-9 w-9 rounded-full bg-black/50 text-white"
+      >
+        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+      </button>
+
+      <div className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+        {loading && (
+          <div className="h-full snap-start grid place-items-center">
+            <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
+          </div>
+        )}
+        {!loading && reels.length === 0 && (
+          <div className="h-full snap-start grid place-items-center text-center px-6">
+            <div>
+              <p className="text-white font-semibold">No reels yet</p>
+              <p className="text-white/60 text-sm mt-1">Create the first reel!</p>
+              <button type="button" onClick={() => ui.openCreate("video")} className="mt-4 bg-primary text-white text-sm font-semibold rounded-lg px-4 py-2">
+                Create reel
+              </button>
+            </div>
+          </div>
+        )}
+        {reels.map((r) => (
+          <ReelItem key={r.id} reel={r} muted={muted} />
+        ))}
       </div>
     </div>
   );
 }
 
-const TABS = ["Recommended", "Followed", "Search Reels"] as const;
-type Tab = (typeof TABS)[number];
+function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
+  const actions = useActions();
+  const me = useMe();
+  const { userId } = useSession();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [liked, setLiked] = useState(reel.likedByMe);
+  const [burst, setBurst] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [showPlay, setShowPlay] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
-function ReelsPage() {
-  const { data: me } = useMyProfile();
-  const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<Tab>("Recommended");
-  const [search, setSearch] = useState("");
+  useEffect(() => setLiked(reel.likedByMe), [reel.likedByMe]);
 
-  const { data: reels } = useQuery({
-    queryKey: ["reels"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("reels")
-        .select("id, video_url, caption, profiles(username)")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      return data ?? [];
-    },
-  });
+  useEffect(() => {
+    const el = wrapRef.current;
+    const vid = videoRef.current;
+    if (!el || !vid) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio >= 0.6) {
+          vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        } else {
+          vid.pause();
+          setPlaying(false);
+        }
+      },
+      { threshold: [0, 0.6, 1] },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
-  const onUpload = async (file: File) => {
-    if (!me) return;
-    try {
-      const path = await uploadMedia(me.id, file);
-      const caption = window.prompt("Caption?") ?? "";
-      const { error } = await supabase.from("reels").insert({
-        user_id: me.id,
-        video_url: path,
-        caption: caption || null,
-      });
-      if (error) throw error;
-      toast.success("Reel posted");
-      qc.invalidateQueries({ queryKey: ["reels"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (vid) vid.muted = muted;
+  }, [muted]);
+
+  const togglePlay = () => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    if (vid.paused) {
+      vid.play();
+      setPaused(false);
+    } else {
+      vid.pause();
+      setPaused(true);
     }
+    setShowPlay(true);
+    setTimeout(() => setShowPlay(false), 600);
   };
 
-  const filtered = (() => {
-    const list = reels ?? [];
-    if (tab === "Search Reels") {
-      const q = search.trim().toLowerCase();
-      if (!q) return list;
-      return list.filter((r) => (r.caption ?? "").toLowerCase().includes(q) || (r.profiles?.username ?? "").toLowerCase().includes(q));
+  const doubleLike = () => {
+    if (!liked) {
+      setLiked(true);
+      actions.like(reel.id, true);
     }
-    if (tab === "Followed") return list.slice(0, Math.floor(list.length / 2));
-    return list;
-  })();
+    setBurst(true);
+    setTimeout(() => setBurst(false), 800);
+  };
+
+  const likeNow = () => {
+    setLiked((v) => {
+      actions.like(reel.id, !v);
+      return !v;
+    });
+  };
 
   return (
-    <div className="max-w-5xl mx-auto px-3 md:px-6 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="text-2xl font-bold">Reels</h1>
-        <Button size="sm" onClick={() => fileRef.current?.click()}>
-          <Plus className="h-4 w-4 mr-1" /> Add
-        </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onUpload(f);
-            e.target.value = "";
+    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-4">
+      <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
+        {reel.poster && <MediaImg src={reel.poster} className="absolute inset-0 h-full w-full object-cover opacity-40" />}
+        <video
+          ref={videoRef}
+          src={reel.video_url}
+          className="absolute inset-0 h-full w-full object-cover"
+          loop
+          muted={muted}
+          playsInline
+          autoPlay={false}
+          onClick={togglePlay}
+          onDoubleClick={doubleLike}
+          onTimeUpdate={(e) => {
+            const v = e.currentTarget;
+            if (v.duration) setProgress((v.currentTime / v.duration) * 100);
           }}
         />
-      </div>
-      <div className="flex gap-1 border-b border-border mb-4 overflow-x-auto no-scrollbar">
-        {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-            {t}
-          </button>
-        ))}
-      </div>
-      {tab === "Search Reels" && (
-        <div className="mb-4 flex items-center gap-2 rounded-full bg-muted px-4 py-2">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search reels" className="flex-1 bg-transparent text-sm outline-none" />
+
+        {showPlay && !playing && (
+          <div className="absolute inset-0 grid place-items-center pointer-events-none">
+            <Play className="h-16 w-16 text-white/90 fill-white/90" />
+          </div>
+        )}
+        {paused && (
+          <div className="absolute inset-0 grid place-items-center pointer-events-none">
+            <Play className="h-16 w-16 text-white/80 fill-white/80" />
+          </div>
+        )}
+        {burst && (
+          <div className="absolute inset-0 grid place-items-center pointer-events-none">
+            <Heart className="h-28 w-28 text-white fill-white animate-heart-burst drop-shadow-xl" />
+          </div>
+        )}
+
+        {/* bottom gradient + info */}
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-10 md:pb-12 px-3 flex items-end gap-3">
+          <div className="flex-1 min-w-0 text-white">
+            <div className="flex items-center gap-2">
+              <Link to="/profile/$username" params={{ username: reel.profiles.username }}>
+                <Avatar path={reel.profiles.avatar_url} alt={reel.profiles.username} size={32} className="ring-1 ring-white/40" />
+              </Link>
+              <Link to="/profile/$username" params={{ username: reel.profiles.username }} className="text-sm font-semibold drop-shadow">
+                {reel.profiles.username}
+              </Link>
+              {reel.profiles.is_verified && <BadgeCheck className="h-3.5 w-3.5 text-white fill-transparent" />}
+              {reel.user_id !== me?.id && (
+                <FollowInline userId={reel.user_id} />
+              )}
+            </div>
+            {reel.caption && (
+              <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
+            )}
+            {reel.music && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs overflow-hidden">
+                <Music2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap animate-[marquee_10s_linear_infinite]">{reel.music} · {reel.music}</span>
+              </div>
+            )}
+          </div>
+
+          {/* action rail */}
+          <div className="flex flex-col items-center gap-4 text-white pb-1">
+            <RailBtn
+              onClick={likeNow}
+              label={formatCount(reel.likes + (liked && !reel.likedByMe ? 1 : !liked && reel.likedByMe ? -1 : 0))}
+              icon={<Heart className={`h-7 w-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />}
+            />
+            <RailBtn onClick={() => setCommentsOpen(true)} label={formatCount(reel.commentsCount)} icon={<MessageCircle className="h-7 w-7 -scale-x-100" />} />
+            <RailBtn
+              onClick={() => ui.openShare({
+                id: reel.id, user_id: reel.user_id, media_urls: reel.poster ? [reel.poster] : [],
+                caption: reel.caption, created_at: reel.created_at, profiles: reel.profiles,
+                likes: reel.likes, likedByMe: liked, savedByMe: false, commentsCount: reel.commentsCount,
+              }, "reel")}
+              label="Share"
+              icon={<Send className="h-7 w-7" />}
+            />
+            <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
+            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] animate-[spin_6s_linear_infinite]" />
+          </div>
         </div>
-      )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {filtered.map((r) => (
-          <ReelCard key={r.id} path={r.video_url} caption={r.caption} username={r.profiles?.username ?? ""} />
-        ))}
+
+        {/* progress bar */}
+        <div className="absolute bottom-0 inset-x-0 h-[2.5px] bg-white/20">
+          <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+        </div>
+
+        {commentsOpen && <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />}
       </div>
-      {filtered.length === 0 && (
-        <div className="card-flat p-8 text-center text-sm text-muted-foreground">No reels to show.</div>
-      )}
     </div>
   );
 }
+
+function FollowInline({ userId }: { userId: string }) {
+  const actions = useActions();
+  const [on, setOn] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.preventDefault(); setOn((v) => !v); actions.follow(userId, !on); }}
+      className={`text-xs font-semibold rounded-md px-2.5 py-1 border ${on ? "border-white/60 text-white" : "border-white bg-transparent text-white"}`}
+    >
+      {on ? "Following" : "Follow"}
+    </button>
+  );
+}
+
+function RailBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+      {icon}
+      {label && <span className="text-[11px] font-semibold drop-shadow">{label}</span>}
+    </button>
+  );
+}
+
+function ReelComments({ reelId, reel, onClose, isReal }: { reelId: string; reel: UReel; onClose: () => void; isReal: boolean }) {
+  const { comments } = useComments(reelId);
+  const actions = useActions();
+  const me = useMe();
+  const [draft, setDraft] = useState("");
+  void isReal;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    actions.comment(reelId, draft.trim());
+    setDraft("");
+  };
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 top-16 z-30 rounded-t-2xl bg-card flex flex-col animate-in-fade" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-sm font-semibold">Comments</span>
+        <button type="button" onClick={onClose} className="text-xs font-semibold text-primary">Close</button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {comments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet. Start the conversation.</p>}
+        {comments.map((c) => (
+          <div key={c.id} className="flex gap-3">
+            <Avatar path={c.profiles?.avatar_url} alt={c.profiles?.username ?? "?"} size={32} />
+            <div className="text-sm">
+              <span className="font-semibold mr-1.5">{c.profiles?.username ?? "user"}</span>
+              <span className="break-words">{c.content}</span>
+              <div className="text-[11px] text-muted-foreground mt-0.5">{timeAgo(c.created_at)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={submit} className="flex items-center gap-2 p-3 border-t border-border">
+        <Avatar path={me?.avatar_url} alt="me" size={32} />
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Add a comment…"
+          className="flex-1 rounded-full bg-muted px-4 py-2 text-sm outline-none"
+        />
+        <button type="submit" disabled={!draft.trim()} className="text-sm font-semibold text-primary disabled:opacity-40">Post</button>
+      </form>
+    </div>
+  );
+}
+
+// keep supabase import referenced for potential realtime upgrades
+void supabase;

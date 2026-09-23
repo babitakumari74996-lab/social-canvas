@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { MediaImg } from "@/components/PostCard";
+import { Wordmark } from "@/components/AppShell";
+import { DEMO_GALLERY } from "@/lib/demo-data";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -68,58 +71,79 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-      <div className="w-full max-w-sm card-flat p-6 animate-in-fade">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">Socialverse</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+    <div className="min-h-screen flex items-center justify-center gap-12 px-4 py-10 bg-background">
+      {/* phone collage (desktop) */}
+      <div className="hidden lg:block relative w-[380px] h-[580px] shrink-0">
+        <div className="absolute left-0 top-10 w-[220px] rotate-[-6deg] rounded-2xl overflow-hidden border-[10px] border-card shadow-2xl">
+          <MediaImg src={DEMO_GALLERY[0]} className="w-full h-[380px] object-cover" />
+        </div>
+        <div className="absolute right-0 top-0 w-[210px] rotate-[5deg] rounded-2xl overflow-hidden border-[10px] border-card shadow-2xl">
+          <MediaImg src={DEMO_GALLERY[6]} className="w-full h-[350px] object-cover" />
+        </div>
+        <div className="absolute right-10 bottom-0 w-[200px] rotate-[2deg] rounded-2xl overflow-hidden border-[10px] border-card shadow-2xl">
+          <MediaImg src={DEMO_GALLERY[4]} className="w-full h-[330px] object-cover" />
+        </div>
+        <div className="absolute left-6 bottom-6 bg-card/95 backdrop-blur rounded-xl shadow-xl px-4 py-3 flex items-center gap-2 rotate-[-2deg]">
+          <span className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] p-[2px]">
+            <span className="block h-full w-full rounded-full bg-card p-[2px]">
+              <MediaImg src="/demo/av2.jpg" className="h-full w-full rounded-full object-cover" />
+            </span>
+          </span>
+          <span className="text-xs"><b>priyaverma</b> started following you</span>
+        </div>
+      </div>
+
+      {/* form column */}
+      <div className="w-full max-w-[350px] space-y-3 animate-in-fade">
+        <div className="border border-border rounded-xl bg-card px-8 py-9 text-center">
+          <Link to="/feed" className="inline-block mb-6"><Wordmark /></Link>
+          <p className="text-sm text-muted-foreground font-semibold mb-5">
+            Sign up to see photos, stories and reels from your friends.
           </p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {mode === "signup" && (
-            <div>
-              <Label htmlFor="u">Username</Label>
-              <Input id="u" required minLength={3} maxLength={20} pattern="[a-zA-Z0-9_]+"
-                value={username} onChange={(e) => setUsername(e.target.value)} />
-            </div>
-          )}
-          <div>
-            <Label htmlFor="e">Email</Label>
-            <Input id="e" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <form onSubmit={handleSubmit} className="space-y-2.5">
+            {mode === "signup" && (
+              <Input
+                required minLength={3} maxLength={20} pattern="[a-zA-Z0-9_]+"
+                placeholder="Username"
+                value={username} onChange={(e) => setUsername(e.target.value)}
+              />
+            )}
+            <Input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input type="password" required minLength={6} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Button type="submit" className="w-full font-semibold" disabled={loading}>
+              {loading ? "Please wait…" : mode === "signin" ? "Log in" : "Sign up"}
+            </Button>
+          </form>
+
+          <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex-1 border-t border-border" />
+            <span className="uppercase">or</span>
+            <div className="flex-1 border-t border-border" />
           </div>
-          <div>
-            <Label htmlFor="p">Password</Label>
-            <Input id="p" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-          </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
+
+          <Button variant="outline" className="w-full font-semibold" onClick={handleGoogle}>
+            Continue with Google
           </Button>
-        </form>
 
-        <div className="my-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="flex-1 border-t border-border" />
-          <span>or</span>
-          <div className="flex-1 border-t border-border" />
+          <button
+            type="button"
+            onClick={() => navigate({ to: "/feed" })}
+            className="mt-4 w-full text-sm font-semibold text-muted-foreground hover:text-foreground"
+          >
+            ✨ Just exploring? Enter the demo world
+          </button>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleGoogle}>
-          Continue with Google
-        </Button>
-
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          {mode === "signin" ? "New here? " : "Have an account? "}
-          <button
-            className="text-primary font-medium hover:underline"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-          >
-            {mode === "signin" ? "Create one" : "Sign in"}
+        <div className="border border-border rounded-xl bg-card px-8 py-5 text-center text-sm">
+          {mode === "signin" ? "Don't have an account? " : "Have an account? "}
+          <button className="text-primary font-semibold hover:opacity-70" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
+            {mode === "signin" ? "Sign up" : "Log in"}
           </button>
-        </p>
+        </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          <Link to="/" className="hover:underline">Back to home</Link>
+        <p className="text-center text-xs text-muted-foreground pt-2">
+          The demo world runs on sample accounts — posts, likes and reels reset with your browser storage.
         </p>
       </div>
     </div>

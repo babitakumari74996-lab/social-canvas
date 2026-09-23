@@ -1,13 +1,23 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
-import { AppShell } from "@/components/AppShell";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useSession } from "@/lib/auth";
+import { AppShell, Wordmark } from "@/components/AppShell";
 
 export const Route = createFileRoute("/_authenticated")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
-  },
-  component: AppShell,
+  component: AuthLayout,
 });
+
+function AuthLayout() {
+  const { loading } = useSession();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-background">
+        <div className="animate-pulse"><Wordmark /></div>
+      </div>
+    );
+  }
+
+  // No session → run the app in demo mode with pre-populated accounts,
+  // stories and reels. Real sign-in is available from the More menu /auth.
+  return <AppShell />;
+}
