@@ -1,222 +1,170 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useState } from "react";
+import { Link, Outlet } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
-  Home, Users, Clock, Rss, UsersRound, Megaphone, MessagesSquare, Flag,
-  Calendar, History as HistoryIcon, Compass, Film, Send, User, Search,
-  Menu, X, PlusCircle, Sparkles, type LucideIcon,
+  Home, Search, Compass, Film, Send, Heart, Menu, Settings,
+  Bookmark, RotateCcw,
 } from "lucide-react";
-import { useMyProfile } from "@/lib/auth";
-import { PlusProvider } from "./PlusModal";
-import { useSignedUrl } from "@/lib/media";
-import { SearchProvider, useSearch } from "./SearchContext";
-import { TodayModal } from "./TodayModal";
-import { ProfileEditModal } from "./ProfileEditModal";
-import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar } from "@/components/Avatar";
+import { useMe } from "@/lib/data";
+import { ui, useUI, resetDemo } from "@/lib/demo-store";
+import { CreateModal } from "@/components/CreateModal";
+import { SearchPanel } from "@/components/SearchPanel";
+import { NotificationsPanel } from "@/components/NotificationsPanel";
+import { StoryViewer } from "@/components/StoryViewer";
+import { ShareSheet } from "@/components/ShareSheet";
+import { EditProfileModal } from "@/components/EditProfileModal";
 
-type NavDef = { to: string; label: string; icon: LucideIcon };
-
-const SIDEBAR: NavDef[] = [
-  { to: "/feed", label: "Home", icon: Home },
-  { to: "/friends", label: "Friends", icon: Users },
-  { to: "/memories", label: "Memories", icon: Clock },
-  { to: "/feeds", label: "Feeds", icon: Rss },
-  { to: "/groups", label: "Groups", icon: UsersRound },
-  { to: "/ads", label: "Ads Manager", icon: Megaphone },
-  { to: "/dm", label: "Messenger", icon: MessagesSquare },
-  { to: "/pages", label: "Pages", icon: Flag },
-  { to: "/events", label: "Events", icon: Calendar },
-  { to: "/history", label: "History", icon: HistoryIcon },
-];
-
-function SidebarItem({ to, label, icon: Icon, active, onClick }: NavDef & { active: boolean; onClick?: () => void }) {
+export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-        active ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-muted"
-      }`}
-    >
-      <span className={`h-9 w-9 grid place-items-center rounded-full ${active ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
-        <Icon className="h-5 w-5" strokeWidth={1.8} />
-      </span>
-      <span className="truncate">{label}</span>
-    </Link>
+    <span className={`font-serif italic font-bold tracking-tight text-[26px] leading-none bg-gradient-to-r from-[#D62976] via-[#962FBF] to-[#4F5BD5] bg-clip-text text-transparent ${className}`}>
+      Socialverse
+    </span>
   );
 }
 
-function TopSearch() {
-  const { query, setQuery } = useSearch();
+function NavItem({
+  icon: Icon, label, to, params, onClick, active, avatarUrl,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  label: string;
+  to?: string;
+  params?: Record<string, string>;
+  onClick?: () => void;
+  active?: boolean;
+  avatarUrl?: string | null;
+}) {
+  const inner = avatarUrl ? (
+    <Avatar path={avatarUrl} alt={label} size={24} className={active ? "ring-2 ring-foreground" : ""} />
+  ) : Icon ? (
+    <Icon className={`h-6 w-6 ${active ? "stroke-[2.5]" : "stroke-[1.8]"}`} />
+  ) : null;
+  const cls = `flex items-center gap-4 rounded-lg p-3 my-0.5 hover:bg-muted transition-colors ${active ? "font-bold" : "font-normal"}`;
+  if (to) {
+    return (
+      <Link to={to} params={params} className={cls} onClick={onClick} activeProps={{ className: `${cls} font-bold` }}>
+        {inner}
+        <span className="hidden xl:inline text-[15px]">{label}</span>
+      </Link>
+    );
+  }
   return (
-    <div className="flex-1 max-w-xl mx-4 hidden sm:block">
-      <div className="flex items-center gap-2 rounded-full bg-muted px-4 py-2">
-        <Search className="h-4 w-4 text-muted-foreground" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search SocialVerse"
-          className="flex-1 bg-transparent text-sm outline-none"
-        />
-      </div>
-    </div>
-  );
-}
-
-function AppShellInner() {
-  const { data: profile } = useMyProfile();
-  const path = useRouterState({ select: (s) => s.location.pathname });
-  const avatar = useSignedUrl(profile?.avatar_url ?? undefined);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [todayOpen, setTodayOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-
-  useEffect(() => {
-    const openToday = () => setTodayOpen(true);
-    window.addEventListener("open-today", openToday);
-    return () => window.removeEventListener("open-today", openToday);
-  }, []);
-
-  const isActive = (to: string) => path === to || (to !== "/feed" && path.startsWith(to + "/")) || (to === "/feed" && path === "/feed");
-
-  return (
-    <div className="min-h-screen bg-muted/40">
-      {/* Top bar */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center px-3">
-        <Link to="/feed" className="text-lg font-bold tracking-tight text-primary shrink-0">SocialVerse</Link>
-        <TopSearch />
-        <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <Link to="/friends" className="relative h-10 w-10 grid place-items-center rounded-full bg-muted hover:bg-muted/70" aria-label="Friends">
-            <Users className="h-5 w-5" />
-            <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[10px] rounded-full px-1.5 py-0.5">3</span>
-          </Link>
-          {/* Messages on desktop, Today post on mobile */}
-          <Link to="/dm" className="relative hidden lg:grid h-10 w-10 place-items-center rounded-full bg-muted hover:bg-muted/70" aria-label="Messages">
-            <MessagesSquare className="h-5 w-5" />
-            <span className="absolute -top-0.5 -right-0.5 bg-destructive text-destructive-foreground text-[10px] rounded-full px-1.5 py-0.5">2</span>
-          </Link>
-          <button
-            className="lg:hidden h-10 w-10 grid place-items-center rounded-full bg-primary text-primary-foreground"
-            onClick={() => setTodayOpen(true)}
-            aria-label="Today's life post"
-          >
-            <PlusCircle className="h-5 w-5" />
-          </button>
-          <button
-            className="lg:hidden h-10 w-10 grid place-items-center rounded-full bg-muted"
-            onClick={() => setDrawerOpen(true)}
-            aria-label="Menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Desktop sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-14 bottom-0 w-64 bg-card border-r border-border flex-col">
-        <nav className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-0.5">
-          {SIDEBAR.map((n) => (
-            <SidebarItem key={n.to} {...n} active={isActive(n.to)} />
-          ))}
-          <div className="mt-4 mx-2 rounded-xl border border-border bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-primary" /> On this day</div>
-            <div className="mt-1 text-xs text-muted-foreground">You have 3 memories from previous years. Tap to revisit.</div>
-          </div>
-        </nav>
-        {profile && (
-          <div className="flex items-center gap-2 border-t border-border px-3 py-3 text-xs">
-            {avatar.data ? (
-              <img src={avatar.data} alt="" className="h-9 w-9 rounded-full object-cover" />
-            ) : (
-              <div className="h-9 w-9 rounded-full bg-muted" />
-            )}
-            <div className="min-w-0">
-              <div className="truncate font-medium">{profile.display_name ?? `@${profile.username}`}</div>
-              <div className="text-muted-foreground">
-                {profile.subscription_tier === "plus" ? (<span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" /> Plus</span>) : "Free"}
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="lg:hidden fixed inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between p-3 border-b border-border">
-              <span className="font-bold text-primary">SocialVerse</span>
-              <button onClick={() => setDrawerOpen(false)} className="h-9 w-9 grid place-items-center rounded-full bg-muted"><X className="h-4 w-4" /></button>
-            </div>
-            <nav className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-0.5">
-              {SIDEBAR.map((n) => (
-                <SidebarItem key={n.to} {...n} active={isActive(n.to)} onClick={() => setDrawerOpen(false)} />
-              ))}
-              <div className="mt-4 mx-2 rounded-xl border border-border bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-primary" /> On this day</div>
-                <div className="mt-1 text-xs text-muted-foreground">3 memories to revisit.</div>
-              </div>
-            </nav>
-          </aside>
-        </div>
-      )}
-
-      {/* Main content */}
-      <main className="pt-14 lg:pl-64 pb-6 lg:pb-24">
-        <Outlet />
-      </main>
-
-      {/* Desktop bottom nav (>=1024px) */}
-      <nav className="hidden lg:flex fixed bottom-0 left-64 right-0 h-16 bg-card border-t border-border z-40 items-center justify-around px-2">
-        <BottomBtn to="/explore" label="Explore" icon={Compass} active={isActive("/explore")} />
-        <BottomBtn to="/reels" label="Reels" icon={Film} active={isActive("/reels")} />
-        <button
-          onClick={() => setTodayOpen(true)}
-          className="flex flex-col items-center -mt-6"
-          aria-label="New post"
-        >
-          <span className="h-14 w-14 rounded-full bg-primary text-primary-foreground grid place-items-center shadow-lg">
-            <PlusCircle className="h-7 w-7" />
-          </span>
-          <span className="text-[10px] mt-0.5 font-semibold">Post</span>
-        </button>
-        <BottomBtn to="/dm" label="Messages" icon={Send} active={isActive("/dm")} badge={2} />
-        <button
-          onClick={() => setProfileOpen(true)}
-          className="flex flex-col items-center text-muted-foreground hover:text-foreground"
-        >
-          <User className="h-5 w-5" />
-          <span className="text-[10px] mt-0.5">Profile</span>
-        </button>
-      </nav>
-
-      <TodayModal open={todayOpen} onOpenChange={setTodayOpen} />
-      <ProfileEditModal open={profileOpen} onOpenChange={setProfileOpen} />
-    </div>
-  );
-}
-
-function BottomBtn({ to, label, icon: Icon, active, badge }: NavDef & { active: boolean; badge?: number }) {
-  return (
-    <Link
-      to={to}
-      className={`relative flex flex-col items-center px-2 ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-    >
-      <Icon className="h-5 w-5" />
-      <span className="text-[10px] mt-0.5">{label}</span>
-      {badge ? (
-        <span className="absolute top-0 right-1 bg-destructive text-destructive-foreground text-[9px] rounded-full px-1">{badge}</span>
-      ) : null}
-    </Link>
+    <button type="button" onClick={onClick} className={`${cls} w-full text-left`}>
+      {inner}
+      <span className="hidden xl:inline text-[15px]">{label}</span>
+    </button>
   );
 }
 
 export function AppShell() {
-  const { data: profile } = useMyProfile();
+  const me = useMe();
+  const overlay = useUI();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isDemo = !me?.id || me.id === "me";
+
+  const reset = () => {
+    if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
+      resetDemo();
+      toast("Demo data reset");
+    }
+  };
+
   return (
-    <PlusProvider tier={profile?.subscription_tier} userId={profile?.id ?? null}>
-      <SearchProvider>
-        <AppShellInner />
-      </SearchProvider>
-    </PlusProvider>
+    <div className="min-h-screen">
+      {/* ------- desktop sidebar ------- */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[245px] flex-col border-r border-border bg-card px-3 py-6 z-40">
+        <Link to="/feed" className="px-3 mb-7 hidden xl:block">
+          <Wordmark />
+        </Link>
+        <Link to="/feed" className="px-3 mb-7 xl:hidden" aria-label="Home">
+          <span className="font-serif italic font-bold text-2xl">S</span>
+        </Link>
+        <nav className="flex flex-col gap-0.5 flex-1">
+          <NavItem icon={Home} label="Home" to="/feed" />
+          <NavItem icon={Search} label="Search" onClick={ui.openSearch} active={overlay.overlay === "search"} />
+          <NavItem icon={Compass} label="Explore" to="/explore" />
+          <NavItem icon={Film} label="Reels" to="/reels" />
+          <NavItem icon={Send} label="Messages" to="/dm" />
+          <NavItem icon={Heart} label="Notifications" onClick={ui.openNotifications} active={overlay.overlay === "notifications"} />
+          <NavItem icon={PlusIcon} label="Create" onClick={() => ui.openCreate()} />
+          <NavItem label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} />
+        </nav>
+        <div className="relative">
+          {moreOpen && (
+            <div className="absolute bottom-12 left-0 w-60 rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in-fade">
+              <Link to="/settings" className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted" onClick={() => setMoreOpen(false)}>
+                <Settings className="h-5 w-5" /> Settings
+              </Link>
+              <Link to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} search={{ tab: "saved" }} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted" onClick={() => setMoreOpen(false)}>
+                <Bookmark className="h-5 w-5" /> Saved
+              </Link>
+              <button
+                type="button"
+                className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted w-full text-left border-t border-border"
+                onClick={() => { setMoreOpen(false); reset(); }}
+              >
+                <RotateCcw className="h-5 w-5" /> Reset demo data
+              </button>
+            </div>
+          )}
+          <button type="button" onClick={() => setMoreOpen((v) => !v)} className="flex items-center gap-4 rounded-lg p-3 hover:bg-muted transition-colors w-full text-left">
+            <Menu className="h-6 w-6 stroke-[1.8]" />
+            <span className="hidden xl:inline text-[15px]">More</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ------- mobile top bar ------- */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
+        <Link to="/feed"><Wordmark className="text-[22px]" /></Link>
+        <div className="flex items-center gap-5">
+          <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
+            <Heart className="h-6 w-6" />
+          </button>
+          <Link to="/dm" aria-label="Messages">
+            <Send className="h-6 w-6 -rotate-12" />
+          </Link>
+        </div>
+      </header>
+
+      {/* ------- main ------- */}
+      <main className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen">
+        <Outlet />
+      </main>
+
+      {/* ------- mobile bottom nav ------- */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-center justify-around bg-background border-t border-border">
+        <Link to="/feed" aria-label="Home"><Home className="h-6 w-6" /></Link>
+        <button type="button" aria-label="Search" onClick={ui.openSearch}><Search className="h-6 w-6" /></button>
+        <button type="button" aria-label="Create" onClick={() => ui.openCreate()}>
+          <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
+            <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
+            <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
+          </span>
+        </button>
+        <Link to="/reels" aria-label="Reels"><Film className="h-6 w-6" /></Link>
+        <Link to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} aria-label="Profile">
+          <Avatar path={me?.avatar_url} alt="me" size={26} className="ring-1 ring-border" />
+        </Link>
+      </nav>
+
+      {/* ------- global overlays ------- */}
+      <CreateModal />
+      <SearchPanel />
+      <NotificationsPanel />
+      <StoryViewer />
+      <ShareSheet />
+      <EditProfileModal />
+    </div>
+  );
+}
+
+function PlusIcon({ className = "" }: { className?: string }) {
+  return (
+    <span className={`block h-6 w-6 rounded-[7px] border-2 border-current relative ${className}`}>
+      <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
+      <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
+    </span>
   );
 }

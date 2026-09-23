@@ -1,31 +1,20 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import type { UProfile } from "@/lib/types";
 
+// Auth has been removed from the website: everyone is a guest in the demo
+// world. The hook stays so existing call sites keep working — it always
+// reports "no session", which routes every data hook into demo mode.
 export function useSession() {
-  const [session, setSession] = useState<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
-  }, []);
-  return { session, loading, userId: session?.user.id ?? null };
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return { session: null, loading: !ready, userId: null as string | null };
 }
 
 export function useMyProfile() {
-  const { userId } = useSession();
-  return useQuery({
-    queryKey: ["profile", "me", userId],
-    queryFn: async () => {
-      if (!userId) return null;
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!userId,
+  return useQuery<UProfile | null>({
+    queryKey: ["profile", "me"],
+    queryFn: async () => null,
+    enabled: false,
   });
 }

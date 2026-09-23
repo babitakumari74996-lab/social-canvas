@@ -1,198 +1,274 @@
-import { useState } from "react";
-import { Heart, MessageCircle, Send, Sparkles, MoreHorizontal, Share2 } from "lucide-react";
-import { toast } from "sonner";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useSignedUrl } from "@/lib/media";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useSession } from "@/lib/auth";
-import { formatDistanceToNowStrict } from "date-fns";
-import { usePlus } from "./PlusModal";
+import {
+  Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
+  MoreHorizontal, BadgeCheck,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Avatar } from "@/components/Avatar";
+import { useActions } from "@/lib/data";
+import { demoActions, ui } from "@/lib/demo-store";
+import { timeAgo, formatCount } from "@/lib/time";
+import type { UPost } from "@/lib/types";
 
-export type FeedPost = {
-  id: string;
-  user_id: string;
-  media_urls: string[];
-  caption: string | null;
-  created_at: string;
-  profiles: { username: string; avatar_url: string | null; display_name: string | null; is_verified: boolean; subscription_tier: string } | null;
-};
-
-function Avatar({ path, alt, size = 32 }: { path: string | null | undefined; alt: string; size?: number }) {
-  const { data } = useSignedUrl(path ?? undefined);
-  return data ? (
-    <img src={data} alt={alt} className="rounded-full object-cover" style={{ width: size, height: size }} />
-  ) : (
-    <div className="rounded-full bg-muted" style={{ width: size, height: size }} />
-  );
+function Verified({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return <BadgeCheck className={`${className} text-sky-500 fill-background`} />;
 }
 
-function MediaImage({ path }: { path: string }) {
-  const { data } = useSignedUrl(path);
+export function MediaImg({
+  src, alt = "", className = "", onClick,
+}: { src: string; alt?: string; className?: string; onClick?: () => void }) {
+  const [err, setErr] = useState(false);
+  if (err || !src) {
+    return (
+      <div
+        onClick={onClick}
+        className={`bg-gradient-to-br from-muted via-accent/60 to-muted flex items-center justify-center text-muted-foreground text-xs ${className}`}
+      >
+        {err ? "photo unavailable" : ""}
+      </div>
+    );
+  }
   return (
-    <div className="w-full aspect-square bg-muted overflow-hidden">
-      {data && <img src={data} alt="" className="w-full h-full object-cover" />}
-    </div>
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      draggable={false}
+      onClick={onClick}
+      onError={() => setErr(true)}
+      className={className}
+    />
   );
 }
 
-export function PostCard({ post, tier }: { post: FeedPost; tier: string }) {
-  const { userId } = useSession();
-  const qc = useQueryClient();
-  const { requirePlus } = usePlus();
-  const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState("");
+export function PostCard({ post, withComments = false }: { post: UPost; withComments?: boolean }) {
+  const actions = useActions();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
   const [burst, setBurst] = useState(false);
+  const [liked, setLiked] = useState(post.likedByMe);
+  const [saved, setSaved] = useState(post.savedByMe);
+  const [expanded, setExpanded] = useState(false);
+  const [draft, setDraft] = useState("");
+  const isText = post.media_urls.length === 0;
 
-  const { data: likeData } = useQuery({
-    queryKey: ["post-likes", post.id],
-    queryFn: async () => {
-      const { count } = await supabase.from("likes").select("*", { count: "exact", head: true }).eq("post_id", post.id);
-      const { data: mine } = userId
-        ? await supabase.from("likes").select("post_id").eq("post_id", post.id).eq("user_id", userId).maybeSingle()
-        : { data: null };
-      return { count: count ?? 0, liked: !!mine };
-    },
-  });
+  const like = (on: boolean) => {
+    setLiked(on);
+    actions.like(post.id, on);
+  };
+  const doubleTap = () => {
+    if (!liked) like(true);
+    setBurst(true);
+    setTimeout(() => setBurst(false), 800);
+  };
 
-  const { data: comments } = useQuery({
-    queryKey: ["post-comments", post.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("comments")
-        .select("id, content, created_at, profiles(username)")
-        .eq("post_id", post.id)
-        .order("created_at", { ascending: true })
-        .limit(50);
-      return data ?? [];
-    },
-    enabled: showComments,
-  });
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setIdx(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
-  const toggleLike = useMutation({
-    mutationFn: async () => {
-      if (!userId) return;
-      if (likeData?.liked) {
-        await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", userId);
-      } else {
-        await supabase.from("likes").insert({ post_id: post.id, user_id: userId });
-        setBurst(true);
-        setTimeout(() => setBurst(false), 300);
-      }
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["post-likes", post.id] }),
-  });
-
-  const addComment = useMutation({
-    mutationFn: async () => {
-      if (!userId || !commentText.trim()) return;
-      await supabase.from("comments").insert({ post_id: post.id, user_id: userId, content: commentText.trim() });
-      setCommentText("");
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["post-comments", post.id] }),
-  });
+  const submitComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    actions.comment(post.id, text);
+    setDraft("");
+    toast("Comment posted");
+  };
 
   return (
-    <article className="card-flat overflow-hidden animate-in-fade">
+    <article className="border-b border-border md:border md:rounded-xl md:bg-card md:overflow-hidden pb-1 md:pb-2">
+      {/* header */}
       <header className="flex items-center gap-3 px-3 py-2.5">
-        <Link to="/profile/$username" params={{ username: post.profiles?.username ?? "" }}>
-          <Avatar path={post.profiles?.avatar_url} alt={post.profiles?.username ?? ""} size={36} />
+        <Link to="/profile/$username" params={{ username: post.profiles.username }}>
+          <Avatar path={post.profiles.avatar_url} alt={post.profiles.username} size={36} className="ring-1 ring-border" />
         </Link>
-        <div className="flex-1 min-w-0">
-          <Link to="/profile/$username" params={{ username: post.profiles?.username ?? "" }} className="font-semibold text-sm">
-            {post.profiles?.display_name ?? post.profiles?.username}
-          </Link>
-          {post.profiles?.subscription_tier === "plus" && (
-            <Sparkles className="inline-block h-3.5 w-3.5 ml-1 text-primary" />
-          )}
-          <div className="text-xs text-muted-foreground">
-            {formatDistanceToNowStrict(new Date(post.created_at))} ago
+        <div className="flex-1 min-w-0 leading-tight">
+          <div className="flex items-center gap-1 text-sm">
+            <Link to="/profile/$username" params={{ username: post.profiles.username }} className="font-semibold hover:opacity-60 truncate">
+              {post.profiles.username}
+            </Link>
+            {post.profiles.is_verified && <Verified />}
+            <span className="text-muted-foreground">· {timeAgo(post.created_at)}</span>
           </div>
+          {post.location && <div className="text-[11px] text-muted-foreground truncate">{post.location}</div>}
         </div>
         <button
-          className="h-8 w-8 grid place-items-center rounded-full hover:bg-muted text-muted-foreground"
-          onClick={() => toast.info("Post actions coming soon")}
-          aria-label="Post options"
+          type="button"
+          aria-label="More options"
+          onClick={() => toast("Post options coming soon")}
+          className="p-1 hover:opacity-60"
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
       </header>
 
-      {post.media_urls[0] && <MediaImage path={post.media_urls[0]} />}
-
-      <div className="px-3 py-2 flex items-center gap-4">
-        <button onClick={() => toggleLike.mutate()} className="hover:opacity-70 transition-opacity">
-          <Heart
-            className={`h-6 w-6 ${likeData?.liked ? "fill-red-500 text-red-500" : ""} ${burst ? "animate-heart-burst" : ""}`}
-            strokeWidth={1.6}
-          />
-        </button>
-        <button onClick={() => setShowComments((s) => !s)} className="hover:opacity-70 transition-opacity">
-          <MessageCircle className="h-6 w-6" strokeWidth={1.6} />
-        </button>
-        <button
-          onClick={() => {
-            const url = `${window.location.origin}/post/${post.id}`;
-            navigator.clipboard?.writeText(url);
-            toast.success("Link copied");
-          }}
-          className="hover:opacity-70 transition-opacity"
-          aria-label="Share"
+      {/* media */}
+      {isText ? (
+        <div
+          onDoubleClick={doubleTap}
+          className="relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden aspect-square max-h-[585px] flex items-center justify-center p-8 text-center select-none"
+          style={{ background: "linear-gradient(135deg, #4F5BD5 0%, #962FBF 30%, #D62976 60%, #FA7E1E 85%, #FEDA75 100%)" }}
         >
-          <Share2 className="h-6 w-6" strokeWidth={1.6} />
-        </button>
-        {tier === "plus" && (
-          <button
-            onClick={() => {
-              setBurst(true);
-              setTimeout(() => setBurst(false), 300);
-            }}
-            className="hover:opacity-70 transition-opacity"
-            title="Super heart (Plus)"
-          >
-            <Sparkles className="h-6 w-6 text-primary" strokeWidth={1.6} />
-          </button>
-        )}
-      </div>
-
-      <div className="px-3 pb-3 text-sm">
-        <div className="font-medium">{likeData?.count ?? 0} likes</div>
-        {post.caption && (
-          <div className="mt-1">
-            <span className="font-semibold mr-2">{post.profiles?.username}</span>
+          <p className="text-white text-xl md:text-2xl font-semibold leading-snug drop-shadow whitespace-pre-wrap break-words max-w-[85%]">
             {post.caption}
-          </div>
-        )}
-        {showComments && (
-          <div className="mt-2 space-y-1 border-t border-border pt-2">
-            {comments?.map((c) => (
-              <div key={c.id} className="text-sm">
-                <span className="font-semibold mr-2">{c.profiles?.username}</span>
-                {c.content}
+          </p>
+        </div>
+      ) : (
+        <div className="relative select-none">
+          <div
+            ref={scrollRef}
+            onScroll={onScroll}
+            onDoubleClick={doubleTap}
+            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar aspect-square max-h-[585px] bg-black"
+          >
+            {post.media_urls.map((m, i) => (
+              <div key={i} className="min-w-full snap-center">
+                <MediaImg src={m} alt={post.caption ?? "post"} className="w-full h-full object-cover" />
               </div>
             ))}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addComment.mutate();
-              }}
-              className="flex gap-2 mt-2"
-            >
-              <input
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Add a comment…"
-                className="flex-1 bg-transparent text-sm outline-none"
-              />
-              <button type="submit" className="text-primary text-sm font-medium disabled:opacity-40" disabled={!commentText.trim()}>
-                Post
-              </button>
-            </form>
+          </div>
+          {post.media_urls.length > 1 && (
+            <>
+              {idx > 0 && (
+                <button
+                  type="button"
+                  aria-label="Previous"
+                  onClick={() => scrollRef.current?.scrollBy({ left: -scrollRef.current.clientWidth, behavior: "smooth" })}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 text-white p-1 hover:bg-black/70"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+              {idx < post.media_urls.length - 1 && (
+                <button
+                  type="button"
+                  aria-label="Next"
+                  onClick={() => scrollRef.current?.scrollBy({ left: scrollRef.current.clientWidth, behavior: "smooth" })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 text-white p-1 hover:bg-black/70"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+              <div className="absolute top-3 right-3 rounded-full bg-black/50 text-white text-[11px] px-2 py-0.5">
+                {idx + 1}/{post.media_urls.length}
+              </div>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {post.media_urls.map((_, i) => (
+                  <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === idx ? "bg-white" : "bg-white/50"}`} />
+                ))}
+              </div>
+            </>
+          )}
+          {burst && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <Heart className="h-24 w-24 text-white fill-white animate-heart-burst drop-shadow-lg" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* actions */}
+      <div className="flex items-center gap-4 px-3 pt-2.5">
+        <button type="button" aria-label="Like" onClick={() => like(!liked)} className="active:scale-90 transition-transform">
+          {liked
+            ? <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+            : <Heart className="h-6 w-6 hover:opacity-50" />}
+        </button>
+        {withComments ? (
+          <button type="button" aria-label="Comment" className="active:scale-90 transition-transform">
+            <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
+          </button>
+        ) : (
+          <Link to="/post/$id" params={{ id: post.id }} aria-label="Comment" className="active:scale-90 transition-transform">
+            <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
+          </Link>
+        )}
+        <button type="button" aria-label="Share" onClick={() => ui.openShare(post, "post")} className="active:scale-90 transition-transform">
+          <Send className="h-6 w-6 hover:opacity-50" />
+        </button>
+        <button
+          type="button"
+          aria-label="Save"
+          onClick={() => {
+            const next = !saved;
+            setSaved(next);
+            if (actions.isDemo) demoActions.toggleSave(post.id);
+            toast(next ? "Saved to collection" : "Removed from saved");
+          }}
+          className="ml-auto active:scale-90 transition-transform"
+        >
+          {saved ? <Bookmark className="h-6 w-6 fill-current" /> : <Bookmark className="h-6 w-6 hover:opacity-50" />}
+        </button>
+      </div>
+
+      {/* likes + caption */}
+      <div className="px-3 pt-1.5 pb-1 space-y-1 text-sm">
+        <button type="button" className="font-semibold block" onClick={() => like(!liked)}>
+          {formatCount(post.likes)} likes
+        </button>
+        {!isText && (
+          <div className={`leading-snug ${expanded ? "" : "line-clamp-2"}`}>
+            <Link to="/profile/$username" params={{ username: post.profiles.username }} className="font-semibold mr-1.5">
+              {post.profiles.username}
+            </Link>
+            <span className="whitespace-pre-wrap break-words">{post.caption}</span>
+            {!expanded && (post.caption ?? "").length > 80 && (
+              <button type="button" className="text-muted-foreground ml-1" onClick={() => setExpanded(true)}>more</button>
+            )}
           </div>
         )}
+        {post.commentsCount > 0 && !withComments && (
+          <Link to="/post/$id" params={{ id: post.id }} className="block text-muted-foreground">
+            View all {post.commentsCount === 1 ? "1 comment" : `${formatCount(post.commentsCount)} comments`}
+          </Link>
+        )}
+        {withComments && <CommentsSection postId={post.id} onSubmit={submitComment} draft={draft} setDraft={setDraft} />}
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground pt-0.5">{timeAgo(post.created_at)} ago</div>
       </div>
+
+      {/* inline quick comment (feed) */}
+      {!withComments && (
+        <form onSubmit={submitComment} className="hidden md:flex items-center gap-2 px-3 pt-1 border-t border-border/60 mt-1">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Add a comment…"
+            className="flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground"
+          />
+          {draft.trim() && (
+            <button type="submit" className="text-sm font-semibold text-primary hover:text-primary/70">Post</button>
+          )}
+        </form>
+      )}
     </article>
   );
 }
 
-export { Avatar };
+export function CommentsSection({
+  postId, onSubmit, draft, setDraft,
+}: {
+  postId: string;
+  onSubmit: (e: React.FormEvent) => void;
+  draft: string;
+  setDraft: (v: string) => void;
+}) {
+  void postId;
+  return (
+    <form onSubmit={onSubmit} className="flex items-center gap-3 pt-2 border-t border-border/60 mt-1">
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Add a comment…"
+        className="flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground"
+      />
+      {draft.trim() && (
+        <button type="submit" className="text-sm font-semibold text-primary hover:text-primary/70">Post</button>
+      )}
+    </form>
+  );
+}
+
+export { Verified };
