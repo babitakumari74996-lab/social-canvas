@@ -69,7 +69,7 @@ export function MoodBox() {
               aria-label={m.label}
               aria-pressed={active}
               onClick={() => setMood(m.id)}
-              className={`flex items-center justify-center rounded-2xl py-4 text-4xl leading-none transition-transform active:scale-95 ${
+              className={`flex items-center justify-center rounded-xl py-2 text-2xl leading-none transition-transform active:scale-95 ${
                 active ? "bg-primary/15 ring-2 ring-primary" : "bg-muted/60 hover:bg-muted"
               }`}
             >
@@ -79,11 +79,6 @@ export function MoodBox() {
         })}
       </div>
 
-      {!canSubmit && (
-        <p className="text-[10px] text-muted-foreground mt-2 px-1">
-          Pick a mood and write a note to share.
-        </p>
-      )}
     </div>
   );
 }
