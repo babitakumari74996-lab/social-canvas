@@ -211,3 +211,9 @@
 
 /* reels like-burst pop */
 @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Vertical-only scroll areas inside the app shell: keep vertical scrolling native but let
+   horizontal drags reach the bottom-nav tab swipe (SwipeTabs). Horizontal carousels are unaffected. */
+main [class*="overflow-y-"]:not([class*="overflow-x-"]) {
+  touch-action: pan-y;
+}

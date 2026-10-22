@@ -60,9 +60,8 @@ function NavItem({
 
 // Bottom-nav section fill colour for the active tab.
 function cell(active: boolean) {
-  return `flex-1 h-full flex items-center justify-center transition-colors ${
-    active ? "bg-gradient-to-br from-[#D62976] via-[#962FBF] to-[#4F5BD5] text-white" : ""
-  }`;
+  // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
+  return `flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
 }
 
 export function AppShell() {
@@ -189,7 +188,7 @@ export function AppShell() {
           aria-label="Profile"
           className={cell(activeTabIndex === 2)}
         >
-          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 2 ? "ring-2 ring-white" : "ring-1 ring-border"} />
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 2 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
       </nav>
 

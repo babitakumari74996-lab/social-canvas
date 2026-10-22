@@ -10,11 +10,13 @@ export type SwipeTab = {
 };
 
 const ANIM_MS = 260;
+const EASE = "cubic-bezier(.2,.8,.2,1)";
 
 /**
- * Mobile-only horizontal swipe between bottom-nav sections.
- * The current page follows the finger, a panel for the neighbouring tab slides in
- * from the swiped side, and the router navigates once the swipe is committed.
+ * Horizontal swipe / drag between bottom-nav sections (Home, Reels, Profile).
+ * Works with touch and mouse. The current page follows the pointer, a panel for the
+ * neighbouring tab is revealed from the swiped side, and the router navigates once the
+ * gesture is committed. Otherwise the page snaps back.
  */
 export function SwipeTabs({
   tabs,
@@ -34,7 +36,7 @@ export function SwipeTabs({
   const previewRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ index: number; dir: 1 | -1 } | null>(null);
 
-  // Latest props for the native listeners (attached once).
+  // Latest values for the listeners, which are attached once.
   const latest = useRef({ tabs, activeIndex, enabled });
   latest.current = { tabs, activeIndex, enabled };
   const navRef = useRef(navigate);
@@ -45,14 +47,15 @@ export function SwipeTabs({
     const pv = previewRef.current;
     if (!main || !pv) return;
 
-    const W = () => window.innerWidth;
     const timers: number[] = [];
     const later = (fn: () => void, ms: number) => {
       timers.push(window.setTimeout(fn, ms));
     };
 
+    let width = window.innerWidth; // width of the swipeable area, measured at gesture start
     let tracking = false;
     let busy = false;
+    let pid = -1;
     let sx = 0;
     let sy = 0;
     let st = 0;
@@ -60,19 +63,24 @@ export function SwipeTabs({
     let dx = 0;
     let target: number | null = null;
     let dir: 1 | -1 = 1;
+    let suppressClick = false;
 
     const setMain = (x: number, anim: boolean) => {
-      main.style.transition = anim ? `transform ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1)` : "none";
+      main.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       main.style.transform = `translate3d(${x}px,0,0)`;
     };
+    // Back to rest: no inline transform, so fixed-position children of the page behave normally.
+    const rest = () => {
+      main.style.transition = "";
+      main.style.transform = "";
+    };
     const setPv = (x: number, anim: boolean) => {
-      pv.style.transition = anim ? `transform ${ANIM_MS}ms cubic-bezier(.2,.8,.2,1)` : "none";
+      pv.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       pv.style.transform = `translate3d(${x}px,0,0)`;
     };
 
-    const isMobile = () => window.matchMedia("(max-width: 767.98px)").matches;
-
-    // Ignore swipes that start on inputs or inside a horizontally scrollable element (carousels, story row).
+    // Ignore gestures that start on inputs, or inside a horizontally scrollable element
+    // (carousels, story row), so those keep their own scrolling.
     const blocked = (el: EventTarget | null) => {
       let n = el as HTMLElement | null;
       while (n && n !== main) {
@@ -86,30 +94,40 @@ export function SwipeTabs({
       return false;
     };
 
+    const hidePreview = () => setPreview(null);
+
     const snapBack = () => {
       setMain(0, true);
-      setPv(dir * W(), true);
-      later(() => setPreview(null), ANIM_MS);
+      setPv(dir * width, true);
+      later(() => {
+        rest();
+        hidePreview();
+      }, ANIM_MS);
     };
 
-    const onStart = (e: TouchEvent) => {
-      if (busy || !latest.current.enabled || !isMobile()) return;
-      if (e.touches.length !== 1 || blocked(e.target)) return;
-      const t = e.touches[0];
+    const onDown = (e: PointerEvent) => {
+      if (busy || tracking || !latest.current.enabled) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (blocked(e.target)) return;
       tracking = true;
-      sx = t.clientX;
-      sy = t.clientY;
+      pid = e.pointerId;
+      sx = e.clientX;
+      sy = e.clientY;
       st = Date.now();
       lock = null;
       dx = 0;
       target = null;
+      suppressClick = false;
+      width = main.getBoundingClientRect().width || window.innerWidth;
+      const rect = main.getBoundingClientRect();
+      pv.style.left = `${rect.left}px`;
+      pv.style.width = `${rect.width}px`;
     };
 
-    const onMove = (e: TouchEvent) => {
-      if (!tracking || busy) return;
-      const t = e.touches[0];
-      const cx = t.clientX - sx;
-      const cy = t.clientY - sy;
+    const onMove = (e: PointerEvent) => {
+      if (!tracking || busy || e.pointerId !== pid) return;
+      const cx = e.clientX - sx;
+      const cy = e.clientY - sy;
       if (lock === null) {
         if (Math.abs(cx) < 8 && Math.abs(cy) < 8) return;
         lock = Math.abs(cx) > Math.abs(cy) ? "h" : "v";
@@ -120,32 +138,35 @@ export function SwipeTabs({
       }
       dx = cx;
       const idx = latest.current.activeIndex;
-      const d: 1 | -1 = dx < 0 ? 1 : -1;
+      const d: 1 | -1 = dx < 0 ? 1 : -1; // swipe left -> next tab, swipe right -> previous tab
       const ti = idx + d;
       const valid = idx >= 0 && ti >= 0 && ti < latest.current.tabs.length;
       if (valid) {
         target = ti;
         dir = d;
         setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
+        pv.style.display = "flex";
         setMain(dx, false);
-        setPv(dx + d * W(), false);
+        setPv(dx + d * width, false);
       } else {
         target = null;
-        setMain(dx * 0.25, false); // rubber-band at the edges
+        setMain(dx * 0.25, false); // rubber-band at the ends
       }
     };
 
-    const onEnd = () => {
-      if (!tracking) return;
+    const onUp = (e: PointerEvent) => {
+      if (!tracking || e.pointerId !== pid) return;
       tracking = false;
-      if (lock !== "h" || target === null) {
-        if (lock === "h") setMain(0, true);
+      if (lock !== "h") return;
+      suppressClick = Math.abs(dx) > 8; // don't let the drag also trigger a click
+      if (target === null) {
+        setMain(0, true);
+        later(rest, ANIM_MS);
         return;
       }
       const elapsed = Math.max(1, Date.now() - st);
       const v = dx / elapsed; // px per ms
-      const w = W();
-      const commit = Math.abs(dx) > w * 0.3 || (Math.abs(dx) > 24 && Math.abs(v) > 0.45);
+      const commit = Math.abs(dx) > width * 0.3 || (Math.abs(dx) > 24 && Math.abs(v) > 0.45);
       if (!commit) {
         snapBack();
         return;
@@ -154,44 +175,59 @@ export function SwipeTabs({
       busy = true;
       const to = latest.current.tabs[target];
       const d = dir;
-      // Current page slides out on the far side while the neighbour panel covers the screen.
-      setMain(-d * w, true);
+      // Current page slides out on the far side while the neighbour panel covers the area.
+      setMain(-d * width, true);
       setPv(0, true);
       later(async () => {
         try {
           await navRef.current({ to: to.to, params: to.params } as never);
         } finally {
           // New page enters from the swiped side.
-          setMain(d * w, false);
+          setMain(d * width, false);
           void main.offsetWidth;
           setMain(0, true);
-          setPreview(null);
-          setPv(d * w, false);
+          setPv(d * width, false);
           later(() => {
+            rest();
+            hidePreview();
             busy = false;
           }, ANIM_MS);
         }
       }, ANIM_MS);
     };
 
-    const onCancel = () => {
-      if (!tracking) return;
+    const onCancel = (e: PointerEvent) => {
+      if (!tracking || e.pointerId !== pid) return;
       tracking = false;
       if (lock === "h" && target !== null) snapBack();
-      else setMain(0, true);
+      else if (lock === "h") {
+        setMain(0, true);
+        later(rest, ANIM_MS);
+      }
     };
 
-    main.addEventListener("touchstart", onStart, { passive: true });
-    main.addEventListener("touchmove", onMove, { passive: true });
-    main.addEventListener("touchend", onEnd);
-    main.addEventListener("touchcancel", onCancel);
-    setPv(W(), false);
+    // Swallow the click that follows a horizontal drag (mouse only fires one).
+    const onClickCapture = (e: MouseEvent) => {
+      if (suppressClick) {
+        suppressClick = false;
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    };
+
+    main.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("click", onClickCapture, true);
+    setPv(window.innerWidth, false);
 
     return () => {
-      main.removeEventListener("touchstart", onStart);
-      main.removeEventListener("touchmove", onMove);
-      main.removeEventListener("touchend", onEnd);
-      main.removeEventListener("touchcancel", onCancel);
+      main.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("click", onClickCapture, true);
       timers.forEach((t) => window.clearTimeout(t));
     };
   }, []);
@@ -204,8 +240,8 @@ export function SwipeTabs({
       <div
         ref={previewRef}
         aria-hidden
-        className="md:hidden fixed top-12 bottom-14 inset-x-0 bg-background flex-col items-center justify-center gap-4"
-        style={{ display: pvTab ? "flex" : "none" }}
+        className="fixed top-0 bottom-0 bg-background flex-col items-center justify-center gap-4 pointer-events-none"
+        style={{ display: pvTab ? "flex" : "none", left: 0, width: "100%" }}
       >
         {pvTab && PvIcon && (
           <>
@@ -216,7 +252,8 @@ export function SwipeTabs({
           </>
         )}
       </div>
-      <main ref={mainRef} className={className}>
+      {/* pan-y: the browser keeps vertical scrolling and leaves horizontal drags to us. */}
+      <main ref={mainRef} className={`${className} touch-pan-y`}>
         {children}
       </main>
     </>

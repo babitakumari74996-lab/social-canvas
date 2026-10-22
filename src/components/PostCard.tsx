@@ -122,7 +122,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
             ref={scrollRef}
             onScroll={onScroll}
             onDoubleClick={doubleTap}
-            className={`flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-black ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"}`}
+            className={`flex ${post.media_urls.length > 1 ? "overflow-x-auto snap-x snap-mandatory no-scrollbar" : "overflow-hidden"} bg-black ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"}`}
           >
             {post.media_urls.map((m, i) => (
               <div key={i} className="min-w-full snap-center">
