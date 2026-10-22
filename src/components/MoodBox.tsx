@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImagePlus, Video, X, Send } from "lucide-react";
+import { ImagePlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar } from "@/components/Avatar";
+import { useMe } from "@/lib/data";
 
 const MOODS = [
   { id: "happy", emoji: "😊", label: "Happy" },
@@ -12,11 +14,12 @@ const MOODS = [
 type Attachment = { id: string; file: File; url: string; kind: "image" | "video" };
 
 /**
- * "What's your mood today?" box shown under the stories row.
- * Needs one mood emoji plus at least one of: a note, a photo, or a video.
- * Several photos/videos and a note can be combined.
+ * "What's your mood today?" composer under the stories row, styled like the
+ * "What's on your mind?" bar. The text field is the note. Mood emojis sit below it.
+ * Sharing needs a mood plus at least one of: a note, a photo, or a video.
  */
 export function MoodBox() {
+  const me = useMe();
   const [mood, setMood] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
@@ -25,10 +28,11 @@ export function MoodBox() {
 
   const canSubmit = !!mood && (note.trim().length > 0 || files.length > 0);
 
-  // Free preview URLs when they're removed or the component unmounts.
+  // Revoke preview URLs when the component unmounts.
+  const filesRef = useRef<Attachment[]>([]);
+  filesRef.current = files;
   useEffect(() => {
-    return () => files.forEach((f) => URL.revokeObjectURL(f.url));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.url));
   }, []);
 
   const addFiles = (list: FileList | null, kind: "image" | "video") => {
@@ -76,56 +80,60 @@ export function MoodBox() {
   }, [files]);
 
   return (
-    <div className="px-4 pb-3 pt-1 border-t border-border">
-      <p className="text-sm font-semibold mb-2">What's your mood today?</p>
-
-      {/* mood emojis */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        {MOODS.map((m) => {
-          const active = mood === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setMood(m.id)}
-              className={`flex flex-col items-center gap-0.5 rounded-xl py-2 border transition-transform active:scale-95 ${
-                active ? "border-primary bg-primary/10 scale-105" : "border-border bg-background"
-              }`}
-            >
-              <span className="text-2xl leading-none">{m.emoji}</span>
-              <span className="text-[11px] text-muted-foreground">{m.label}</span>
-            </button>
-          );
-        })}
+    <div className="px-3 pb-2 pt-2 border-t border-border">
+      {/* composer bar */}
+      <div className="flex items-center gap-2 rounded-full bg-muted/60 py-1 pl-1 pr-3">
+        <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={30} />
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          maxLength={280}
+          placeholder="What's your mood today?"
+          className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        {canSubmit && (
+          <button type="button" onClick={submit} className="text-xs font-semibold text-primary">
+            Share
+          </button>
+        )}
       </div>
 
-      {/* note */}
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={1}
-        maxLength={280}
-        placeholder="Add a note…"
-        className="w-full resize-none rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary mb-1.5"
-      />
-
-      {/* photo / video */}
-      <div className="flex gap-2 mb-2">
-        <button
-          type="button"
-          onClick={() => imageInput.current?.click()}
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs font-semibold hover:bg-muted"
-        >
-          <ImagePlus className="h-4 w-4" /> Photo
-        </button>
-        <button
-          type="button"
-          onClick={() => videoInput.current?.click()}
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border py-1.5 text-xs font-semibold hover:bg-muted"
-        >
-          <Video className="h-4 w-4" /> Video
-        </button>
+      {/* moods (below the bar) + photo/video */}
+      <div className="flex items-center justify-between mt-2 px-1">
+        <div className="flex items-center gap-1">
+          {MOODS.map((m) => {
+            const active = mood === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                title={m.label}
+                aria-label={m.label}
+                aria-pressed={active}
+                onClick={() => setMood(m.id)}
+                className={`text-xl leading-none rounded-full px-1.5 py-1 transition-transform active:scale-90 ${
+                  active ? "bg-primary/15 ring-1 ring-primary" : "hover:bg-muted"
+                }`}
+              >
+                {m.emoji}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <button type="button" aria-label="Add photo" onClick={() => imageInput.current?.click()}>
+            <ImagePlus className="h-5 w-5 text-emerald-600" />
+          </button>
+          <button type="button" aria-label="Add video" onClick={() => videoInput.current?.click()}>
+            <Video className="h-5 w-5 text-red-500" />
+          </button>
+        </div>
         <input
           ref={imageInput}
           type="file"
@@ -146,9 +154,9 @@ export function MoodBox() {
 
       {/* attachment previews */}
       {files.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2">
           {files.map((f) => (
-            <div key={f.id} className="relative h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-muted">
+            <div key={f.id} className="relative h-14 w-14 shrink-0 rounded-lg overflow-hidden bg-muted">
               {f.kind === "image" ? (
                 <img src={f.url} alt={f.file.name} className="h-full w-full object-cover" />
               ) : (
@@ -166,18 +174,9 @@ export function MoodBox() {
           ))}
         </div>
       )}
-      {summary && <p className="text-[11px] text-muted-foreground mb-2">Attached: {summary}</p>}
-
-      <button
-        type="button"
-        onClick={submit}
-        disabled={!canSubmit}
-        className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary text-primary-foreground py-2 text-sm font-semibold disabled:opacity-40"
-      >
-        <Send className="h-4 w-4" /> Share mood
-      </button>
+      {summary && <p className="text-[10px] text-muted-foreground mt-1 px-1">Attached: {summary}</p>}
       {!canSubmit && (
-        <p className="text-[11px] text-muted-foreground text-center mt-1">
+        <p className="text-[10px] text-muted-foreground mt-1 px-1">
           Pick a mood and add a note, photo or video to share.
         </p>
       )}
