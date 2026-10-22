@@ -77,7 +77,7 @@ export function MoodBox() {
         ) : (
           <div
             key={`emojis-${tick}`}
-            className="mood-slide-in flex flex-1 min-w-0 items-center justify-around rounded-full bg-muted/60 px-3 py-3"
+            className="mood-slide-in flex h-14 flex-1 min-w-0 items-center justify-around rounded-full bg-muted/60 px-3"
           >
             {MOODS.map((m) => {
               const active = mood === m.id;
