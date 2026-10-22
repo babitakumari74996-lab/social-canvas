@@ -217,3 +217,12 @@
 main [class*="overflow-y-"]:not([class*="overflow-x-"]) {
   touch-action: pan-y;
 }
+
+/* mood slider: new mood slides in from the right */
+@keyframes mood-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.mood-slide-in {
+  animation: mood-slide-in 400ms ease-out;
+}

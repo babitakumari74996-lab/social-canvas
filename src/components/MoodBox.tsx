@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
@@ -21,6 +21,14 @@ export function MoodBox() {
   const [note, setNote] = useState("");
 
   const canSubmit = !!mood && note.trim().length > 0;
+
+  // Slider: advance to the next mood every 3 seconds.
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setIdx((i) => (i + 1) % MOODS.length), 3000);
+    return () => window.clearInterval(t);
+  }, []);
+  const m = MOODS[idx];
 
   const submit = () => {
     if (!canSubmit) return;
@@ -58,25 +66,20 @@ export function MoodBox() {
       </div>
 
       {/* moods fill the full row below */}
-      <div className="grid grid-cols-4 gap-2 mt-3">
-        {MOODS.map((m) => {
-          const active = mood === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              title={m.label}
-              aria-label={m.label}
-              aria-pressed={active}
-              onClick={() => setMood(m.id)}
-              className={`flex items-center justify-center rounded-xl py-2 text-2xl leading-none transition-transform active:scale-95 ${
-                active ? "bg-primary/15 ring-2 ring-primary" : "bg-muted/60 hover:bg-muted"
-              }`}
-            >
-              {m.emoji}
-            </button>
-          );
-        })}
+      {/* mood slider: one mood slides in from the right every 3 seconds */}
+      <div className="mt-3 overflow-hidden rounded-2xl">
+        <button
+          key={`${m.id}-${idx}`}
+          type="button"
+          aria-pressed={mood === m.id}
+          onClick={() => setMood(m.id)}
+          className={`mood-slide-in flex w-full items-center justify-center gap-2 rounded-2xl py-2 transition-colors ${
+            mood === m.id ? "bg-primary/15 ring-2 ring-primary" : "bg-muted/60"
+          }`}
+        >
+          <span className="text-2xl leading-none">{m.emoji}</span>
+          <span className="text-sm font-medium">{m.label}</span>
+        </button>
       </div>
 
     </div>
