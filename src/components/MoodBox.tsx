@@ -51,7 +51,7 @@ export function MoodBox() {
         {showBar ? (
           <div
             key={`bar-${tick}`}
-            className="mood-slide-in flex flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 py-3"
+            className="mood-slide-in flex h-14 flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4"
           >
             <input
               value={note}
