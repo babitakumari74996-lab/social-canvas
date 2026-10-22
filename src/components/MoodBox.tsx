@@ -31,7 +31,7 @@ export function MoodBox() {
   };
 
   return (
-    <div className="px-3 pb-3 pt-3 border-t border-border">
+    <div className="px-3 pb-5 pt-4 border-t border-border">
       {/* avatar and type bar, separate */}
       <div className="flex items-center gap-3">
         <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
