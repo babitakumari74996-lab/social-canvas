@@ -104,10 +104,10 @@ export function MoodBox() {
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        rows={2}
+        rows={1}
         maxLength={280}
         placeholder="Add a note…"
-        className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary mb-2"
+        className="w-full resize-none rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary mb-1.5"
       />
 
       {/* photo / video */}
