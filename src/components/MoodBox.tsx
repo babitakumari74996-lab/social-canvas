@@ -80,33 +80,35 @@ export function MoodBox() {
   }, [files]);
 
   return (
-    <div className="px-3 pb-2 pt-2 border-t border-border">
-      {/* composer bar */}
-      <div className="flex items-center gap-2 rounded-full bg-muted/60 py-1 pl-1 pr-3">
-        <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={30} />
-        <input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          maxLength={280}
-          placeholder="What's your mood today?"
-          className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-        {canSubmit && (
-          <button type="button" onClick={submit} className="text-xs font-semibold text-primary">
-            Share
-          </button>
-        )}
+    <div className="px-3 pb-3 pt-3 border-t border-border">
+      {/* composer: avatar and type bar are separate, sized up */}
+      <div className="flex items-center gap-3">
+        <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
+        <div className="flex flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 py-3">
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            maxLength={280}
+            placeholder="What's your mood today?"
+            className="flex-1 min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+          />
+          {canSubmit && (
+            <button type="button" onClick={submit} className="text-sm font-semibold text-primary">
+              Share
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* moods (below the bar) + photo/video */}
-      <div className="flex items-center justify-between mt-2 px-1">
-        <div className="flex items-center gap-1">
+      {/* moods spread across the full row, photo/video on the right */}
+      <div className="flex items-center gap-2 mt-3">
+        <div className="grid flex-1 grid-cols-4 gap-2">
           {MOODS.map((m) => {
             const active = mood === m.id;
             return (
@@ -117,8 +119,8 @@ export function MoodBox() {
                 aria-label={m.label}
                 aria-pressed={active}
                 onClick={() => setMood(m.id)}
-                className={`text-xl leading-none rounded-full px-1.5 py-1 transition-transform active:scale-90 ${
-                  active ? "bg-primary/15 ring-1 ring-primary" : "hover:bg-muted"
+                className={`flex items-center justify-center rounded-xl py-2 text-2xl leading-none transition-transform active:scale-95 ${
+                  active ? "bg-primary/15 ring-2 ring-primary" : "bg-muted/60 hover:bg-muted"
                 }`}
               >
                 {m.emoji}
@@ -126,14 +128,12 @@ export function MoodBox() {
             );
           })}
         </div>
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <button type="button" aria-label="Add photo" onClick={() => imageInput.current?.click()}>
-            <ImagePlus className="h-5 w-5 text-emerald-600" />
-          </button>
-          <button type="button" aria-label="Add video" onClick={() => videoInput.current?.click()}>
-            <Video className="h-5 w-5 text-red-500" />
-          </button>
-        </div>
+        <button type="button" aria-label="Add photo" onClick={() => imageInput.current?.click()} className="p-1">
+          <ImagePlus className="h-6 w-6 text-emerald-600" />
+        </button>
+        <button type="button" aria-label="Add video" onClick={() => videoInput.current?.click()} className="p-1">
+          <Video className="h-6 w-6 text-red-500" />
+        </button>
         <input
           ref={imageInput}
           type="file"
