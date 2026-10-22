@@ -20,7 +20,7 @@ export function StoriesRow() {
         {/* Your story */}
         <button
           type="button"
-          className="flex flex-col items-center gap-1 w-[100px] shrink-0"
+          className="flex flex-col items-center gap-1 w-[100px] shrink-0 -translate-x-2"
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
         >
           <div className="relative">
