@@ -16,35 +16,35 @@ export function StoriesRow() {
 
   return (
     <div className="relative border-b border-border md:mb-4 bg-card md:rounded-xl md:mt-4">
-      <div ref={scroller} className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-7">
+      <div ref={scroller} className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-8">
         {/* Your story */}
         <button
           type="button"
-          className="flex flex-col items-center gap-1 w-[84px] shrink-0"
+          className="flex flex-col items-center gap-1 w-[100px] shrink-0"
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
         >
           <div className="relative">
-            <StoryRing viewed={hasMyStory} size={80}>
-              <Avatar path={me?.avatar_url} alt="Your story" size={70} />
+            <StoryRing viewed={hasMyStory} size={96}>
+              <Avatar path={me?.avatar_url} alt="Your story" size={86} />
             </StoryRing>
             {!hasMyStory && (
-              <PlusCircle className="absolute -bottom-0.5 -right-0.5 h-5 w-5 text-primary fill-background rounded-full" />
+              <PlusCircle className="absolute -bottom-0.5 -right-0.5 h-6 w-6 text-primary fill-background rounded-full" />
             )}
           </div>
-          <span className="text-[11px] text-muted-foreground truncate w-full text-center">Your story</span>
+          <span className="text-xs text-muted-foreground truncate w-full text-center">Your story</span>
         </button>
 
         {groups.filter((g) => g.user.id !== me?.id).map((g) => (
           <button
             key={g.user.id}
             type="button"
-            className="flex flex-col items-center gap-1 w-[84px] shrink-0"
+            className="flex flex-col items-center gap-1 w-[100px] shrink-0"
             onClick={() => ui.openStories(g.user.username)}
           >
-            <StoryRing viewed={g.allViewed} size={80}>
-              <Avatar path={g.user.avatar_url} alt={g.user.username} size={70} />
+            <StoryRing viewed={g.allViewed} size={96}>
+              <Avatar path={g.user.avatar_url} alt={g.user.username} size={86} />
             </StoryRing>
-            <span className="text-[11px] truncate w-full text-center">{g.user.username}</span>
+            <span className="text-xs truncate w-full text-center">{g.user.username}</span>
           </button>
         ))}
       </div>
