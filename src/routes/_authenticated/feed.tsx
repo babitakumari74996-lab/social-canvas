@@ -31,7 +31,7 @@ function FeedPage() {
         )}
         {posts.map((p, i) => (
           <div key={p.id}>
-            <PostCard post={p} />
+            <PostCard post={p} tall={i === 0} />
             {i === 1 && suggestions.length > 0 && <MobileSuggestions />}
           </div>
         ))}

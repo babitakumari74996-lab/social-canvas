@@ -42,7 +42,7 @@ export function MediaImg({
   );
 }
 
-export function PostCard({ post, withComments = false }: { post: UPost; withComments?: boolean }) {
+export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -109,7 +109,7 @@ export function PostCard({ post, withComments = false }: { post: UPost; withComm
       {isText ? (
         <div
           onDoubleClick={doubleTap}
-          className="relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden aspect-square max-h-[585px] flex items-center justify-center p-8 text-center select-none"
+          className={`relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"} flex items-center justify-center p-8 text-center select-none`}
           style={{ background: "linear-gradient(135deg, #4F5BD5 0%, #962FBF 30%, #D62976 60%, #FA7E1E 85%, #FEDA75 100%)" }}
         >
           <p className="text-white text-xl md:text-2xl font-semibold leading-snug drop-shadow whitespace-pre-wrap break-words max-w-[85%]">
@@ -122,7 +122,7 @@ export function PostCard({ post, withComments = false }: { post: UPost; withComm
             ref={scrollRef}
             onScroll={onScroll}
             onDoubleClick={doubleTap}
-            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar aspect-square max-h-[585px] bg-black"
+            className={`flex overflow-x-auto snap-x snap-mandatory no-scrollbar bg-black ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"}`}
           >
             {post.media_urls.map((m, i) => (
               <div key={i} className="min-w-full snap-center">
