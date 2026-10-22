@@ -12,7 +12,7 @@ const MOODS = [
 
 /**
  * "What's your mood today?" composer under the stories row.
- * The avatar and type bar sit on one row, and the mood emojis fill the row below.
+ * The avatar and type bar sit on one row. The mood emojis slide in inside the type bar.
  * Sharing needs a mood and a note.
  */
 export function MoodBox() {
@@ -39,10 +39,10 @@ export function MoodBox() {
 
   return (
     <div className="px-3 pb-2 pt-4 border-t border-border">
-      {/* avatar and type bar, separate */}
       <div className="flex items-center gap-3">
         <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
-        <div className="flex flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 py-3">
+        {/* type bar: the mood emojis slide in from the right inside this bar every 3 seconds */}
+        <div className="flex flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-3 py-3">
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -61,32 +61,28 @@ export function MoodBox() {
               Share
             </button>
           )}
+          <div key={tick} className="mood-slide-in flex shrink-0 items-center gap-1">
+            {MOODS.map((m) => {
+              const active = mood === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  title={m.label}
+                  aria-label={m.label}
+                  aria-pressed={active}
+                  onClick={() => setMood(m.id)}
+                  className={`flex items-center justify-center rounded-full px-1 text-xl leading-none transition-transform active:scale-90 ${
+                    active ? "bg-primary/15 ring-2 ring-primary" : ""
+                  }`}
+                >
+                  {m.emoji}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-
-      {/* moods fill the full row below */}
-      {/* all mood emojis slide in together from the right every 3 seconds */}
-      <div key={tick} className="mood-slide-in grid grid-cols-4 gap-2 mt-3">
-        {MOODS.map((m) => {
-          const active = mood === m.id;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              title={m.label}
-              aria-label={m.label}
-              aria-pressed={active}
-              onClick={() => setMood(m.id)}
-              className={`flex items-center justify-center rounded-xl py-2 text-2xl leading-none transition-transform active:scale-95 ${
-                active ? "bg-primary/15 ring-2 ring-primary" : "bg-muted/60 hover:bg-muted"
-              }`}
-            >
-              {m.emoji}
-            </button>
-          );
-        })}
-      </div>
-
     </div>
   );
 }
