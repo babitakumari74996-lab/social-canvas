@@ -24,7 +24,8 @@ export function StoriesRow() {
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
         >
           <div className="relative">
-            <StoryRing viewed={hasMyStory} size={96} className="-translate-x-2">
+            <StoryRing viewed={hasMyStory} size={96} className="-translate-x-4">
+
 
               <Avatar path={me?.avatar_url} alt="Your story" size={86} />
             </StoryRing>
