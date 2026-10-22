@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Home, Search, Compass, Film, Send, Heart, Menu, Settings,
-  Bookmark, RotateCcw,
+  Bookmark, RotateCcw, User as UserIcon,
 } from "lucide-react";
+import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
@@ -57,11 +58,38 @@ function NavItem({
   );
 }
 
+// Bottom-nav section fill colour for the active tab.
+function cell(active: boolean) {
+  return `flex-1 h-full flex items-center justify-center transition-colors ${
+    active ? "bg-gradient-to-br from-[#D62976] via-[#962FBF] to-[#4F5BD5] text-white" : ""
+  }`;
+}
+
 export function AppShell() {
   const me = useMe();
   const overlay = useUI();
   const [moreOpen, setMoreOpen] = useState(false);
   const isDemo = !me?.id || me.id === "me";
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  const swipeTabs: SwipeTab[] = [
+    { key: "home", label: "Home", to: "/feed", icon: Home },
+    { key: "reels", label: "Reels", to: "/reels", icon: Film },
+    {
+      key: "profile",
+      label: "Profile",
+      to: "/profile/$username",
+      params: { username: me?.username ?? "aarav_sharma" },
+      icon: UserIcon,
+    },
+  ];
+  const activeTabIndex = pathname === "/feed" || pathname === "/"
+    ? 0
+    : pathname.startsWith("/reels")
+      ? 1
+      : pathname.startsWith("/profile/")
+        ? 2
+        : -1;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -128,24 +156,40 @@ export function AppShell() {
         </div>
       </header>
 
-      {/* ------- main ------- */}
-      <main className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen">
+      {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
+      <SwipeTabs
+        tabs={swipeTabs}
+        activeIndex={activeTabIndex}
+        enabled={overlay.overlay === null}
+        className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen"
+      >
         <Outlet />
-      </main>
+      </SwipeTabs>
 
       {/* ------- mobile bottom nav ------- */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-center justify-around bg-background border-t border-border">
-        <Link to="/feed" aria-label="Home"><Home className="h-6 w-6" /></Link>
-        <button type="button" aria-label="Search" onClick={ui.openSearch}><Search className="h-6 w-6" /></button>
-        <button type="button" aria-label="Create" onClick={() => ui.openCreate()}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
+        <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)}>
+          <Home className="h-6 w-6" />
+        </Link>
+        <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
+          <Search className="h-6 w-6" />
+        </button>
+        <button type="button" aria-label="Create" onClick={() => ui.openCreate()} className={cell(overlay.overlay === "create")}>
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
         </button>
-        <Link to="/reels" aria-label="Reels"><Film className="h-6 w-6" /></Link>
-        <Link to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} aria-label="Profile">
-          <Avatar path={me?.avatar_url} alt="me" size={26} className="ring-1 ring-border" />
+        <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
+          <Film className="h-6 w-6" />
+        </Link>
+        <Link
+          to="/profile/$username"
+          params={{ username: me?.username ?? "aarav_sharma" }}
+          aria-label="Profile"
+          className={cell(activeTabIndex === 2)}
+        >
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 2 ? "ring-2 ring-white" : "ring-1 ring-border"} />
         </Link>
       </nav>
 
