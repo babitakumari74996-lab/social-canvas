@@ -15,7 +15,7 @@ export function StoriesRow() {
   const hasMyStory = !!myGroup && myGroup.items.length > 0;
 
   return (
-    <div className="relative border-b border-border md:mb-4 bg-card md:rounded-xl md:mt-4">
+    <div className="relative border-b border-border md:mb-4 bg-card rounded-2xl md:rounded-xl md:mt-4">
       <div ref={scroller} className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-2">
         {/* Your story */}
         <button
