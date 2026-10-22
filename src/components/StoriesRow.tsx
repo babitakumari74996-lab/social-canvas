@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, PlusCircle } from "lucide-react";
 import { Avatar, StoryRing } from "@/components/Avatar";
 import { useMe, useStoryGroups } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
+import { MoodBox } from "@/components/MoodBox";
 
 export function StoriesRow() {
   const groups = useStoryGroups();
@@ -50,6 +51,8 @@ export function StoriesRow() {
           </button>
         ))}
       </div>
+
+      <MoodBox />
 
       <button
         type="button"
