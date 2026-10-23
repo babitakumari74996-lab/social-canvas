@@ -275,6 +275,21 @@ export function SwipeTabs({
   }, []);
 
   const pvTab = preview ? tabs[preview.index] : null;
+  // The preview pages are mounted only after the first screen has loaded and hydrated, so three
+  // full app iframes don't compete with the page for the first second.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    let id = 0;
+    const arm = () => {
+      id = window.setTimeout(() => setArmed(true), 800);
+    };
+    if (document.readyState === "complete") arm();
+    else window.addEventListener("load", arm, { once: true });
+    return () => {
+      window.removeEventListener("load", arm);
+      window.clearTimeout(id);
+    };
+  }, []);
   const pvPath = pvTab ? embedPath(pvTab) : null;
   // Every tab keeps its page mounted (embed mode: no header, nav or swipe chrome). Each is loaded
   // and laid out before any swipe; only the one being revealed is visible.
@@ -288,7 +303,7 @@ export function SwipeTabs({
         className="fixed top-0 bottom-0 bg-background pointer-events-none"
         style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%" }}
       >
-        {pages.map((pg) => (
+        {armed && pages.map((pg) => (
           <div
             key={pg.path}
             className="absolute inset-0"
