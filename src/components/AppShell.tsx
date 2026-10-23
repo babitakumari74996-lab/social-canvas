@@ -63,6 +63,8 @@ function NavItem({
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, profile: 4 };
+// Furthest the indicator may travel toward the next tab while the finger is still held down.
+const HELD_MAX = 0.9;
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
@@ -75,8 +77,9 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
     const a = NAV_POS[p.from];
     const b = NAV_POS[p.to];
     if (a !== undefined && b !== undefined) {
-      // The indicator reaches the target icon exactly when the swipe reaches its commit point.
-      const amount = p.committed ? 1 : Math.min(1, p.dx / p.full);
+      // While the finger is still down the indicator stays just short of the target, like Facebook's
+      // tab bar; it glides the rest of the way only when the swipe is released and committed.
+      const amount = p.committed ? 1 : Math.min(HELD_MAX, p.dx / p.full);
       pos = a + (b - a) * amount;
     }
   } else if (activeKey && NAV_POS[activeKey] !== undefined) {
