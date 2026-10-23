@@ -111,6 +111,7 @@ export function AppShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const isDemo = !me?.id || me.id === "me";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
 
   // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
   useEffect(() => {
@@ -145,8 +146,9 @@ export function AppShell() {
     }
   };
 
-  // Embedded inside a swipe preview: render just the page.
-  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("embed")) {
+  // Embedded inside a swipe preview: render just the page. Read from the router, not `window`,
+  // so the server-rendered HTML matches the client.
+  if (embedMode) {
     return <Outlet />;
   }
 

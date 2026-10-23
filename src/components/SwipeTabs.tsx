@@ -255,10 +255,10 @@ export function SwipeTabs({
   }, []);
 
   const pvTab = preview ? tabs[preview.index] : null;
-  // The neighbouring section's real page, loaded in embed mode (no header, nav or swipe chrome).
-  const pvPath = pvTab
-    ? `${pvTab.to.replace(/\$(\w+)/g, (_, k: string) => pvTab.params?.[k] ?? "")}?embed=1`
-    : null;
+  const pvPath = pvTab ? embedPath(pvTab) : null;
+  // Every tab keeps its page mounted (embed mode: no header, nav or swipe chrome). Each is loaded
+  // and laid out before any swipe; only the one being revealed is visible.
+  const pages = tabs.map((t) => ({ label: t.label, path: embedPath(t) }));
 
   return (
     <>
@@ -266,17 +266,17 @@ export function SwipeTabs({
         ref={previewRef}
         aria-hidden
         className="fixed top-0 bottom-0 bg-background pointer-events-none"
-        style={{ display: pvPath ? "block" : "none", left: 0, width: "100%" }}
+        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%" }}
       >
-        {pvPath && (
-          <iframe
-            key={pvPath}
-            src={pvPath}
-            title={pvTab?.label}
-            tabIndex={-1}
-            className="absolute inset-x-0 top-12 bottom-14 w-full h-[calc(100%-7rem)] border-0 bg-background"
-          />
-        )}
+        {pages.map((pg) => (
+          <div
+            key={pg.path}
+            className="absolute inset-x-0 top-12 bottom-14"
+            style={{ visibility: pvPath === pg.path ? "visible" : "hidden" }}
+          >
+            <iframe src={pg.path} title={pg.label} tabIndex={-1} className="w-full h-full border-0 bg-background" />
+          </div>
+        ))}
       </div>
       {/* pan-y: the browser keeps vertical scrolling and leaves horizontal drags to us. */}
       <main ref={mainRef} className={`${className} touch-pan-y`}>
