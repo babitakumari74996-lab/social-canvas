@@ -39,6 +39,7 @@ function MediaImgLoaded({
   return (
     <img
       ref={fade.ref}
+      {...fade.props}
       src={src}
       alt={alt}
       loading="lazy"
@@ -46,7 +47,7 @@ function MediaImgLoaded({
       onClick={onClick}
       onLoad={fade.onLoad}
       onError={onError}
-      className={`bg-muted ${fade.className} ${className}`}
+      className={`bg-muted ${className}`}
     />
   );
 }

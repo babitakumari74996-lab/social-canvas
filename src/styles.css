@@ -231,12 +231,19 @@ main [class*="overflow-y-"]:not([class*="overflow-x-"]) {
   animation: mood-slide-in 400ms ease-out;
 }
 
-/* Loading placeholder for photos: a light shimmer until the image has loaded. */
+/* Photos fade in. While loading, the photo is transparent and its parent shows a shimmer. */
 @keyframes media-shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
 }
-.media-skeleton {
+img[data-fade] {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+img[data-fade][data-loaded] {
+  opacity: 1;
+}
+:has(> img[data-fade]:not([data-loaded])) {
   background-color: var(--muted);
   background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
   background-size: 200% 100%;
