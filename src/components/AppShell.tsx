@@ -130,11 +130,14 @@ export function AppShell() {
       icon: UserIcon,
     },
   ];
+  // The profile tab is only "selected" on my own profile; someone else's profile selects no tab.
+  const profileUsername = pathname.startsWith("/profile/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
+  const onOwnProfile = profileUsername !== null && profileUsername === me?.username;
   const activeTabIndex = pathname === "/feed" || pathname === "/"
     ? 0
     : pathname.startsWith("/reels")
       ? 1
-      : pathname.startsWith("/profile/")
+      : onOwnProfile
         ? 2
         : -1;
   const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "profile" : null;
