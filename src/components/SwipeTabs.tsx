@@ -15,6 +15,11 @@ const ANIM_MS = 260;
 const SWIPE_COMMIT = 0.2;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 
+// URL of a tab's page in embed mode (no header, nav or swipe chrome).
+function embedPath(t: SwipeTab) {
+  return `${t.to.replace(/\$(\w+)/g, (_, k: string) => t.params?.[k] ?? "")}?embed=1`;
+}
+
 /**
  * Horizontal swipe / drag between bottom-nav sections (Home, Reels, Profile).
  * Works with touch and mouse. The current page follows the pointer, a panel for the
@@ -149,7 +154,6 @@ export function SwipeTabs({
         target = ti;
         dir = d;
         setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
-        pv.style.display = "flex";
         setMain(dx, false);
         setPv(dx + d * width, false);
         // Progress toward the commit point (30% of the width), capped at 1.
