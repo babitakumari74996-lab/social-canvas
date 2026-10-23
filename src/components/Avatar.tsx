@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSignedUrl } from "@/lib/media";
 
 /**
- * Fades an <img> in once it has loaded, instead of popping it in from a blank placeholder.
+ * Shows a shimmer placeholder on an <img> until it has loaded (no blank gap, no fade).
  * Handles images that finished loading before hydration (no onLoad event then).
  */
 export function useImageFade() {
@@ -15,7 +15,7 @@ export function useImageFade() {
   return {
     ref,
     onLoad: () => setLoaded(true),
-    className: `transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`,
+    className: loaded ? "" : "media-skeleton",
   };
 }
 
