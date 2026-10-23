@@ -62,7 +62,7 @@ function NavItem({
 // Bottom-nav section fill colour for the active tab.
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
-const NAV_POS: Record<string, number> = { home: 0, reels: 3, profile: 4 };
+const NAV_POS: Record<string, number> = { home: 0, reels: 1, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
@@ -213,18 +213,18 @@ export function AppShell() {
         <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
         </Link>
-        <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
-          <Search className="h-6 w-6" />
-        </button>
+        <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
+          <Film className="h-6 w-6" />
+        </Link>
         <button type="button" aria-label="Create" onClick={() => ui.openCreate()} className={cell(overlay.overlay === "create")}>
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
         </button>
-        <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
-          <Film className="h-6 w-6" />
-        </Link>
+        <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
+          <Search className="h-6 w-6" />
+        </button>
         <Link
           to="/profile/$username"
           params={{ username: me?.username ?? "aarav_sharma" }}
