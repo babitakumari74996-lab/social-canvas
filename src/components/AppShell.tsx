@@ -149,7 +149,11 @@ export function AppShell() {
   // Embedded inside a swipe preview: render just the page. Read from the router, not `window`,
   // so the server-rendered HTML matches the client.
   if (embedMode) {
-    return <Outlet />;
+    return (
+      <div className="min-h-screen pt-12 pb-14 md:pt-0 md:pb-0">
+        <Outlet />
+      </div>
+    );
   }
 
   return (

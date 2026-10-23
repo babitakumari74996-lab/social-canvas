@@ -278,7 +278,7 @@ export function SwipeTabs({
         {pages.map((pg) => (
           <div
             key={pg.path}
-            className="absolute inset-x-0 top-12 bottom-14"
+            className="absolute inset-0"
             style={{ visibility: pvPath === pg.path ? "visible" : "hidden" }}
           >
             <iframe src={pg.path} title={pg.label} tabIndex={-1} className="w-full h-full border-0 bg-background" />
