@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";
+import { useSwipeProgress } from "@/lib/swipe-progress";
 import { CreateModal } from "@/components/CreateModal";
 import { SearchPanel } from "@/components/SearchPanel";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
@@ -61,7 +62,25 @@ function NavItem({
 // Bottom-nav section fill colour for the active tab.
 function cell(active: boolean) {
   // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
-  return `flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
+  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
+}
+
+// Progress line under a bottom-nav icon: grows on the tab a swipe is heading to, shrinks on the
+// tab being left. Fills fully at the point where the swipe commits.
+function SwipeLine({ k }: { k: string }) {
+  const p = useSwipeProgress();
+  let w = 0;
+  if (p) {
+    if (p.to === k) w = p.amount;
+    else if (p.from === k) w = 1 - p.amount;
+  }
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-1 left-1/2 h-[3px] w-8 rounded-full bg-[#D62976]"
+      style={{ transform: `translateX(-50%) scaleX(${w})`, opacity: w > 0 ? 1 : 0 }}
+    />
+  );
 }
 
 export function AppShell() {
@@ -175,6 +194,7 @@ export function AppShell() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
         <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
+          <SwipeLine k="home" />
         </Link>
         <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
           <Search className="h-6 w-6" />
@@ -187,6 +207,7 @@ export function AppShell() {
         </button>
         <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
           <Film className="h-6 w-6" />
+          <SwipeLine k="reels" />
         </Link>
         <Link
           to="/profile/$username"
@@ -195,6 +216,7 @@ export function AppShell() {
           className={cell(activeTabIndex === 2)}
         >
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 2 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+          <SwipeLine k="profile" />
         </Link>
       </nav>
 

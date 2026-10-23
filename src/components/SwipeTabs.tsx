@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { setSwipeProgress } from "@/lib/swipe-progress";
 
 export type SwipeTab = {
   key: string;
@@ -97,6 +98,7 @@ export function SwipeTabs({
     const hidePreview = () => setPreview(null);
 
     const snapBack = () => {
+      setSwipeProgress(null);
       setMain(0, true);
       setPv(dir * width, true);
       later(() => {
@@ -148,8 +150,16 @@ export function SwipeTabs({
         pv.style.display = "flex";
         setMain(dx, false);
         setPv(dx + d * width, false);
+        // Progress toward the commit point (30% of the width), capped at 1.
+        const tabsNow = latest.current.tabs;
+        setSwipeProgress({
+          from: tabsNow[idx].key,
+          to: tabsNow[ti].key,
+          amount: Math.min(1, Math.abs(dx) / (width * 0.3)),
+        });
       } else {
         target = null;
+        setSwipeProgress(null);
         setMain(dx * 0.25, false); // rubber-band at the ends
       }
     };
@@ -160,6 +170,7 @@ export function SwipeTabs({
       if (lock !== "h") return;
       suppressClick = Math.abs(dx) > 8; // don't let the drag also trigger a click
       if (target === null) {
+        setSwipeProgress(null);
         setMain(0, true);
         later(rest, ANIM_MS);
         return;
@@ -175,6 +186,9 @@ export function SwipeTabs({
       busy = true;
       const to = latest.current.tabs[target];
       const d = dir;
+      // Committed: fill the target line, then clear once the navigation has finished.
+      setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, amount: 1 });
+      later(() => setSwipeProgress(null), ANIM_MS * 2);
       // Current page slides out on the far side while the neighbour panel covers the area.
       setMain(-d * width, true);
       setPv(0, true);
@@ -199,6 +213,7 @@ export function SwipeTabs({
     const onCancel = (e: PointerEvent) => {
       if (!tracking || e.pointerId !== pid) return;
       tracking = false;
+      setSwipeProgress(null);
       if (lock === "h" && target !== null) snapBack();
       else if (lock === "h") {
         setMain(0, true);
