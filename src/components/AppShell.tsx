@@ -68,17 +68,11 @@ const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5B
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
 // slides from the current icon to the neighbouring one, following the drag.
 function NavIndicator({ activeKey }: { activeKey: string | null }) {
+  // Hidden while a swipe is in progress; it returns under the selected tab once the swipe ends.
   const p = useSwipeProgress();
-  let pos: number | null = null;
-  if (p) {
-    const a = NAV_POS[p.from];
-    const b = NAV_POS[p.to];
-    if (a !== undefined && b !== undefined) pos = a + (b - a) * p.amount;
-  } else if (activeKey && NAV_POS[activeKey] !== undefined) {
-    pos = NAV_POS[activeKey];
-  }
-  if (pos === null) return null;
-  const center = ((pos + 0.5) / NAV_CELLS) * 100;
+  if (p) return null;
+  if (!activeKey || NAV_POS[activeKey] === undefined) return null;
+  const center = ((NAV_POS[activeKey] + 0.5) / NAV_CELLS) * 100;
   return (
     <span
       aria-hidden
@@ -87,8 +81,6 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
         left: `${center}%`,
         transform: "translateX(-50%)",
         background: IG_GRADIENT,
-        // Follow the finger exactly while dragging; ease into place after a snap or a tap.
-        transition: p ? "none" : "left 260ms cubic-bezier(.2,.8,.2,1)",
       }}
     />
   );
