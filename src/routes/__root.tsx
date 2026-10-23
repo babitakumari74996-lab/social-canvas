@@ -134,6 +134,13 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Splash />
+        {import.meta.env.PROD && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: "if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}",
+            }}
+          />
+        )}
         {/* Embedded pages (the swipe preview) never show the splash. Hard stop: splash is gone by 2s after navigation start (fade starts at 1.8s). */}
         <script
           dangerouslySetInnerHTML={{
