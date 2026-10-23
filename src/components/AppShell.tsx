@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -70,6 +70,12 @@ export function AppShell() {
   const [moreOpen, setMoreOpen] = useState(false);
   const isDemo = !me?.id || me.id === "me";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
+  useEffect(() => {
+    if (overlay.overlay === "search" || overlay.overlay === "notifications") ui.closeAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const swipeTabs: SwipeTab[] = [
     { key: "home", label: "Home", to: "/feed", icon: Home },
@@ -167,7 +173,7 @@ export function AppShell() {
 
       {/* ------- mobile bottom nav ------- */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
-        <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)}>
+        <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
         </Link>
         <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
