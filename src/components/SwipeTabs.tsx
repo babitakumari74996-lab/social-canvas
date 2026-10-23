@@ -279,16 +279,10 @@ export function SwipeTabs({
   // full app iframes don't compete with the page for the first second.
   const [armed, setArmed] = useState(false);
   useEffect(() => {
-    let id = 0;
-    const arm = () => {
-      id = window.setTimeout(() => setArmed(true), 800);
-    };
-    if (document.readyState === "complete") arm();
-    else window.addEventListener("load", arm, { once: true });
-    return () => {
-      window.removeEventListener("load", arm);
-      window.clearTimeout(id);
-    };
+    // This effect runs after hydration, so the timer starts once the page is interactive. The
+    // preview pages then load in the background instead of competing with the first screen.
+    const id = window.setTimeout(() => setArmed(true), 1500);
+    return () => window.clearTimeout(id);
   }, []);
   const pvPath = pvTab ? embedPath(pvTab) : null;
   // Every tab keeps its page mounted (embed mode: no header, nav or swipe chrome). Each is loaded

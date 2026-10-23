@@ -44,12 +44,30 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+// Gzip the server-rendered HTML when the browser accepts it (the page is large and text-heavy).
+// Responses that are already encoded, or not HTML, are returned untouched.
+function gzipHtmlIfAccepted(request: Request, response: Response): Response {
+  const accept = request.headers.get("accept-encoding") ?? "";
+  const type = response.headers.get("content-type") ?? "";
+  if (!accept.includes("gzip") || !type.includes("text/html")) return response;
+  if (response.headers.has("content-encoding") || !response.body) return response;
+  const headers = new Headers(response.headers);
+  headers.set("content-encoding", "gzip");
+  headers.delete("content-length");
+  headers.append("vary", "Accept-Encoding");
+  return new Response(response.body.pipeThrough(new CompressionStream("gzip")), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      return gzipHtmlIfAccepted(request, await normalizeCatastrophicSsrResponse(response));
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
