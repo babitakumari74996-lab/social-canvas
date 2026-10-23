@@ -2,21 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { useSignedUrl } from "@/lib/media";
 
 /**
- * Shows a shimmer placeholder on an <img> until it has loaded (no blank gap, no fade).
+ * Loading state for an <img>: while the photo is loading it sits at partial opacity over a
+ * shimmer background, then eases to full opacity when it has loaded. No blank gap, no pop.
+ * Callers that set their own opacity (e.g. a dimmed poster) keep it, and get no fade.
  * Handles images that finished loading before hydration (no onLoad event then).
  */
-export function useImageFade() {
+export function useImageFade(callerClassName = "") {
   const ref = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
   }, []);
-  return {
-    ref,
-    onLoad: () => setLoaded(true),
-    className: loaded ? "" : "media-skeleton",
-  };
+  const ownOpacity = /(^|\s)opacity-/.test(callerClassName);
+  const className = ownOpacity
+    ? (loaded ? "" : "media-skeleton")
+    : `transition-opacity duration-300 ${loaded ? "opacity-100" : "media-skeleton opacity-40"}`;
+  return { ref, onLoad: () => setLoaded(true), className };
 }
 
 function isDirectSrc(path?: string | null) {
@@ -55,7 +57,7 @@ export function Avatar({
 }
 
 function AvatarImg({ src, alt, size, className }: { src: string; alt: string; size: number; className: string }) {
-  const fade = useImageFade();
+  const fade = useImageFade(className);
   return (
     <img
       ref={fade.ref}

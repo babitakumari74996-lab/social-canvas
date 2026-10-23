@@ -35,7 +35,7 @@ export function MediaImg({
 function MediaImgLoaded({
   src, alt, className, onClick, onError,
 }: { src: string; alt: string; className: string; onClick?: () => void; onError: () => void }) {
-  const fade = useImageFade();
+  const fade = useImageFade(className);
   return (
     <img
       ref={fade.ref}
