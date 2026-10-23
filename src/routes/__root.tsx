@@ -88,9 +88,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      // Splash logo is preloaded so it paints with the first frame.
+      { rel: "preload", href: "/splash-logo.png", as: "image", type: "image/png" },
+      // Not render-blocking: a print-media stylesheet does not hold back the first paint.
+      // The body script switches it to "all" as soon as it has loaded.
       {
         rel: "stylesheet",
         href: appCss,
+        media: "print",
+        id: "sv-app-css",
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
@@ -111,45 +117,11 @@ html[data-sv-done] #sv-splash{animation:sv-splash-out .2s ease-in 0s forwards}
 html[data-embed] #sv-splash{display:none}
 `;
 
-function SplashLogo() {
-  return (
-    <svg width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
-      <defs>
-        <linearGradient id="sv-logo-grad" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#FEDA75" />
-          <stop offset="0.35" stopColor="#FA7E1E" />
-          <stop offset="0.6" stopColor="#D62976" />
-          <stop offset="1" stopColor="#4F5BD5" />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="2" width="92" height="92" rx="26" fill="url(#sv-logo-grad)" />
-      <text x="48" y="68" textAnchor="middle" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="56" fill="#fff">
-        S
-      </text>
-    </svg>
-  );
-}
-
 function Splash() {
   return (
     <div id="sv-splash" aria-hidden="true">
       <style>{SPLASH_CSS}</style>
-      <SplashLogo />
-      <div
-        style={{
-          fontFamily: "Georgia, serif",
-          fontStyle: "italic",
-          fontWeight: 700,
-          fontSize: 28,
-          letterSpacing: "-0.01em",
-          background: "linear-gradient(90deg,#D62976,#962FBF,#4F5BD5)",
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          color: "transparent",
-        }}
-      >
-        Socialverse
-      </div>
+      <img src="/splash-logo.png" width={312} height={222} alt="" fetchPriority="high" style={{ width: 312, maxWidth: "80vw", height: "auto" }} />
     </div>
   );
 }
@@ -165,7 +137,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {/* Embedded pages (the swipe preview) never show the splash. Hard stop: splash is gone by 2s after navigation start. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');setTimeout(function(){document.documentElement.setAttribute('data-sv-done','')},Math.max(0,1800-performance.now()))",
+            __html: "(function(){var l=document.getElementById('sv-app-css');if(!l)return;function on(){l.media='all'}if(l.sheet)on();else l.addEventListener('load',on)})();if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');var done=function(){document.documentElement.setAttribute('data-sv-done','')};var css=document.getElementById('sv-app-css');var wait=function(){if(css&&css.media!=='all'){css.addEventListener('load',done)}else done()};setTimeout(wait,Math.max(0,1800-performance.now()))",
           }}
         />
         {children}
@@ -187,7 +159,8 @@ function RootComponent() {
         const r = im.getBoundingClientRect();
         return r.bottom > 0 && r.top < window.innerHeight && r.width > 0;
       });
-      const imagesDone = firstScreen.every((im) => im.complete);
+      const cssReady = (document.getElementById("sv-app-css") as HTMLLinkElement | null)?.media === "all";
+      const imagesDone = cssReady && firstScreen.every((im) => im.complete);
       if (imagesDone && performance.now() >= 1200) {
         document.documentElement.setAttribute("data-sv-done", "");
         return;
