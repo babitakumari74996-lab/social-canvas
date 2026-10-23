@@ -40,7 +40,7 @@ export function SearchPanel() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 md:inset-y-0 md:left-[76px] xl:left-[245px] md:w-[395px] md:border-r md:border-border bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
+    <div className="fixed inset-x-0 top-0 bottom-14 z-50 md:inset-y-0 md:left-[76px] xl:left-[245px] md:w-[395px] md:border-r md:border-border bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
       <div className="p-4 md:pt-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
