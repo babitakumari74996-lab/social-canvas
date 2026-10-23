@@ -203,19 +203,14 @@ export function SwipeTabs({
         try {
           await navRef.current({ to: to.to, params: to.params } as never);
         } finally {
-          // The real page mounts off-screen on the entering side while the preview keeps covering
-          // the screen. Once it has painted, the preview slides out and the page slides in together,
-          // so the handoff is seamless instead of a visible re-render.
+          // The real page mounts off-screen, then appears in place once it has painted. No entering
+          // slide: the switch is instant, and the preview is removed in the same frame.
           setMain(d * width, false);
           void main.offsetWidth;
           await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-          setMain(0, true);
-          setPv(-d * width, true);
-          later(() => {
-            rest();
-            hidePreview();
-            busy = false;
-          }, ANIM_MS);
+          rest();
+          hidePreview();
+          busy = false;
         }
       }, ANIM_MS);
     };
