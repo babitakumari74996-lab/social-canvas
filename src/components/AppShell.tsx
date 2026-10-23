@@ -60,27 +60,43 @@ function NavItem({
 }
 
 // Bottom-nav section fill colour for the active tab.
-function cell(active: boolean) {
-  // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
-  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
-}
+// Bottom-nav cell position (of 5 cells) for each swipeable section.
+const NAV_CELLS = 5;
+const NAV_POS: Record<string, number> = { home: 0, reels: 3, profile: 4 };
+const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
-// Progress line under a bottom-nav icon: grows on the tab a swipe is heading to, shrinks on the
-// tab being left. Fills fully at the point where the swipe commits.
-function SwipeLine({ k }: { k: string }) {
+// One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
+// slides from the current icon to the neighbouring one, following the drag.
+function NavIndicator({ activeKey }: { activeKey: string | null }) {
   const p = useSwipeProgress();
-  let w = 0;
+  let pos: number | null = null;
   if (p) {
-    if (p.to === k) w = p.amount;
-    else if (p.from === k) w = 1 - p.amount;
+    const a = NAV_POS[p.from];
+    const b = NAV_POS[p.to];
+    if (a !== undefined && b !== undefined) pos = a + (b - a) * p.amount;
+  } else if (activeKey && NAV_POS[activeKey] !== undefined) {
+    pos = NAV_POS[activeKey];
   }
+  if (pos === null) return null;
+  const center = ((pos + 0.5) / NAV_CELLS) * 100;
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute bottom-1 left-1/2 h-[3px] w-8 rounded-full bg-[#D62976]"
-      style={{ transform: `translateX(-50%) scaleX(${w})`, opacity: w > 0 ? 1 : 0 }}
+      className="pointer-events-none absolute bottom-1 h-[3px] w-6 rounded-full"
+      style={{
+        left: `${center}%`,
+        transform: "translateX(-50%)",
+        background: IG_GRADIENT,
+        // Follow the finger exactly while dragging; ease into place after a snap or a tap.
+        transition: p ? "none" : "left 260ms cubic-bezier(.2,.8,.2,1)",
+      }}
     />
   );
+}
+
+function cell(active: boolean) {
+  // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
+  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
 }
 
 export function AppShell() {
@@ -114,6 +130,7 @@ export function AppShell() {
       : pathname.startsWith("/profile/")
         ? 2
         : -1;
+  const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "profile" : null;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -192,9 +209,9 @@ export function AppShell() {
 
       {/* ------- mobile bottom nav ------- */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
+        <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
-          <SwipeLine k="home" />
         </Link>
         <button type="button" aria-label="Search" onClick={ui.openSearch} className={cell(overlay.overlay === "search")}>
           <Search className="h-6 w-6" />
@@ -207,7 +224,6 @@ export function AppShell() {
         </button>
         <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
           <Film className="h-6 w-6" />
-          <SwipeLine k="reels" />
         </Link>
         <Link
           to="/profile/$username"
@@ -216,7 +232,6 @@ export function AppShell() {
           className={cell(activeTabIndex === 2)}
         >
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 2 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
-          <SwipeLine k="profile" />
         </Link>
       </nav>
 
