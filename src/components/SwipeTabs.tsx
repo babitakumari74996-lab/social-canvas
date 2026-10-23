@@ -12,7 +12,7 @@ export type SwipeTab = {
 
 const ANIM_MS = 260;
 // Share of the screen width the finger must cover before a swipe commits (and the indicator arrives).
-const SWIPE_COMMIT = 0.9;
+const SWIPE_COMMIT = 0.2;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 
 /**
