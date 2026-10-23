@@ -158,7 +158,7 @@ export function SwipeTabs({
           from: tabsNow[idx].key,
           to: tabsNow[ti].key,
           dx: Math.abs(dx),
-          full: width * SWIPE_COMMIT, // same distance at which the swipe commits
+          full: width, // indicator travels in step with the page: full width = full distance
         });
       } else {
         target = null;
