@@ -88,8 +88,8 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
         left: `${center}%`,
         transform: "translateX(-50%)",
         background: IG_GRADIENT,
-        // Follow the finger exactly while dragging; ease into place after a snap or a tap.
-        transition: p ? "none" : "left 260ms cubic-bezier(.2,.8,.2,1)",
+        // Follows the finger exactly while dragging; glides after a commit, snap-back or tap.
+        transition: p && !p.committed ? "none" : "left 260ms cubic-bezier(.2,.8,.2,1)",
       }}
     />
   );
