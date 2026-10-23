@@ -102,11 +102,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 // Splash shown while the first screen loads. It is part of the server HTML. It fades out once the page
-// is hydrated and the first screen's images are done (min 1.2s), with a 2s CSS fallback. It only changes
+// is hydrated and the first screen's images are done (min 1.2s), with a CSS fallback that hides it by 2s. It only changes
 // an attribute on <html>, so the app is never re-rendered or remounted.
 const SPLASH_CSS = `
-#sv-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:sv-splash-out .3s ease-in 2s forwards}
-html[data-sv-done] #sv-splash{animation:sv-splash-out .3s ease-in 0s forwards}
+#sv-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:sv-splash-out .2s ease-in 1.8s forwards}
+html[data-sv-done] #sv-splash{animation:sv-splash-out .2s ease-in 0s forwards}
 @keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
 html[data-embed] #sv-splash{display:none}
 `;
@@ -162,10 +162,10 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Splash />
-        {/* Embedded pages (the swipe preview) never show the splash. */}
+        {/* Embedded pages (the swipe preview) never show the splash. Hard stop: splash is gone by 2s after navigation start. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','')",
+            __html: "if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');setTimeout(function(){document.documentElement.setAttribute('data-sv-done','')},Math.max(0,1800-performance.now()))",
           }}
         />
         {children}
