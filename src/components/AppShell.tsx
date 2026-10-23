@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -10,12 +10,12 @@ import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";
 import { useSwipeProgress } from "@/lib/swipe-progress";
-import { CreateModal } from "@/components/CreateModal";
-import { SearchPanel } from "@/components/SearchPanel";
-import { NotificationsPanel } from "@/components/NotificationsPanel";
-import { StoryViewer } from "@/components/StoryViewer";
-import { ShareSheet } from "@/components/ShareSheet";
-import { EditProfileModal } from "@/components/EditProfileModal";
+const CreateModal = lazy(() => import("@/components/CreateModal").then((m) => ({ default: m.CreateModal })));
+const SearchPanel = lazy(() => import("@/components/SearchPanel").then((m) => ({ default: m.SearchPanel })));
+const NotificationsPanel = lazy(() => import("@/components/NotificationsPanel").then((m) => ({ default: m.NotificationsPanel })));
+const StoryViewer = lazy(() => import("@/components/StoryViewer").then((m) => ({ default: m.StoryViewer })));
+const ShareSheet = lazy(() => import("@/components/ShareSheet").then((m) => ({ default: m.ShareSheet })));
+const EditProfileModal = lazy(() => import("@/components/EditProfileModal").then((m) => ({ default: m.EditProfileModal })));
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
@@ -108,6 +108,12 @@ export function AppShell() {
   const me = useMe();
   const overlay = useUI();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Mount the code-split overlays only after the first screen has settled (see the lazy imports above).
+  const [overlaysReady, setOverlaysReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOverlaysReady(true), 1000);
+    return () => clearTimeout(t);
+  }, []);
   const isDemo = !me?.id || me.id === "me";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
@@ -255,12 +261,17 @@ export function AppShell() {
       </nav>
 
       {/* ------- global overlays ------- */}
-      <CreateModal />
-      <SearchPanel />
-      <NotificationsPanel />
-      <StoryViewer />
-      <ShareSheet />
-      <EditProfileModal />
+      {/* Overlays are code-split and mounted after the first paint, so their JS is not on the critical path. */}
+      {overlaysReady && (
+        <Suspense fallback={null}>
+          <CreateModal />
+          <SearchPanel />
+          <NotificationsPanel />
+          <StoryViewer />
+          <ShareSheet />
+          <EditProfileModal />
+        </Suspense>
+      )}
     </div>
   );
 }
