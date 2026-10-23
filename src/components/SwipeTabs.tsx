@@ -176,9 +176,8 @@ export function SwipeTabs({
         later(rest, ANIM_MS);
         return;
       }
-      const elapsed = Math.max(1, Date.now() - st);
-      const v = dx / elapsed; // px per ms
-      const commit = Math.abs(dx) > width * 0.3 || (Math.abs(dx) > 24 && Math.abs(v) > 0.45);
+      // Commit only once the finger has moved 30% of the width, so the indicator and the page stay in step.
+      const commit = Math.abs(dx) > width * 0.3;
       if (!commit) {
         snapBack();
         return;
