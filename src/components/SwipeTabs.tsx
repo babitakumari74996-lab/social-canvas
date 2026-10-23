@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { setSwipeProgress } from "@/lib/swipe-progress";
 
 export type SwipeTab = {
@@ -40,6 +40,15 @@ export function SwipeTabs({
   children: ReactNode;
 }) {
   const navigate = useNavigate();
+  const router = useRouter();
+
+  // Load the neighbouring routes' code up front, so a committed swipe never waits for it.
+  useEffect(() => {
+    tabs.forEach((t) => {
+      void router.preloadRoute({ to: t.to, params: t.params } as never);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const mainRef = useRef<HTMLElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [preview, setPreview] = useState<{ index: number; dir: 1 | -1 } | null>(null);
