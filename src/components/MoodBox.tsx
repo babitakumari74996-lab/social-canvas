@@ -95,36 +95,39 @@ export function MoodBox() {
       <div className="flex items-center gap-3">
         <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
 
-        {showBar ? (
-          <button
-            key={`bar-${tick}`}
-            type="button"
-            onClick={() => openWith(mood)}
-            className={`${tick > 0 ? "mood-slide-in " : ""}flex h-14 flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 text-left`}
-          >
-            <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
-              What's your mood today?
-            </span>
-          </button>
-        ) : (
-          <div
-            key={`emojis-${tick}`}
-            className={`${tick > 0 ? "mood-slide-in " : ""}flex h-14 flex-1 min-w-0 items-center justify-around rounded-full bg-muted/60 px-3`}
-          >
-            {MOODS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                title={m.label}
-                aria-label={m.label}
-                onClick={() => openWith(m.id)}
-                className="flex items-center justify-center rounded-full px-1.5 py-0.5 text-2xl leading-none transition-transform active:scale-90"
-              >
-                {m.emoji}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* The pill stays still; only its content (the type bar or the mood emojis) slides in. */}
+        <div className="flex h-14 flex-1 min-w-0 items-center overflow-hidden rounded-full bg-muted/60">
+          {showBar ? (
+            <button
+              key={`bar-${tick}`}
+              type="button"
+              onClick={() => openWith(mood)}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center gap-2 px-4 text-left`}
+            >
+              <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
+                What's your mood today?
+              </span>
+            </button>
+          ) : (
+            <div
+              key={`emojis-${tick}`}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center justify-around px-3`}
+            >
+              {MOODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  title={m.label}
+                  aria-label={m.label}
+                  onClick={() => openWith(m.id)}
+                  className="flex items-center justify-center rounded-full px-1.5 py-0.5 text-2xl leading-none transition-transform active:scale-90"
+                >
+                  {m.emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
