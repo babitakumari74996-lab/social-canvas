@@ -19,9 +19,8 @@ export function StoriesRow() {
     <div className="relative mx-1 mt-2 mb-3 md:-mx-6 md:mt-4 md:mb-4 bg-card rounded-3xl border border-border overflow-hidden">
       <div ref={scroller} className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2">
         {/* Your story */}
-        <button
-          type="button"
-          className="flex flex-col items-center gap-1 w-[100px] shrink-0 -translate-x-2"
+        <div
+          className="flex flex-col items-center gap-1 w-[100px] shrink-0 -translate-x-2 cursor-pointer"
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
         >
           <div className="relative">
@@ -35,20 +34,19 @@ export function StoriesRow() {
             )}
           </div>
           <span className="text-xs text-muted-foreground truncate w-full text-center">Your story</span>
-        </button>
+        </div>
 
         {groups.filter((g) => g.user.id !== me?.id).map((g) => (
-          <button
+          <div
             key={g.user.id}
-            type="button"
-            className="flex flex-col items-center gap-1 w-[100px] shrink-0"
+            className="flex flex-col items-center gap-1 w-[100px] shrink-0 cursor-pointer"
             onClick={() => ui.openStories(g.user.username)}
           >
             <StoryRing viewed={g.allViewed} size={96}>
               <Avatar path={g.user.avatar_url} alt={g.user.username} size={86} />
             </StoryRing>
             <span className="text-xs truncate w-full text-center">{g.user.username}</span>
-          </button>
+          </div>
         ))}
       </div>
 
