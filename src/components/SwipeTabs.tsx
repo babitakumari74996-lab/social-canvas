@@ -245,6 +245,12 @@ export function SwipeTabs({
     };
 
     main.addEventListener("pointerdown", onDown);
+    // Once a gesture is locked as horizontal, stop the browser from also scrolling a vertical
+    // scroller underneath (e.g. the Reels feed, which snaps to the next reel).
+    const onTouchMove = (e: TouchEvent) => {
+      if (tracking && lock === "h" && e.cancelable) e.preventDefault();
+    };
+    main.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
@@ -253,6 +259,7 @@ export function SwipeTabs({
 
     return () => {
       main.removeEventListener("pointerdown", onDown);
+      main.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
