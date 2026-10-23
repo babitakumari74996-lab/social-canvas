@@ -155,7 +155,7 @@ export function SwipeTabs({
         setSwipeProgress({
           from: tabsNow[idx].key,
           to: tabsNow[ti].key,
-          amount: Math.min(1, Math.abs(dx) / width), // the line moves as far as the page does
+          dx: Math.abs(dx),
         });
       } else {
         target = null;
@@ -188,7 +188,7 @@ export function SwipeTabs({
       const d = dir;
       // Committed: fill the target line, then clear once the navigation has finished.
       // Committed: the line glides the rest of the way to the target, then clears after the navigation.
-      setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, amount: 1, committed: true });
+      setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, dx: 0, committed: true });
       later(() => setSwipeProgress(null), ANIM_MS * 2);
       // Current page slides out on the far side while the neighbour panel covers the area.
       setMain(-d * width, true);
