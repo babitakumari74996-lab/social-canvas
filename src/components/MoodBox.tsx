@@ -100,7 +100,7 @@ export function MoodBox() {
             key={`bar-${tick}`}
             type="button"
             onClick={() => openWith(mood)}
-            className="mood-slide-in flex h-14 flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 text-left"
+            className={`${tick > 0 ? "mood-slide-in " : ""}flex h-14 flex-1 min-w-0 items-center gap-2 rounded-full bg-muted/60 px-4 text-left`}
           >
             <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
               What's your mood today?
@@ -109,7 +109,7 @@ export function MoodBox() {
         ) : (
           <div
             key={`emojis-${tick}`}
-            className="mood-slide-in flex h-14 flex-1 min-w-0 items-center justify-around rounded-full bg-muted/60 px-3"
+            className={`${tick > 0 ? "mood-slide-in " : ""}flex h-14 flex-1 min-w-0 items-center justify-around rounded-full bg-muted/60 px-3`}
           >
             {MOODS.map((m) => (
               <button
