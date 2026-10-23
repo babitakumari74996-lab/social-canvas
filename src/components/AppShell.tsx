@@ -75,9 +75,8 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
     const a = NAV_POS[p.from];
     const b = NAV_POS[p.to];
     if (a !== undefined && b !== undefined) {
-      // 1:1 with the finger: the indicator moves as many px as the drag, capped at the target icon.
-      const cellPx = window.innerWidth / NAV_CELLS;
-      const amount = p.committed ? 1 : Math.min(1, p.dx / (cellPx * Math.abs(b - a)));
+      // The indicator reaches the target icon exactly when the swipe reaches its commit point.
+      const amount = p.committed ? 1 : Math.min(1, p.dx / p.full);
       pos = a + (b - a) * amount;
     }
   } else if (activeKey && NAV_POS[activeKey] !== undefined) {
