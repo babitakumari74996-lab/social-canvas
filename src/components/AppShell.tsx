@@ -145,6 +145,11 @@ export function AppShell() {
     }
   };
 
+  // Embedded inside a swipe preview: render just the page.
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("embed")) {
+    return <Outlet />;
+  }
+
   return (
     <div className="min-h-screen">
       {/* ------- desktop sidebar ------- */}
