@@ -205,6 +205,10 @@
   100% { transform: translateX(-50%); }
 }
 
+/* hide the page's own scrollbar (the page still scrolls with wheel, touch and keys) */
+html, body { scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
 /* hide scrollbars for snap carousels */
 .snap-y::-webkit-scrollbar, .snap-x::-webkit-scrollbar { display: none; }
 .snap-y, .snap-x { scrollbar-width: none; }
