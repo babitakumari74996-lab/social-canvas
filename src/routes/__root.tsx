@@ -101,10 +101,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-// Splash shown while the first screen's photos and videos load. It is part of the server HTML and
-// fades out by itself after 2 seconds (CSS only), so the app is never re-rendered or remounted.
+// Splash shown while the first screen loads. It is part of the server HTML. It fades out once the page
+// is hydrated and the first screen's images are done (min 1.2s), with a 2s CSS fallback. It only changes
+// an attribute on <html>, so the app is never re-rendered or remounted.
 const SPLASH_CSS = `
-#sv-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:sv-splash-out .4s ease-in 2s forwards}
+#sv-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:sv-splash-out .3s ease-in 2s forwards}
+html[data-sv-done] #sv-splash{animation:sv-splash-out .3s ease-in 0s forwards}
 @keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
 html[data-embed] #sv-splash{display:none}
 `;
@@ -175,6 +177,28 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    // Hydrated (this effect runs only on the client). Wait for the first screen's images, then hide the splash.
+    let cancelled = false;
+    const check = () => {
+      if (cancelled) return;
+      const firstScreen = [...document.images].filter((im) => {
+        const r = im.getBoundingClientRect();
+        return r.bottom > 0 && r.top < window.innerHeight && r.width > 0;
+      });
+      const imagesDone = firstScreen.every((im) => im.complete);
+      if (imagesDone && performance.now() >= 1200) {
+        document.documentElement.setAttribute("data-sv-done", "");
+        return;
+      }
+      setTimeout(check, 50);
+    };
+    check();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
