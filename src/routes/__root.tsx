@@ -101,6 +101,57 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Splash shown while the first screen's photos and videos load. It is part of the server HTML and
+// fades out by itself after 2 seconds (CSS only), so the app is never re-rendered or remounted.
+const SPLASH_CSS = `
+#sv-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:sv-splash-out .4s ease-in 2s forwards}
+@keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
+html[data-embed] #sv-splash{display:none}
+`;
+
+function SplashLogo() {
+  return (
+    <svg width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
+      <defs>
+        <linearGradient id="sv-logo-grad" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor="#FEDA75" />
+          <stop offset="0.35" stopColor="#FA7E1E" />
+          <stop offset="0.6" stopColor="#D62976" />
+          <stop offset="1" stopColor="#4F5BD5" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="92" height="92" rx="26" fill="url(#sv-logo-grad)" />
+      <text x="48" y="68" textAnchor="middle" fontFamily="Georgia, serif" fontStyle="italic" fontWeight="700" fontSize="56" fill="#fff">
+        S
+      </text>
+    </svg>
+  );
+}
+
+function Splash() {
+  return (
+    <div id="sv-splash" aria-hidden="true">
+      <style>{SPLASH_CSS}</style>
+      <SplashLogo />
+      <div
+        style={{
+          fontFamily: "Georgia, serif",
+          fontStyle: "italic",
+          fontWeight: 700,
+          fontSize: 28,
+          letterSpacing: "-0.01em",
+          background: "linear-gradient(90deg,#D62976,#962FBF,#4F5BD5)",
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          color: "transparent",
+        }}
+      >
+        Socialverse
+      </div>
+    </div>
+  );
+}
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -108,6 +159,13 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <Splash />
+        {/* Embedded pages (the swipe preview) never show the splash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','')",
+          }}
+        />
         {children}
         <Scripts />
       </body>
