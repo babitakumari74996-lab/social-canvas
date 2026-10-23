@@ -11,6 +11,8 @@ export type SwipeTab = {
 };
 
 const ANIM_MS = 260;
+// Share of the screen width the finger must cover before a swipe commits (and the indicator arrives).
+const SWIPE_COMMIT = 0.9;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 
 /**
@@ -156,7 +158,7 @@ export function SwipeTabs({
           from: tabsNow[idx].key,
           to: tabsNow[ti].key,
           dx: Math.abs(dx),
-          full: width * 0.3, // same distance at which the swipe commits
+          full: width * SWIPE_COMMIT, // same distance at which the swipe commits
         });
       } else {
         target = null;
@@ -176,8 +178,8 @@ export function SwipeTabs({
         later(rest, ANIM_MS);
         return;
       }
-      // Commit only once the finger has moved 30% of the width, so the indicator and the page stay in step.
-      const commit = Math.abs(dx) > width * 0.3;
+      // Commit only once the finger has moved most of the width, so the indicator and the page stay in step.
+      const commit = Math.abs(dx) > width * SWIPE_COMMIT;
       if (!commit) {
         snapBack();
         return;
