@@ -1,4 +1,23 @@
+import { useEffect, useRef, useState } from "react";
 import { useSignedUrl } from "@/lib/media";
+
+/**
+ * Fades an <img> in once it has loaded, instead of popping it in from a blank placeholder.
+ * Handles images that finished loading before hydration (no onLoad event then).
+ */
+export function useImageFade() {
+  const ref = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+  }, []);
+  return {
+    ref,
+    onLoad: () => setLoaded(true),
+    className: `transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`,
+  };
+}
 
 function isDirectSrc(path?: string | null) {
   return !!path && (path.startsWith("http") || path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("/"));
@@ -31,13 +50,22 @@ export function Avatar({
     );
   }
   return (
+    <AvatarImg src={src} alt={alt} size={size} className={className} />
+  );
+}
+
+function AvatarImg({ src, alt, size, className }: { src: string; alt: string; size: number; className: string }) {
+  const fade = useImageFade();
+  return (
     <img
+      ref={fade.ref}
       src={src}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
-      className={`rounded-full object-cover bg-muted select-none ${className}`}
+      onLoad={fade.onLoad}
+      className={`rounded-full object-cover bg-muted select-none ${fade.className} ${className}`}
       style={{ width: size, height: size }}
     />
   );

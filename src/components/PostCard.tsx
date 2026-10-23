@@ -5,7 +5,7 @@ import {
   MoreHorizontal, BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar } from "@/components/Avatar";
+import { Avatar, useImageFade } from "@/components/Avatar";
 import { useActions } from "@/lib/data";
 import { demoActions, ui } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
@@ -29,15 +29,24 @@ export function MediaImg({
       </div>
     );
   }
+  return <MediaImgLoaded src={src} alt={alt} className={className} onClick={onClick} onError={() => setErr(true)} />;
+}
+
+function MediaImgLoaded({
+  src, alt, className, onClick, onError,
+}: { src: string; alt: string; className: string; onClick?: () => void; onError: () => void }) {
+  const fade = useImageFade();
   return (
     <img
+      ref={fade.ref}
       src={src}
       alt={alt}
       loading="lazy"
       draggable={false}
       onClick={onClick}
-      onError={() => setErr(true)}
-      className={className}
+      onLoad={fade.onLoad}
+      onError={onError}
+      className={`bg-muted ${fade.className} ${className}`}
     />
   );
 }
