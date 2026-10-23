@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, useMe, useReels } from "@/lib/data";
@@ -309,5 +308,3 @@ function ReelComments({ reelId, reel, onClose, isReal }: { reelId: string; reel:
   );
 }
 
-// keep supabase import referenced for potential realtime upgrades
-void supabase;

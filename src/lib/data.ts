@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession, useMyProfile } from "@/lib/auth";
 import { uploadMedia } from "@/lib/media";
 import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS } from "@/lib/demo-data";
@@ -53,7 +53,7 @@ function useSupabasePosts(): UPost[] | undefined {
     queryKey: ["all-posts", userId],
     queryFn: async (): Promise<UPost[]> => {
       if (!userId) return [];
-      const { data: rows } = await supabase
+      const { data: rows } = await (await getSupabase())
         .from("posts")
         .select(`id, user_id, media_urls, caption, location, created_at, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
@@ -62,8 +62,8 @@ function useSupabasePosts(): UPost[] | undefined {
       if (posts.length === 0) return [];
       const ids = posts.map((p) => p.id);
       const [{ data: likes }, { data: comments }] = await Promise.all([
-        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
-        supabase.from("comments").select("post_id").in("post_id", ids),
+        (await getSupabase()).from("likes").select("post_id, user_id").in("post_id", ids),
+        (await getSupabase()).from("comments").select("post_id").in("post_id", ids),
       ]);
       return posts.map((p) => ({
         id: p.id, user_id: p.user_id, media_urls: p.media_urls ?? [], caption: p.caption,
@@ -119,7 +119,7 @@ export function useComments(postId: string): { comments: UComment[]; loading: bo
   const { data, isLoading } = useQuery({
     queryKey: ["comments", postId],
     queryFn: async (): Promise<UComment[]> => {
-      const { data: rows } = await supabase
+      const { data: rows } = await (await getSupabase())
         .from("comments")
         .select(`id, post_id, user_id, content, created_at, profiles(${PROFILES_COLS})`)
         .eq("post_id", postId)
@@ -145,7 +145,7 @@ export function useStoryGroups(): StoryGroup[] {
     queryKey: ["stories", userId],
     queryFn: async (): Promise<StoryGroup[]> => {
       const cutoff = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-      const { data: rows } = await supabase
+      const { data: rows } = await (await getSupabase())
         .from("stories")
         .select(`id, user_id, media_url, created_at, profiles!inner(${PROFILES_COLS})`)
         .gt("created_at", cutoff)
@@ -196,7 +196,7 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
   const { data, isLoading } = useQuery({
     queryKey: ["reels", userId],
     queryFn: async (): Promise<UReel[]> => {
-      const { data: rows } = await supabase
+      const { data: rows } = await (await getSupabase())
         .from("reels")
         .select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
@@ -237,15 +237,15 @@ export function useProfilePage(username: string): { page: ProfilePage | null; lo
   const real = useQuery({
     queryKey: ["profile-page", username, userId],
     queryFn: async (): Promise<ProfilePage> => {
-      const { data: prof } = await supabase.from("profiles").select(`id, ${PROFILES_COLS}, bio`).eq("username", username).maybeSingle();
+      const { data: prof } = await (await getSupabase()).from("profiles").select(`id, ${PROFILES_COLS}, bio`).eq("username", username).maybeSingle();
       if (!prof) return { profile: null, posts: [], reels: [], followers: 0, following: 0, isFollowing: false, isMe: false };
       const pid = prof.id;
       const [{ data: prows }, { data: rrows }, fc1, fc2, f3rows] = await Promise.all([
-        supabase.from("posts").select(`id, user_id, media_urls, caption, location, created_at, profiles!inner(${PROFILES_COLS})`).eq("user_id", pid).order("created_at", { ascending: false }).limit(60),
-        supabase.from("reels").select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`).eq("user_id", pid).order("created_at", { ascending: false }).limit(60),
-        supabase.from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", pid),
-        supabase.from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", pid),
-        supabase.from("follows").select("follower_id").eq("following_id", pid).eq("follower_id", userId!),
+        (await getSupabase()).from("posts").select(`id, user_id, media_urls, caption, location, created_at, profiles!inner(${PROFILES_COLS})`).eq("user_id", pid).order("created_at", { ascending: false }).limit(60),
+        (await getSupabase()).from("reels").select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`).eq("user_id", pid).order("created_at", { ascending: false }).limit(60),
+        (await getSupabase()).from("follows").select("follower_id", { count: "exact", head: true }).eq("following_id", pid),
+        (await getSupabase()).from("follows").select("following_id", { count: "exact", head: true }).eq("follower_id", pid),
+        (await getSupabase()).from("follows").select("follower_id").eq("following_id", pid).eq("follower_id", userId!),
       ]);
       const posts = ((prows ?? []) as unknown as { id: string; user_id: string; media_urls: string[] | null; caption: string | null; location: string | null; created_at: string; profiles: Record<string, unknown> }[]).map((p) => ({
         id: p.id, user_id: p.user_id, media_urls: p.media_urls ?? [], caption: p.caption, location: p.location,
@@ -253,7 +253,7 @@ export function useProfilePage(username: string): { page: ProfilePage | null; lo
       }));
       const postIds = posts.map((p) => p.id);
       const { data: plikes } = postIds.length
-        ? await supabase.from("likes").select("post_id, user_id").in("post_id", postIds)
+        ? await (await getSupabase()).from("likes").select("post_id, user_id").in("post_id", postIds)
         : { data: [] as { post_id: string; user_id: string }[] };
       for (const p of posts) {
         p.likes = plikes?.filter((l) => l.post_id === p.id).length ?? 0;
@@ -305,8 +305,8 @@ export function useNotifications(): UNotif[] {
     queryFn: async (): Promise<UNotif[]> => {
       if (!userId) return [];
       const [{ data: myPosts }, { data: myReels }] = await Promise.all([
-        supabase.from("posts").select("id, media_urls").eq("user_id", userId),
-        supabase.from("reels").select("id").eq("user_id", userId),
+        (await getSupabase()).from("posts").select("id, media_urls").eq("user_id", userId),
+        (await getSupabase()).from("reels").select("id").eq("user_id", userId),
       ]);
       const postIds = (myPosts ?? []).map((p: { id: string }) => p.id);
       const reelIds = (myReels ?? []).map((r: { id: string }) => r.id);
@@ -315,8 +315,8 @@ export function useNotifications(): UNotif[] {
       for (const p of (myPosts ?? []) as unknown as { id: string; media_urls: string[] | null }[]) mediaOf.set(p.id, p.media_urls?.[0] ?? "");
       if (postIds.length) {
         const [{ data: likes }, { data: comments }] = await Promise.all([
-          supabase.from("likes").select(`post_id, user_id, profiles(${PROFILES_COLS})`).in("post_id", postIds).neq("user_id", userId).order("post_id").limit(30),
-          supabase.from("comments").select(`post_id, user_id, content, created_at, profiles(${PROFILES_COLS})`).in("post_id", postIds).neq("user_id", userId).order("created_at", { ascending: false }).limit(30),
+          (await getSupabase()).from("likes").select(`post_id, user_id, profiles(${PROFILES_COLS})`).in("post_id", postIds).neq("user_id", userId).order("post_id").limit(30),
+          (await getSupabase()).from("comments").select(`post_id, user_id, content, created_at, profiles(${PROFILES_COLS})`).in("post_id", postIds).neq("user_id", userId).order("created_at", { ascending: false }).limit(30),
         ]);
         for (const l of (likes ?? []) as unknown as { post_id: string; user_id: string; profiles: Record<string, unknown> }[]) {
           notifs.push({ id: `l-${l.user_id}-${l.post_id}`, type: "like", actor: supabaseProfile(l.profiles, l.user_id), post_id: l.post_id, postThumb: mediaOf.get(l.post_id) ?? null, created_at: new Date().toISOString() });
@@ -325,7 +325,7 @@ export function useNotifications(): UNotif[] {
           notifs.push({ id: `c-${c.id}`, type: "comment", actor: supabaseProfile(c.profiles, c.user_id), post_id: c.post_id, postThumb: mediaOf.get(c.post_id) ?? null, text: c.content, created_at: c.created_at });
         }
       }
-      const { data: follows } = await supabase.from("follows").select(`follower_id, created_at, profiles!follows_follower_id_fkey(${PROFILES_COLS})`).eq("following_id", userId).order("created_at", { ascending: false }).limit(30);
+      const { data: follows } = await (await getSupabase()).from("follows").select(`follower_id, created_at, profiles!follows_follower_id_fkey(${PROFILES_COLS})`).eq("following_id", userId).order("created_at", { ascending: false }).limit(30);
       for (const f of (follows ?? []) as unknown as { follower_id: string; created_at: string; profiles: Record<string, unknown> }[]) {
         notifs.push({ id: `f-${f.follower_id}`, type: "follow", actor: supabaseProfile(f.profiles, f.follower_id), created_at: f.created_at });
       }
@@ -364,7 +364,7 @@ export function useSuggestions(): { user: UProfile; reason: string }[] {
   const { data } = useQuery({
     queryKey: ["suggestions", userId],
     queryFn: async (): Promise<{ user: UProfile; reason: string }[]> => {
-      const { data: profiles } = await supabase.from("profiles").select(`id, ${PROFILES_COLS}`).neq("id", userId!).limit(6);
+      const { data: profiles } = await (await getSupabase()).from("profiles").select(`id, ${PROFILES_COLS}`).neq("id", userId!).limit(6);
       return ((profiles ?? []) as unknown as Record<string, unknown>[]).map((p) => ({
         user: supabaseProfile(p, p.id as string), reason: "Suggested for you",
       }));
@@ -387,7 +387,7 @@ export function useUserSearch(q: string): UProfile[] {
     queryKey: ["user-search", q, userId],
     queryFn: async (): Promise<UProfile[]> => {
       if (!q.trim()) return [];
-      const { data: rows } = await supabase
+      const { data: rows } = await (await getSupabase())
         .from("profiles")
         .select(`id, ${PROFILES_COLS}`)
         .or(`username.ilike.%${q.trim()}%,display_name.ilike.%${q.trim()}%`)
@@ -412,20 +412,20 @@ export function useActions() {
   const real = {
     async like(postId: string, on: boolean) {
       if (!userId) return;
-      if (on) await supabase.from("likes").insert({ post_id: postId, user_id: userId });
-      else await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", userId);
+      if (on) await (await getSupabase()).from("likes").insert({ post_id: postId, user_id: userId });
+      else await (await getSupabase()).from("likes").delete().eq("post_id", postId).eq("user_id", userId);
       qc.invalidateQueries({ queryKey: ["all-posts", userId] });
     },
     async comment(postId: string, content: string) {
       if (!userId) return;
-      await supabase.from("comments").insert({ post_id: postId, user_id: userId, content });
+      await (await getSupabase()).from("comments").insert({ post_id: postId, user_id: userId, content });
       qc.invalidateQueries({ queryKey: ["comments", postId] });
       qc.invalidateQueries({ queryKey: ["all-posts", userId] });
     },
     async follow(targetId: string, on: boolean) {
       if (!userId) return;
-      if (on) await supabase.from("follows").insert({ follower_id: userId, following_id: targetId });
-      else await supabase.from("follows").delete().eq("follower_id", userId).eq("following_id", targetId);
+      if (on) await (await getSupabase()).from("follows").insert({ follower_id: userId, following_id: targetId });
+      else await (await getSupabase()).from("follows").delete().eq("follower_id", userId).eq("following_id", targetId);
       qc.invalidateQueries({ queryKey: ["profile-page"] });
     },
     async createPost(input: { files: File[]; galleryUrls?: string[]; caption: string; location?: string | null; filter?: string }) {
@@ -433,7 +433,7 @@ export function useActions() {
       const urls: string[] = [];
       for (const f of input.files) urls.push(await uploadMedia(userId, f));
       for (const g of input.galleryUrls ?? []) urls.push(g);
-      await supabase.from("posts").insert({
+      await (await getSupabase()).from("posts").insert({
         user_id: userId, media_urls: urls, caption: input.caption || null,
         location: input.location || null, hide_from_feed: false,
       });
@@ -442,7 +442,7 @@ export function useActions() {
     async createStory(file: File) {
       if (!userId) return;
       const path = await uploadMedia(userId, file);
-      await supabase.from("stories").insert({
+      await (await getSupabase()).from("stories").insert({
         user_id: userId, media_url: path, close_friend_only: false,
         expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       });
@@ -451,16 +451,16 @@ export function useActions() {
     async createReel(input: { file?: File; galleryUrl?: string; caption: string }) {
       if (!userId) return;
       const url = input.file ? await uploadMedia(userId, input.file) : input.galleryUrl!;
-      await supabase.from("reels").insert({ user_id: userId, video_url: url, caption: input.caption || null });
+      await (await getSupabase()).from("reels").insert({ user_id: userId, video_url: url, caption: input.caption || null });
       qc.invalidateQueries({ queryKey: ["reels", userId] });
     },
     async sendMessage(receiverId: string, content: string) {
       if (!userId) return;
-      await supabase.from("messages").insert({ sender_id: userId, receiver_id: receiverId, content });
+      await (await getSupabase()).from("messages").insert({ sender_id: userId, receiver_id: receiverId, content });
     },
     async updateProfile(patch: { display_name?: string; bio?: string }) {
       if (!userId) return;
-      await supabase.from("profiles").update(patch).eq("id", userId);
+      await (await getSupabase()).from("profiles").update(patch).eq("id", userId);
       qc.invalidateQueries({ queryKey: ["profile", "me", userId] });
     },
   };

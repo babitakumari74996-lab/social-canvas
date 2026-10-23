@@ -6,7 +6,6 @@ import {
   Bookmark, RotateCcw, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
-import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";

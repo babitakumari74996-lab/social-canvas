@@ -42,11 +42,15 @@ export function SwipeTabs({
   const navigate = useNavigate();
   const router = useRouter();
 
-  // Load the neighbouring routes' code up front, so a committed swipe never waits for it.
+  // Load the neighbouring routes' code, so a committed swipe never waits for it. Starts after the
+  // first screen is up, so it doesn't compete with the first screen's photos for bandwidth.
   useEffect(() => {
-    tabs.forEach((t) => {
-      void router.preloadRoute({ to: t.to, params: t.params } as never);
-    });
+    const id = window.setTimeout(() => {
+      tabs.forEach((t) => {
+        void router.preloadRoute({ to: t.to, params: t.params } as never);
+      });
+    }, 1500);
+    return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const mainRef = useRef<HTMLElement>(null);

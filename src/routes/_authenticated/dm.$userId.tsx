@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { useActions } from "@/lib/data";
@@ -26,7 +26,7 @@ function Thread() {
   const { data: peer } = useQuery({
     queryKey: ["profile", peerId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", peerId).maybeSingle();
+      const { data } = await (await getSupabase()).from("profiles").select("*").eq("id", peerId).maybeSingle();
       return data;
     },
     enabled: !!myId,
@@ -39,7 +39,7 @@ function Thread() {
     queryKey: ["messages", myId, peerId],
     queryFn: async () => {
       if (!myId) return [];
-      const { data } = await supabase
+      const { data } = await (await getSupabase())
         .from("messages")
         .select("*")
         .or(`and(sender_id.eq.${myId},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${myId})`)
@@ -66,21 +66,30 @@ function Thread() {
 
   useEffect(() => {
     if (!myId) return;
-    const channel = supabase
-      .channel(`dm-${myId}-${peerId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          const m = payload.new as { sender_id: string; receiver_id: string };
-          if ((m.sender_id === myId && m.receiver_id === peerId) || (m.sender_id === peerId && m.receiver_id === myId)) {
-            qc.invalidateQueries({ queryKey: ["messages", myId, peerId] });
+    let cancelled = false;
+    let channel: Parameters<Awaited<ReturnType<typeof getSupabase>>["removeChannel"]>[0] | null = null;
+    getSupabase().then((sb) => {
+      if (cancelled) return;
+      channel = sb
+        .channel(`dm-${myId}-${peerId}`)
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "messages" },
+          (payload) => {
+            const m = payload.new as { sender_id: string; receiver_id: string };
+            if ((m.sender_id === myId && m.receiver_id === peerId) || (m.sender_id === peerId && m.receiver_id === myId)) {
+              qc.invalidateQueries({ queryKey: ["messages", myId, peerId] });
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    });
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) {
+        const ch = channel;
+        getSupabase().then((sb) => sb.removeChannel(ch));
+      }
     };
   }, [myId, peerId, qc]);
 
@@ -90,7 +99,7 @@ function Thread() {
     if (!content) return;
     setText("");
     if (myId) {
-      await supabase.from("messages").insert({
+      await (await getSupabase()).from("messages").insert({
         sender_id: myId,
         receiver_id: peerId,
         content,
