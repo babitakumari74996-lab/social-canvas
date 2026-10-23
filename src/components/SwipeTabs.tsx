@@ -203,11 +203,14 @@ export function SwipeTabs({
         try {
           await navRef.current({ to: to.to, params: to.params } as never);
         } finally {
-          // New page enters from the swiped side.
+          // The real page mounts off-screen on the entering side while the preview keeps covering
+          // the screen. Once it has painted, the preview slides out and the page slides in together,
+          // so the handoff is seamless instead of a visible re-render.
           setMain(d * width, false);
           void main.offsetWidth;
+          await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
           setMain(0, true);
-          setPv(d * width, false);
+          setPv(-d * width, true);
           later(() => {
             rest();
             hidePreview();
