@@ -251,6 +251,11 @@ export function SwipeTabs({
       if (tracking && lock === "h" && e.cancelable) e.preventDefault();
     };
     main.addEventListener("touchmove", onTouchMove, { passive: false });
+    // During a drag (mouse, trackpad or touch) wheel scrolling must not move the scroller underneath.
+    const onWheel = (e: WheelEvent) => {
+      if ((tracking || busy) && e.cancelable) e.preventDefault();
+    };
+    main.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
@@ -260,6 +265,7 @@ export function SwipeTabs({
     return () => {
       main.removeEventListener("pointerdown", onDown);
       main.removeEventListener("touchmove", onTouchMove);
+      main.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);

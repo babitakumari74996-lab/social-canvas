@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +20,12 @@ export const Route = createFileRoute("/_authenticated/reels")({
 function ReelsPage() {
   const { reels, loading } = useReels();
   const [muted, setMuted] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, []);
 
   return (
     <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
@@ -43,7 +49,7 @@ function ReelsPage() {
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <div className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+      <div ref={scrollRef} className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
           <div className="h-full snap-start grid place-items-center">
             <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
