@@ -44,7 +44,7 @@ export function SwipeTabs({
   /** The open overlay (create or search), if any. Swiping from an overlay moves to the next overlay or page. */
   overlayKey?: "create" | "search" | null;
   /** Opens an overlay tab, or closes the open overlay when given null. */
-  onOverlay: (key: "create" | "search" | null) => void;
+  onOverlay?: (key: "create" | "search" | null) => void;
   className?: string;
   children: ReactNode;
 }) {
@@ -236,9 +236,9 @@ export function SwipeTabs({
         later(async () => {
           try {
             if (to.overlay) {
-              onOverlayRef.current(to.overlay);
+              onOverlayRef.current?.(to.overlay);
             } else {
-              onOverlayRef.current(null);
+              onOverlayRef.current?.(null);
               await navRef.current({ to: to.to, params: to.params } as never);
             }
           } finally {
