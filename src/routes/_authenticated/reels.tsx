@@ -3,7 +3,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
-import { MediaImg } from "@/components/PostCard";
 import { useActions, useMe, useReels } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
 import { formatCount } from "@/lib/time";
@@ -86,6 +85,9 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   const [paused, setPaused] = useState(false);
   const [showPlay, setShowPlay] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // The video stays hidden until its first frame is ready, so the poster shows instead of a black
+  // frame and there is no visible swap ("blink") when the real video starts.
+  const [frameReady, setFrameReady] = useState(false);
 
   useEffect(() => setLiked(reel.likedByMe), [reel.likedByMe]);
 
@@ -146,11 +148,25 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   return (
     <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-4">
       <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
-        {reel.poster && <MediaImg src={reel.poster} className="absolute inset-0 h-full w-full object-cover opacity-40" />}
+        {reel.poster && (
+          // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
+          <img
+            src={reel.poster}
+            alt=""
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+            className="absolute inset-0 h-full w-full object-cover bg-zinc-900"
+          />
+        )}
         <video
           ref={videoRef}
           src={reel.video_url}
-          className="absolute inset-0 h-full w-full object-cover"
+          poster={reel.poster ?? undefined}
+          preload="auto"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
+          onLoadedData={() => setFrameReady(true)}
+          onPlaying={() => setFrameReady(true)}
           loop
           muted={muted}
           playsInline
