@@ -4,7 +4,7 @@
 //    within 1s (slow or offline), the cached HTML is shown and the network answer still refreshes the cache.
 //  - Hashed build assets (/assets/*) and the splash logo: cache-first. The cached HTML and its assets always
 //    come from the same build, so an old cached page never points at deleted files.
-const CACHE = "sv-shell-v2";
+const CACHE = "sv-shell-v3";
 const ASSET_PATHS = ["/splash-logo.png"];
 
 self.addEventListener("install", () => {
@@ -15,8 +15,15 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      const old = keys.filter((k) => k !== CACHE);
+      await Promise.all(old.map((k) => caches.delete(k)));
       await self.clients.claim();
+      // Upgrading from an earlier service worker: pages still running the previous build reload once,
+      // so the new code is used right away. First-time visitors (no old cache) are not reloaded.
+      if (old.length) {
+        const pages = await self.clients.matchAll({ type: "window" });
+        await Promise.all(pages.map((c) => c.navigate(c.url).catch(() => {})));
+      }
     })(),
   );
 });

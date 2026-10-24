@@ -145,7 +145,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {import.meta.env.PROD && (
           <script
             dangerouslySetInnerHTML={{
-              __html: "if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}",
+              __html: "if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'}).then(function(r){r.update()})}",
             }}
           />
         )}
