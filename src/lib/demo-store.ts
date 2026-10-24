@@ -45,8 +45,7 @@ function loadPersisted(): Partial<Persisted> {
   }
 }
 
-function buildInitial(): DemoState {
-  const saved = loadPersisted();
+function buildInitial(saved: Partial<Persisted> = {}): DemoState {
   const users = DEMO_USERS.map((u) => (u.id === DEMO_ME_ID ? { ...u, ...saved.edits } : u));
   const myPosts = saved.myPosts ?? [];
   const posts = [...myPosts, ...buildDemoPosts()].map((p) => ({
@@ -96,7 +95,16 @@ function buildInitial(): DemoState {
   };
 }
 
+// The first render (server and browser) uses the built-in demo data only, so the HTML matches and
+// hydration does not fail. Saved changes are applied after hydration by hydrateDemo().
 let state: DemoState = buildInitial();
+// Used while hydrating (matches the server HTML), so saved changes never cause a hydration mismatch.
+const serverState: DemoState = state;
+
+export function hydrateDemo() {
+  state = buildInitial(loadPersisted());
+  listeners.forEach((l) => l());
+}
 const listeners = new Set<() => void>();
 
 function persist() {
@@ -138,7 +146,7 @@ export function useDemo(): DemoState {
       return () => listeners.delete(cb);
     },
     () => state,
-    () => state,
+    () => serverState,
   );
 }
 

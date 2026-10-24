@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { applyDemoSnapshot } from "@/lib/demo-store";
+import { applyDemoSnapshot, hydrateDemo } from "@/lib/demo-store";
 import {
   Outlet,
   Link,
@@ -180,6 +180,11 @@ function RootComponent() {
     window.parent.postMessage({ type: "sv-embed-ready" }, window.location.origin);
     return () => window.removeEventListener("message", onMsg);
   }, [queryClient]);
+
+  useEffect(() => {
+    // Hydrated: apply the saved demo changes (swipe previews get the opening page's state instead).
+    if (!document.documentElement.hasAttribute("data-embed")) hydrateDemo();
+  }, []);
 
   useEffect(() => {
     // Hydrated (this effect runs only on the client). Wait for the first screen's images, then hide the splash.
