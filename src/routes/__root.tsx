@@ -182,8 +182,9 @@ function RootComponent() {
   }, [queryClient]);
 
   useEffect(() => {
-    // Hydrated: apply the saved demo changes (swipe previews get the opening page's state instead).
-    if (!document.documentElement.hasAttribute("data-embed")) hydrateDemo();
+    // Hydrated: apply the saved demo changes. Swipe-preview pages (embed) do this too, so they show the
+    // saved state even before the opening page's snapshot arrives. The snapshot then keeps them in step.
+    hydrateDemo();
   }, []);
 
   useEffect(() => {
