@@ -210,9 +210,6 @@ export function AppShell() {
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
             <Heart className="h-6 w-6" />
           </button>
-          <Link to="/explore" aria-label="Explore">
-            <Search className="h-6 w-6" />
-          </Link>
           <Link to="/dm" aria-label="Messages">
             <Send className="h-6 w-6 -rotate-12" />
           </Link>
@@ -224,10 +221,15 @@ export function AppShell() {
 
       {/* ------- second bar under the top bar: Community tab ------- */}
       <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
-        {/* icon only, directly under the Menu button (same 24px box and right edge) */}
-        <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
-          <img src="/community-logos.png" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-        </Link>
+        {/* icons only, under the Menu button: Explore sits left of Community (same 24px boxes, right edge) */}
+        <div className="flex items-center gap-5">
+          <Link to="/explore" aria-label="Explore" className="grid h-6 w-6 place-items-center">
+            <Search className="h-6 w-6" />
+          </Link>
+          <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
+            <img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
+          </Link>
+        </div>
       </div>
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
