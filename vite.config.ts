@@ -12,6 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Pre-gzip the built JS/CSS so the first load moves about a third of the bytes. The option is
+  // supported by nitro at runtime but missing from the wrapper's types, hence the cast.
+  nitro: { compressPublicAssets: true } as never,
   vite: {
     server: {
       // Allow the sandbox preview host (proxied *.e2b.app) to load the dev server.

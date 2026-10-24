@@ -68,12 +68,12 @@ function bakeImage(src: string, filter: string): Promise<string> {
   });
 }
 
-export function CreateModal() {
+export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const { overlay, createMode } = useUI();
   const actions = useActions();
   const navigate = useNavigate();
 
-  const open = overlay === "create";
+  const open = page || overlay === "create";
   const [mode, setMode] = useState<Mode | null>(createMode);
   const [step, setStep] = useState<Step>("pick");
   const [draft, setDraft] = useState<Draft>({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
@@ -100,7 +100,7 @@ export function CreateModal() {
 
   if (!open) return null;
 
-  const close = () => ui.closeAll();
+  const close = () => (page ? navigate({ to: "/feed" }) : ui.closeAll());
 
   const pickImages = (files: FileList | null) => {
     if (!files?.length) return;
@@ -184,8 +184,13 @@ export function CreateModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6" role="dialog" aria-modal>
-      <div className="bg-card w-full h-full md:h-[min(660px,88vh)] md:max-w-[900px] md:rounded-2xl flex flex-col overflow-hidden animate-in-fade">
+    <div
+      {...(page ? {} : { "data-overlay-swipe": "" })}
+      className={page ? "min-h-[calc(100vh-3.5rem)] md:min-h-screen flex flex-col bg-card" : "fixed inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6"}
+      role={page ? "region" : "dialog"}
+      aria-modal={page ? undefined : true}
+    >
+      <div className={page ? "bg-card w-full flex-1 flex flex-col animate-in-fade" : "bg-card w-full h-full md:h-[min(660px,88vh)] md:max-w-[900px] md:rounded-2xl flex flex-col overflow-hidden animate-in-fade"}>
         {/* header */}
         <header className="flex items-center justify-between border-b border-border px-3 h-12 shrink-0">
           <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : setStep("pick"))} className="p-1 hover:opacity-60">

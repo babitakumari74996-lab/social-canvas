@@ -205,9 +205,47 @@
   100% { transform: translateX(-50%); }
 }
 
+/* hide the page's own scrollbar (the page still scrolls with wheel, touch and keys) */
+html, body { scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
 /* hide scrollbars for snap carousels */
 .snap-y::-webkit-scrollbar, .snap-x::-webkit-scrollbar { display: none; }
 .snap-y, .snap-x { scrollbar-width: none; }
 
 /* reels like-burst pop */
 @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
+/* Vertical-only scroll areas inside the app shell: keep vertical scrolling native but let
+   horizontal drags reach the bottom-nav tab swipe (SwipeTabs). Horizontal carousels are unaffected. */
+main [class*="overflow-y-"]:not([class*="overflow-x-"]) {
+  touch-action: pan-y;
+}
+
+/* mood slider: new mood slides in from the right */
+@keyframes mood-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.mood-slide-in {
+  animation: mood-slide-in 400ms ease-out;
+}
+
+/* Photos fade in. While loading, the photo is transparent and its parent shows a shimmer. */
+@keyframes media-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+img[data-fade] {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+img[data-fade][data-loaded] {
+  opacity: 1;
+}
+:has(> img[data-fade]:not([data-loaded])) {
+  background-color: var(--muted);
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: media-shimmer 1.2s linear infinite;
+}

@@ -1,4 +1,39 @@
+import { useEffect, useRef, useState } from "react";
 import { useSignedUrl } from "@/lib/media";
+
+/**
+ * Fade-in for a photo. The photo starts transparent and eases to full opacity once loaded. The
+ * shimmer is drawn on the photo's parent (see `img[data-fade]` rules in styles.css), so it stays
+ * visible while the photo is still transparent. Callers that set their own opacity (e.g. a dimmed
+ * poster) keep it and get no fade. Handles photos that finished loading before hydration.
+ */
+// Image URLs that have already loaded in this session. When a page remounts (tab switch), its images
+// are shown at once instead of fading in again, so the page does not look like it reloaded.
+const loadedSrcs = new Set<string>();
+
+export function useImageFade(callerClassName = "", src?: string | null) {
+  const ref = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(() => !!src && loadedSrcs.has(src));
+  useEffect(() => {
+    const el = ref.current;
+    if (el && el.complete && el.naturalWidth > 0) {
+      if (src) loadedSrcs.add(src);
+      setLoaded(true);
+    }
+  }, [src]);
+  const ownOpacity = /(^|\s)opacity-/.test(callerClassName);
+  const props = ownOpacity
+    ? {}
+    : { "data-fade": "", "data-loaded": loaded ? "" : undefined };
+  return {
+    ref,
+    onLoad: () => {
+      if (src) loadedSrcs.add(src);
+      setLoaded(true);
+    },
+    props,
+  };
+}
 
 function isDirectSrc(path?: string | null) {
   return !!path && (path.startsWith("http") || path.startsWith("data:") || path.startsWith("blob:") || path.startsWith("/"));
@@ -31,12 +66,22 @@ export function Avatar({
     );
   }
   return (
+    <AvatarImg src={src} alt={alt} size={size} className={className} />
+  );
+}
+
+function AvatarImg({ src, alt, size, className }: { src: string; alt: string; size: number; className: string }) {
+  const fade = useImageFade(className, src);
+  return (
     <img
+      ref={fade.ref}
+      {...fade.props}
       src={src}
       alt={alt}
       width={size}
       height={size}
       loading="lazy"
+      onLoad={fade.onLoad}
       className={`rounded-full object-cover bg-muted select-none ${className}`}
       style={{ width: size, height: size }}
     />

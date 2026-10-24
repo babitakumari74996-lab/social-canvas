@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
@@ -16,7 +16,7 @@ export function PlusProvider({ children, tier, userId }: { children: ReactNode; 
   const upgrade = async () => {
     if (!userId) return;
     // Demo: flip tier locally. Real Stripe integration can replace this.
-    const { error } = await supabase.from("profiles").update({ subscription_tier: "plus" }).eq("id", userId);
+    const { error } = await (await getSupabase()).from("profiles").update({ subscription_tier: "plus" }).eq("id", userId);
     if (error) toast.error(error.message);
     else {
       toast.success("Welcome to Socialverse Plus");

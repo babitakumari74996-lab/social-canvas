@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, PlusCircle } from "lucide-react";
 import { Avatar, StoryRing } from "@/components/Avatar";
 import { useMe, useStoryGroups } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
+import { MoodBox } from "@/components/MoodBox";
 
 export function StoriesRow() {
   const groups = useStoryGroups();
@@ -15,39 +16,41 @@ export function StoriesRow() {
   const hasMyStory = !!myGroup && myGroup.items.length > 0;
 
   return (
-    <div className="relative border-b border-border md:mb-4 bg-card md:rounded-xl md:mt-4">
-      <div ref={scroller} className="flex gap-4 overflow-x-auto no-scrollbar px-4 py-3">
+    <div className="relative mx-1 mt-2 mb-3 md:-mx-6 md:mt-4 md:mb-4 bg-card rounded-3xl border border-border overflow-hidden">
+      <div ref={scroller} className="flex gap-2 overflow-x-auto no-scrollbar px-4 py-2">
         {/* Your story */}
-        <button
-          type="button"
-          className="flex flex-col items-center gap-1 w-[66px] shrink-0"
+        <div
+          className="flex flex-col items-center gap-1 w-[100px] shrink-0 -translate-x-2 cursor-pointer"
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
         >
           <div className="relative">
-            <StoryRing viewed={hasMyStory} size={62}>
-              <Avatar path={me?.avatar_url} alt="Your story" size={52} />
+            <StoryRing viewed={hasMyStory} size={96}>
+
+
+              <Avatar path={me?.avatar_url} alt="Your story" size={86} />
             </StoryRing>
             {!hasMyStory && (
-              <PlusCircle className="absolute -bottom-0.5 -right-0.5 h-5 w-5 text-primary fill-background rounded-full" />
+              <PlusCircle className="absolute -bottom-0.5 -right-0.5 h-6 w-6 text-primary fill-background rounded-full" />
             )}
           </div>
-          <span className="text-[11px] text-muted-foreground truncate w-full text-center">Your story</span>
-        </button>
+          <span className="text-xs text-muted-foreground truncate w-full text-center">Your story</span>
+        </div>
 
         {groups.filter((g) => g.user.id !== me?.id).map((g) => (
-          <button
+          <div
             key={g.user.id}
-            type="button"
-            className="flex flex-col items-center gap-1 w-[66px] shrink-0"
+            className="flex flex-col items-center gap-1 w-[100px] shrink-0 cursor-pointer"
             onClick={() => ui.openStories(g.user.username)}
           >
-            <StoryRing viewed={g.allViewed} size={62}>
-              <Avatar path={g.user.avatar_url} alt={g.user.username} size={52} />
+            <StoryRing viewed={g.allViewed} size={96}>
+              <Avatar path={g.user.avatar_url} alt={g.user.username} size={86} />
             </StoryRing>
-            <span className="text-[11px] truncate w-full text-center">{g.user.username}</span>
-          </button>
+            <span className="text-xs truncate w-full text-center">{g.user.username}</span>
+          </div>
         ))}
       </div>
+
+      <MoodBox />
 
       <button
         type="button"

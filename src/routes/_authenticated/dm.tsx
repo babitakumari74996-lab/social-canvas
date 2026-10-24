@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession } from "@/lib/auth";
 import { Avatar } from "@/components/Avatar";
 import { DEMO_ME_ID } from "@/lib/demo-data";
@@ -36,7 +36,7 @@ function DMLayout() {
     queryKey: ["dm-threads", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const { data } = await supabase
+      const { data } = await (await getSupabase())
         .from("messages")
         .select("id, sender_id, receiver_id, content, created_at, is_read")
         .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
@@ -50,7 +50,7 @@ function DMLayout() {
       }
       const peerIds = Array.from(byPeer.keys());
       if (peerIds.length === 0) return [];
-      const { data: profs } = await supabase.from("profiles").select("id, username, avatar_url").in("id", peerIds);
+      const { data: profs } = await (await getSupabase()).from("profiles").select("id, username, avatar_url").in("id", peerIds);
       return peerIds.map((id) => ({
         peer: profs?.find((p) => p.id === id),
         last: byPeer.get(id)!,

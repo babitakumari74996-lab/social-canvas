@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabase } from "@/integrations/supabase/lazy";
 import { useMyProfile } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Check, UserPlus, UserCheck } from "lucide-react";
@@ -24,7 +24,7 @@ function FriendsPage() {
     queryKey: ["followers", me?.id],
     enabled: !!me,
     queryFn: async () => {
-      const { data } = await supabase.from("follows").select("follower_id, profiles!follows_follower_id_fkey(id, username, display_name, avatar_url)").eq("following_id", me!.id);
+      const { data } = await (await getSupabase()).from("follows").select("follower_id, profiles!follows_follower_id_fkey(id, username, display_name, avatar_url)").eq("following_id", me!.id);
       return data ?? [];
     },
   });
@@ -32,7 +32,7 @@ function FriendsPage() {
     queryKey: ["following", me?.id],
     enabled: !!me,
     queryFn: async () => {
-      const { data } = await supabase.from("follows").select("following_id").eq("follower_id", me!.id);
+      const { data } = await (await getSupabase()).from("follows").select("following_id").eq("follower_id", me!.id);
       return (data ?? []).map((f) => f.following_id);
     },
   });
@@ -40,7 +40,7 @@ function FriendsPage() {
     queryKey: ["suggestions", me?.id, following],
     enabled: !!me,
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, username, display_name, avatar_url").neq("id", me!.id).limit(30);
+      const { data } = await (await getSupabase()).from("profiles").select("id, username, display_name, avatar_url").neq("id", me!.id).limit(30);
       const followingSet = new Set(following ?? []);
       return (data ?? []).filter((p) => !followingSet.has(p.id));
     },
@@ -52,7 +52,7 @@ function FriendsPage() {
 
   const confirm = async (userId: string) => {
     if (!me) return;
-    const { error } = await supabase.from("follows").insert({ follower_id: me.id, following_id: userId });
+    const { error } = await (await getSupabase()).from("follows").insert({ follower_id: me.id, following_id: userId });
     if (error) return toast.error(error.message);
     toast.success("Friend added");
     qc.invalidateQueries({ queryKey: ["following", me.id] });

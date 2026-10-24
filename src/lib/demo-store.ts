@@ -4,6 +4,7 @@ import {
   buildDemoStories, demoBaseLikes, demoCommentsOf,
 } from "@/lib/demo-data";
 import type { UComment, UMessage, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
+import { loadMedia } from "@/lib/media-store";
 
 // ---------------------------------------------------------------------------
 // Demo store — the whole demo world (users, posts, stories, reels, messages)
@@ -45,8 +46,7 @@ function loadPersisted(): Partial<Persisted> {
   }
 }
 
-function buildInitial(): DemoState {
-  const saved = loadPersisted();
+function buildInitial(saved: Partial<Persisted> = {}): DemoState {
   const users = DEMO_USERS.map((u) => (u.id === DEMO_ME_ID ? { ...u, ...saved.edits } : u));
   const myPosts = saved.myPosts ?? [];
   const posts = [...myPosts, ...buildDemoPosts()].map((p) => ({
@@ -96,7 +96,54 @@ function buildInitial(): DemoState {
   };
 }
 
+// The first render (server and browser) uses the built-in demo data only, so the HTML matches and
+// hydration does not fail. Saved changes are applied after hydration by hydrateDemo().
 let state: DemoState = buildInitial();
+// Used while hydrating (matches the server HTML), so saved changes never cause a hydration mismatch.
+const serverState: DemoState = state;
+
+export function hydrateDemo() {
+  state = buildInitial(loadPersisted());
+  listeners.forEach((l) => l());
+  void ensureMedia();
+}
+
+// Playable URLs for uploaded videos. Stored reels keep "idb:<key>"; this maps the key to a blob URL
+// created from IndexedDB in this page.
+const blobUrls = new Map<string, string>();
+
+export function resolveVideoUrl(url: string): string {
+  return url.startsWith("idb:") ? blobUrls.get(url.slice(4)) ?? "" : url;
+}
+
+export async function ensureMedia() {
+  const missing = new Set(
+    state.reels
+      .map((r) => r.video_url)
+      .filter((u) => u.startsWith("idb:") && !blobUrls.has(u.slice(4)))
+      .map((u) => u.slice(4)),
+  );
+  if (missing.size === 0) return;
+  await Promise.all(
+    [...missing].map(async (key) => {
+      try {
+        const blob = await loadMedia(key);
+        if (blob) blobUrls.set(key, URL.createObjectURL(blob));
+      } catch {
+        /* missing media: the reel shows its poster */
+      }
+    }),
+  );
+  // A new state object, so subscribers (useSyncExternalStore) see the change and re-render.
+  state = { ...state };
+  listeners.forEach((l) => l());
+}
+
+/** Lets a component re-render when the demo data (or a loaded video) changes. */
+export function subscribeDemo(cb: () => void): () => void {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
 const listeners = new Set<() => void>();
 
 function persist() {
@@ -138,7 +185,7 @@ export function useDemo(): DemoState {
       return () => listeners.delete(cb);
     },
     () => state,
-    () => state,
+    () => serverState,
   );
 }
 
@@ -309,4 +356,14 @@ export function useUI(): UIState {
     () => uiState,
     () => uiState,
   );
+}
+
+/**
+ * Swipe-preview pages take over the full state of the page that opened them. Reels with large media
+ * are not saved to localStorage, so a separate page cannot rebuild them from storage.
+ */
+export function applyDemoSnapshot(snap: DemoState) {
+  state = snap;
+  listeners.forEach((l) => l());
+  void ensureMedia();
 }

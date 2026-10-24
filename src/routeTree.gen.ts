@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdsRouteImport } from './routes/_authenticated/ads'
+import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
 import { Route as AuthenticatedDmRouteImport } from './routes/_authenticated/dm'
 import { Route as AuthenticatedEventsRouteImport } from './routes/_authenticated/events'
 import { Route as AuthenticatedExploreRouteImport } from './routes/_authenticated/explore'
@@ -47,6 +48,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedAdsRoute = AuthenticatedAdsRouteImport.update({
   id: '/ads',
   path: '/ads',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDmRoute = AuthenticatedDmRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ads': typeof AuthenticatedAdsRoute
+  '/create': typeof AuthenticatedCreateRoute
   '/dm': typeof AuthenticatedDmRouteWithChildren
   '/events': typeof AuthenticatedEventsRoute
   '/explore': typeof AuthenticatedExploreRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ads': typeof AuthenticatedAdsRoute
+  '/create': typeof AuthenticatedCreateRoute
   '/dm': typeof AuthenticatedDmRouteWithChildren
   '/events': typeof AuthenticatedEventsRoute
   '/explore': typeof AuthenticatedExploreRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/ads': typeof AuthenticatedAdsRoute
+  '/_authenticated/create': typeof AuthenticatedCreateRoute
   '/_authenticated/dm': typeof AuthenticatedDmRouteWithChildren
   '/_authenticated/events': typeof AuthenticatedEventsRoute
   '/_authenticated/explore': typeof AuthenticatedExploreRoute
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ads'
+    | '/create'
     | '/dm'
     | '/events'
     | '/explore'
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ads'
+    | '/create'
     | '/dm'
     | '/events'
     | '/explore'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/ads'
+    | '/_authenticated/create'
     | '/_authenticated/dm'
     | '/_authenticated/events'
     | '/_authenticated/explore'
@@ -298,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/ads'
       fullPath: '/ads'
       preLoaderRoute: typeof AuthenticatedAdsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/create': {
+      id: '/_authenticated/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof AuthenticatedCreateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dm': {
@@ -429,6 +448,7 @@ const AuthenticatedDmRouteWithChildren = AuthenticatedDmRoute._addFileChildren(
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdsRoute: typeof AuthenticatedAdsRoute
+  AuthenticatedCreateRoute: typeof AuthenticatedCreateRoute
   AuthenticatedDmRoute: typeof AuthenticatedDmRouteWithChildren
   AuthenticatedEventsRoute: typeof AuthenticatedEventsRoute
   AuthenticatedExploreRoute: typeof AuthenticatedExploreRoute
@@ -448,6 +468,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdsRoute: AuthenticatedAdsRoute,
+  AuthenticatedCreateRoute: AuthenticatedCreateRoute,
   AuthenticatedDmRoute: AuthenticatedDmRouteWithChildren,
   AuthenticatedEventsRoute: AuthenticatedEventsRoute,
   AuthenticatedExploreRoute: AuthenticatedExploreRoute,

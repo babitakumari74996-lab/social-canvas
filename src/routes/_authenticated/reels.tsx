@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { Avatar } from "@/components/Avatar";
-import { MediaImg } from "@/components/PostCard";
 import { useActions, useMe, useReels } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
 import { formatCount } from "@/lib/time";
@@ -20,6 +18,12 @@ export const Route = createFileRoute("/_authenticated/reels")({
 function ReelsPage() {
   const { reels, loading } = useReels();
   const [muted, setMuted] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, []);
 
   return (
     <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
@@ -43,7 +47,7 @@ function ReelsPage() {
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <div className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+      <div ref={scrollRef} className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
           <div className="h-full snap-start grid place-items-center">
             <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
@@ -81,6 +85,9 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   const [paused, setPaused] = useState(false);
   const [showPlay, setShowPlay] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // The video stays hidden until its first frame is ready, so the poster shows instead of a black
+  // frame and there is no visible swap ("blink") when the real video starts.
+  const [frameReady, setFrameReady] = useState(false);
 
   useEffect(() => setLiked(reel.likedByMe), [reel.likedByMe]);
 
@@ -141,11 +148,25 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   return (
     <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-4">
       <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
-        {reel.poster && <MediaImg src={reel.poster} className="absolute inset-0 h-full w-full object-cover opacity-40" />}
+        {reel.poster && (
+          // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
+          <img
+            src={reel.poster}
+            alt=""
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+            className="absolute inset-0 h-full w-full object-cover bg-zinc-900"
+          />
+        )}
         <video
           ref={videoRef}
           src={reel.video_url}
-          className="absolute inset-0 h-full w-full object-cover"
+          poster={reel.poster ?? undefined}
+          preload="auto"
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
+          onLoadedData={() => setFrameReady(true)}
+          onPlaying={() => setFrameReady(true)}
           loop
           muted={muted}
           playsInline
@@ -191,12 +212,6 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             </div>
             {reel.caption && (
               <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
-            )}
-            {reel.music && (
-              <div className="mt-2 flex items-center gap-1.5 text-xs overflow-hidden">
-                <Music2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="whitespace-nowrap animate-[marquee_10s_linear_infinite]">{reel.music} · {reel.music}</span>
-              </div>
             )}
           </div>
 
@@ -303,5 +318,3 @@ function ReelComments({ reelId, reel, onClose, isReal }: { reelId: string; reel:
   );
 }
 
-// keep supabase import referenced for potential realtime upgrades
-void supabase;

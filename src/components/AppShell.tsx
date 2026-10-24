@@ -1,20 +1,21 @@
-import { useState } from "react";
-import { Link, Outlet } from "@tanstack/react-router";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   Home, Search, Compass, Film, Send, Heart, Menu, Settings,
-  Bookmark, RotateCcw,
+  Bookmark, RotateCcw, User as UserIcon,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";
-import { CreateModal } from "@/components/CreateModal";
-import { SearchPanel } from "@/components/SearchPanel";
-import { NotificationsPanel } from "@/components/NotificationsPanel";
-import { StoryViewer } from "@/components/StoryViewer";
-import { ShareSheet } from "@/components/ShareSheet";
-import { EditProfileModal } from "@/components/EditProfileModal";
+import { useSwipeProgress } from "@/lib/swipe-progress";
+const CreateModal = lazy(() => import("@/components/CreateModal").then((m) => ({ default: m.CreateModal })));
+const SearchPanel = lazy(() => import("@/components/SearchPanel").then((m) => ({ default: m.SearchPanel })));
+const NotificationsPanel = lazy(() => import("@/components/NotificationsPanel").then((m) => ({ default: m.NotificationsPanel })));
+const StoryViewer = lazy(() => import("@/components/StoryViewer").then((m) => ({ default: m.StoryViewer })));
+const ShareSheet = lazy(() => import("@/components/ShareSheet").then((m) => ({ default: m.ShareSheet })));
+const EditProfileModal = lazy(() => import("@/components/EditProfileModal").then((m) => ({ default: m.EditProfileModal })));
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
@@ -57,11 +58,103 @@ function NavItem({
   );
 }
 
+// Bottom-nav section fill colour for the active tab.
+// Bottom-nav cell position (of 5 cells) for each swipeable section.
+const NAV_CELLS = 5;
+const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, explore: 3, profile: 4 };
+const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
+
+// One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
+// slides from the current icon to the neighbouring one, following the drag.
+function NavIndicator({ activeKey }: { activeKey: string | null }) {
+  // During a swipe the line slides from the current icon to the neighbouring one, following the drag.
+  const p = useSwipeProgress();
+  let pos: number | null = null;
+  if (p) {
+    const a = NAV_POS[p.from];
+    const b = NAV_POS[p.to];
+    if (a !== undefined && b !== undefined) {
+      // The indicator moves in step with the swipe while the finger is held. After a committed swipe
+      // it glides the rest of the way to the target icon.
+      const amount = p.committed ? 1 : Math.min(1, p.dx / p.full);
+      pos = a + (b - a) * amount;
+    }
+  } else if (activeKey && NAV_POS[activeKey] !== undefined) {
+    pos = NAV_POS[activeKey];
+  }
+  if (pos === null) return null;
+  const center = ((pos + 0.5) / NAV_CELLS) * 100;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-2 h-[3px] w-8 rounded-full"
+      style={{
+        left: `${center}%`,
+        transform: "translateX(-50%)",
+        background: IG_GRADIENT,
+        // Follows the finger exactly while dragging; glides after a commit, snap-back or tap.
+        transition: p && !p.committed ? "none" : "left 260ms cubic-bezier(.2,.8,.2,1)",
+      }}
+    />
+  );
+}
+
+function cell(active: boolean) {
+  // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
+  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
+}
+
 export function AppShell() {
   const me = useMe();
   const overlay = useUI();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Mount the code-split overlays only after the first screen has settled (see the lazy imports above).
+  const [overlaysReady, setOverlaysReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOverlaysReady(true), 1000);
+    return () => clearTimeout(t);
+  }, []);
   const isDemo = !me?.id || me.id === "me";
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
+
+  // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
+  useEffect(() => {
+    if (overlay.overlay === "search" || overlay.overlay === "notifications") ui.closeAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  // Swipe order matches the bottom nav: Home, Reels, Create, Explore, Profile. Every tab is a real page.
+  const swipeTabs: SwipeTab[] = [
+    { key: "home", label: "Home", to: "/feed", icon: Home },
+    { key: "reels", label: "Reels", to: "/reels", icon: Film },
+    { key: "create", label: "Create", to: "/create", icon: PlusIcon },
+    { key: "explore", label: "Explore", to: "/explore", icon: Search },
+    {
+      key: "profile",
+      label: "Profile",
+      to: "/profile/$username",
+      params: { username: me?.username ?? "aarav_sharma" },
+      icon: UserIcon,
+    },
+  ];
+  // The profile tab is only "selected" on my own profile; someone else's profile selects no tab.
+  const profileUsername = pathname.startsWith("/profile/") ? decodeURIComponent(pathname.split("/")[2] ?? "") : null;
+  const onOwnProfile = profileUsername !== null && profileUsername === me?.username;
+  // Index in swipeTabs and NAV_POS (-1 when the current page is not one of the sections).
+  const activeTabIndex = pathname === "/feed" || pathname === "/"
+    ? 0
+    : pathname.startsWith("/reels")
+      ? 1
+      : pathname.startsWith("/create")
+        ? 2
+        : pathname.startsWith("/explore")
+          ? 3
+          : onOwnProfile
+            ? 4
+            : -1;
+  const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "create"
+    : activeTabIndex === 3 ? "explore" : activeTabIndex === 4 ? "profile" : null;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -69,6 +162,16 @@ export function AppShell() {
       toast("Demo data reset");
     }
   };
+
+  // Embedded inside a swipe preview: render just the page. Read from the router, not `window`,
+  // so the server-rendered HTML matches the client.
+  if (embedMode) {
+    return (
+      <div className="min-h-screen pt-12 pb-14 md:pt-0 md:pb-0">
+        <Outlet />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -87,7 +190,7 @@ export function AppShell() {
           <NavItem icon={Film} label="Reels" to="/reels" />
           <NavItem icon={Send} label="Messages" to="/dm" />
           <NavItem icon={Heart} label="Notifications" onClick={ui.openNotifications} active={overlay.overlay === "notifications"} />
-          <NavItem icon={PlusIcon} label="Create" onClick={() => ui.openCreate()} />
+          <NavItem icon={PlusIcon} label="Create" to="/create" />
           <NavItem label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} />
         </nav>
         <div className="relative">
@@ -128,34 +231,56 @@ export function AppShell() {
         </div>
       </header>
 
-      {/* ------- main ------- */}
-      <main className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen">
+      {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
+      <SwipeTabs
+        tabs={swipeTabs}
+        activeIndex={activeTabIndex}
+        enabled={overlay.overlay === null}
+        className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen"
+      >
         <Outlet />
-      </main>
+      </SwipeTabs>
 
       {/* ------- mobile bottom nav ------- */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-center justify-around bg-background border-t border-border">
-        <Link to="/feed" aria-label="Home"><Home className="h-6 w-6" /></Link>
-        <button type="button" aria-label="Search" onClick={ui.openSearch}><Search className="h-6 w-6" /></button>
-        <button type="button" aria-label="Create" onClick={() => ui.openCreate()}>
+      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
+        <NavIndicator activeKey={activeKey} />
+        <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
+          <Home className="h-6 w-6" />
+        </Link>
+        <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
+          <Film className="h-6 w-6" />
+        </Link>
+        <Link to="/create" aria-label="Create" className={cell(activeTabIndex === 2)}>
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
-        </button>
-        <Link to="/reels" aria-label="Reels"><Film className="h-6 w-6" /></Link>
-        <Link to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} aria-label="Profile">
-          <Avatar path={me?.avatar_url} alt="me" size={26} className="ring-1 ring-border" />
+        </Link>
+        <Link to="/explore" aria-label="Explore" className={cell(activeTabIndex === 3)}>
+          <Search className="h-6 w-6" />
+        </Link>
+        <Link
+          to="/profile/$username"
+          params={{ username: me?.username ?? "aarav_sharma" }}
+          aria-label="Profile"
+          className={cell(activeTabIndex === 4)}
+        >
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
       </nav>
 
       {/* ------- global overlays ------- */}
-      <CreateModal />
-      <SearchPanel />
-      <NotificationsPanel />
-      <StoryViewer />
-      <ShareSheet />
-      <EditProfileModal />
+      {/* Overlays are code-split and mounted after the first paint, so their JS is not on the critical path. */}
+      {overlaysReady && (
+        <Suspense fallback={null}>
+          <CreateModal />
+          <SearchPanel />
+          <NotificationsPanel />
+          <StoryViewer />
+          <ShareSheet />
+          <EditProfileModal />
+        </Suspense>
+      )}
     </div>
   );
 }

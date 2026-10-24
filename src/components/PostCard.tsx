@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
   MoreHorizontal, BadgeCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar } from "@/components/Avatar";
+import { Avatar, useImageFade } from "@/components/Avatar";
 import { useActions } from "@/lib/data";
 import { demoActions, ui } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
@@ -29,20 +29,87 @@ export function MediaImg({
       </div>
     );
   }
+  return <MediaImgLoaded src={src} alt={alt} className={className} onClick={onClick} onError={() => setErr(true)} />;
+}
+
+function MediaImgLoaded({
+  src, alt, className, onClick, onError,
+}: { src: string; alt: string; className: string; onClick?: () => void; onError: () => void }) {
+  const fade = useImageFade(className, src);
   return (
     <img
+      ref={fade.ref}
+      {...fade.props}
       src={src}
       alt={alt}
       loading="lazy"
       draggable={false}
       onClick={onClick}
-      onError={() => setErr(true)}
-      className={className}
+      onLoad={fade.onLoad}
+      onError={onError}
+      className={`bg-muted ${className}`}
     />
   );
 }
 
-export function PostCard({ post, withComments = false }: { post: UPost; withComments?: boolean }) {
+/**
+ * Mouse drag for a horizontal carousel. Touch and trackpad already scroll natively; a mouse
+ * drag does not, so the carousel is moved by hand and snapped to the nearest photo on release.
+ */
+function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let down = false;
+    let moved = false;
+    let startX = 0;
+    let startLeft = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      down = true;
+      moved = false;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+      el.style.scrollSnapType = "none";
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) < 5) return;
+      moved = true;
+      el.scrollLeft = startLeft - dx;
+    };
+    const onUp = () => {
+      if (!down) return;
+      down = false;
+      el.style.scrollSnapType = "";
+      if (!moved) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+    };
+    // A drag must not also count as a click (e.g. opening the post).
+    const onClick = (e: MouseEvent) => {
+      if (moved) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("click", onClick, true);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("click", onClick, true);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [ref]);
+}
+
+export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -52,6 +119,7 @@ export function PostCard({ post, withComments = false }: { post: UPost; withComm
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const isText = post.media_urls.length === 0;
+  useMouseDragCarousel(scrollRef);
 
   const like = (on: boolean) => {
     setLiked(on);
@@ -109,7 +177,7 @@ export function PostCard({ post, withComments = false }: { post: UPost; withComm
       {isText ? (
         <div
           onDoubleClick={doubleTap}
-          className="relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden aspect-square max-h-[585px] flex items-center justify-center p-8 text-center select-none"
+          className={`relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"} flex items-center justify-center p-8 text-center select-none`}
           style={{ background: "linear-gradient(135deg, #4F5BD5 0%, #962FBF 30%, #D62976 60%, #FA7E1E 85%, #FEDA75 100%)" }}
         >
           <p className="text-white text-xl md:text-2xl font-semibold leading-snug drop-shadow whitespace-pre-wrap break-words max-w-[85%]">
@@ -122,7 +190,7 @@ export function PostCard({ post, withComments = false }: { post: UPost; withComm
             ref={scrollRef}
             onScroll={onScroll}
             onDoubleClick={doubleTap}
-            className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar aspect-square max-h-[585px] bg-black"
+            className={`flex ${post.media_urls.length > 1 ? "overflow-x-auto snap-x snap-mandatory no-scrollbar" : "overflow-hidden"} bg-black ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"}`}
           >
             {post.media_urls.map((m, i) => (
               <div key={i} className="min-w-full snap-center">
