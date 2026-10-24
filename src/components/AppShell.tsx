@@ -203,9 +203,8 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* ------- mobile top bars (two identical rows, stacked) ------- */}
-      {[0, 1].map((row) => (
-      <header key={row} className={`md:hidden fixed ${row === 0 ? "top-0" : "top-12"} inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border`}>
+      {/* ------- mobile top bar ------- */}
+      <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
         <Link to="/feed"><Wordmark className="text-[22px]" /></Link>
         <div className="flex items-center gap-5">
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
@@ -222,7 +221,9 @@ export function AppShell() {
           </button>
         </div>
       </header>
-      ))}
+
+      {/* ------- empty second bar under the top bar (its elements were removed) ------- */}
+      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 bg-background/95 backdrop-blur border-b border-border" />
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
       <SwipeTabs
