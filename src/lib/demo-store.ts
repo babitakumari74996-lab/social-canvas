@@ -46,9 +46,16 @@ function loadPersisted(): Partial<Persisted> {
   }
 }
 
+// Built-in demo posts and reels that belong to the current user. They come from the seed data, so they
+// are never saved as "mine" (saving them again would duplicate them on every reload).
+function seedIds(): Set<string> {
+  return new Set([...buildDemoPosts(), ...buildDemoReels()].map((x) => x.id));
+}
+
 function buildInitial(saved: Partial<Persisted> = {}): DemoState {
   const users = DEMO_USERS.map((u) => (u.id === DEMO_ME_ID ? { ...u, ...saved.edits } : u));
-  const myPosts = saved.myPosts ?? [];
+  const seeds = seedIds();
+  const myPosts = (saved.myPosts ?? []).filter((p) => !seeds.has(p.id));
   const posts = [...myPosts, ...buildDemoPosts()].map((p) => ({
     ...p,
     likedByMe: !!saved.liked?.[p.id],
@@ -57,7 +64,7 @@ function buildInitial(saved: Partial<Persisted> = {}): DemoState {
     commentsCount: p.commentsCount + (saved.myComments?.filter((c) => c.post_id === p.id).length ?? 0),
   }));
   const myStories = saved.myStories ?? [];
-  const myReels = saved.myReels ?? [];
+  const myReels = (saved.myReels ?? []).filter((r) => !seeds.has(r.id));
   const reels = [...myReels, ...buildDemoReels()].map((r) => ({
     ...r,
     likedByMe: !!saved.liked?.[r.id],
@@ -160,9 +167,9 @@ function persist() {
       following: state.following,
       viewedStories: state.viewedStories,
       edits: state.edits,
-      myPosts: small(state.posts.filter((p) => p.user_id === DEMO_ME_ID)),
+      myPosts: small(state.posts.filter((p) => p.user_id === DEMO_ME_ID && !seedIds().has(p.id))),
       myStories: small(state.stories.filter((s) => s.user_id === DEMO_ME_ID)),
-      myReels: small(state.reels.filter((r) => r.user_id === DEMO_ME_ID)),
+      myReels: small(state.reels.filter((r) => r.user_id === DEMO_ME_ID && !seedIds().has(r.id))),
       myComments: state.comments.filter((c) => c.user_id === DEMO_ME_ID),
       myMessages: state.messages.slice(-100),
     };
