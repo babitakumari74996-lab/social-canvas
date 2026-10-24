@@ -221,7 +221,7 @@ export function AppShell() {
       {/* ------- second bar under the top bar: Community tab ------- */}
       <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
-        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-[#D62976]/40 shadow-[0_0_14px_rgba(214,41,118,0.35)]">
           <Search className="h-4 w-4" /> Search
         </button>
         <div className="flex items-center gap-5">
