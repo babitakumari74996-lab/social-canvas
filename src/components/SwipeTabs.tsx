@@ -187,8 +187,9 @@ export function SwipeTabs({
         } else {
           // An overlay (Create / Explore) has no page to reveal: the page only rubber-bands,
           // or stays put while an overlay is already open over it.
+          // Not moving the page here: a rubber-band would slide it off the edge and show white behind it.
           setPreview(null);
-          setMain(fromOverlay ? 0 : dx * 0.25, false);
+          setMain(0, false);
         }
         // Progress toward the commit point (30% of the width), capped at 1.
         const tabsNow = latest.current.tabs;
