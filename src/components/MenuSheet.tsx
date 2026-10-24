@@ -9,7 +9,7 @@ import { toast } from "sonner";
 type Icon = React.ComponentType<{ className?: string }>;
 
 // Sections of the menu. Items with `to` open a page; the others have no page in this demo yet.
-type Section = { label: string; icon: Icon; to?: string; params?: Record<string, string>; search?: { tab: string } };
+type Section = { label: string; icon: Icon; color: string; to?: string; params?: Record<string, string>; search?: { tab: string } };
 
 export function MenuSheet({
   open,
@@ -35,21 +35,21 @@ export function MenuSheet({
   if (!open) return null;
 
   const sections: Section[] = [
-    { label: "Friends", icon: Users },
-    { label: "Memories", icon: Clock },
-    { label: "Saved", icon: Bookmark, to: "/profile/$username", params: { username }, search: { tab: "saved" } },
-    { label: "Groups", icon: UsersRound },
-    { label: "Reels", icon: Film, to: "/reels" },
-    { label: "Feeds", icon: Rss },
-    { label: "Events", icon: CalendarDays },
-    { label: "Ads Manager", icon: BarChart3 },
-    { label: "Play games", icon: Gamepad2 },
-    { label: "Birthdays", icon: Gift },
-    { label: "Messenger", icon: MessageCircle, to: "/dm" },
-    { label: "Orders and payments", icon: Receipt },
-    { label: "Pages", icon: Flag },
-    { label: "Support", icon: LifeBuoy },
-    { label: "Your AD activity", icon: Megaphone },
+    { label: "Friends", icon: Users, color: "text-[#1877F2]" },
+    { label: "Memories", icon: Clock, color: "text-[#1877F2]" },
+    { label: "Saved", icon: Bookmark, color: "text-[#A033FF]", to: "/profile/$username", params: { username }, search: { tab: "saved" } },
+    { label: "Groups", icon: UsersRound, color: "text-[#1877F2]" },
+    { label: "Reels", icon: Film, color: "text-[#F5533D]", to: "/reels" },
+    { label: "Feeds", icon: Rss, color: "text-[#1877F2]" },
+    { label: "Events", icon: CalendarDays, color: "text-[#F02849]" },
+    { label: "Ads Manager", icon: BarChart3, color: "text-[#1877F2]" },
+    { label: "Play games", icon: Gamepad2, color: "text-[#1877F2]" },
+    { label: "Birthdays", icon: Gift, color: "text-[#F7B928]" },
+    { label: "Messenger", icon: MessageCircle, color: "text-[#0084FF]", to: "/dm" },
+    { label: "Orders and payments", icon: Receipt, color: "text-[#31A24C]" },
+    { label: "Pages", icon: Flag, color: "text-[#F7681C]" },
+    { label: "Support", icon: LifeBuoy, color: "text-[#1877F2]" },
+    { label: "Your AD activity", icon: Megaphone, color: "text-[#1877F2]" },
   ];
 
   const rowClass = "flex w-full items-center gap-4 px-4 py-3 text-[15px] text-left hover:bg-muted transition-colors";
@@ -57,7 +57,7 @@ export function MenuSheet({
   const row = (s: Section) => {
     const content = (
       <>
-        <s.icon className="h-6 w-6 stroke-[1.8] shrink-0" />
+        <s.icon className={`h-6 w-6 stroke-[2] shrink-0 ${s.color}`} />
         <span>{s.label}</span>
       </>
     );
