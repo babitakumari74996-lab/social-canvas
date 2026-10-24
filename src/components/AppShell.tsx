@@ -210,9 +210,6 @@ export function AppShell() {
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
             <Heart className="h-6 w-6" />
           </button>
-          <Link to="/dm" aria-label="Messages">
-            <Send className="h-6 w-6 -rotate-12" />
-          </Link>
           <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center cursor-pointer transition-opacity hover:opacity-60">
             <Grid3x3 className="h-6 w-6" />
           </button>
@@ -221,10 +218,13 @@ export function AppShell() {
 
       {/* ------- second bar under the top bar: Community tab ------- */}
       <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
-        {/* icons only, under the Menu button: Explore sits left of Community (same 24px boxes, right edge) */}
+        {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
+        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 items-center gap-2 mr-4 rounded-lg bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+          <Search className="h-4 w-4" /> Search
+        </button>
         <div className="flex items-center gap-5">
-          <Link to="/explore" aria-label="Explore" className="grid h-6 w-6 place-items-center">
-            <Search className="h-6 w-6" />
+          <Link to="/dm" aria-label="Messages" className="grid h-6 w-6 place-items-center">
+            <Send className="h-6 w-6 -rotate-12" />
           </Link>
           <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
             <img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
