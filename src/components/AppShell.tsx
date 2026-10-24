@@ -1,11 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
-  Home, Search, Compass, Film, Send, Heart, Menu, Settings,
-  Bookmark, RotateCcw, User as UserIcon,
+  Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
+import { MenuSheet } from "@/components/MenuSheet";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";
@@ -107,7 +107,8 @@ function cell(active: boolean) {
 export function AppShell() {
   const me = useMe();
   const overlay = useUI();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
   // Mount the code-split overlays only after the first screen has settled (see the lazy imports above).
   const [overlaysReady, setOverlaysReady] = useState(false);
   useEffect(() => {
@@ -121,6 +122,7 @@ export function AppShell() {
   // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
   useEffect(() => {
     if (overlay.overlay === "search" || overlay.overlay === "notifications") ui.closeAll();
+    setMenuOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -194,24 +196,7 @@ export function AppShell() {
           <NavItem label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} />
         </nav>
         <div className="relative">
-          {moreOpen && (
-            <div className="absolute bottom-12 left-0 w-60 rounded-2xl border border-border bg-card shadow-xl overflow-hidden animate-in-fade">
-              <Link to="/settings" className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted" onClick={() => setMoreOpen(false)}>
-                <Settings className="h-5 w-5" /> Settings
-              </Link>
-              <Link to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} search={{ tab: "saved" }} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted" onClick={() => setMoreOpen(false)}>
-                <Bookmark className="h-5 w-5" /> Saved
-              </Link>
-              <button
-                type="button"
-                className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-muted w-full text-left border-t border-border"
-                onClick={() => { setMoreOpen(false); reset(); }}
-              >
-                <RotateCcw className="h-5 w-5" /> Reset demo data
-              </button>
-            </div>
-          )}
-          <button type="button" onClick={() => setMoreOpen((v) => !v)} className="flex items-center gap-4 rounded-lg p-3 hover:bg-muted transition-colors w-full text-left">
+          <button type="button" onClick={() => setMenuOpen((v) => !v)} className="flex items-center gap-4 rounded-lg p-3 hover:bg-muted transition-colors w-full text-left">
             <Menu className="h-6 w-6 stroke-[1.8]" />
             <span className="hidden xl:inline text-[15px]">More</span>
           </button>
@@ -228,6 +213,9 @@ export function AppShell() {
           <Link to="/dm" aria-label="Messages">
             <Send className="h-6 w-6 -rotate-12" />
           </Link>
+          <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center h-8 w-8 rounded-full bg-muted">
+            <Grid3x3 className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
@@ -235,7 +223,7 @@ export function AppShell() {
       <SwipeTabs
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
-        enabled={overlay.overlay === null}
+        enabled={overlay.overlay === null && !menuOpen}
         className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen"
       >
         <Outlet />
@@ -268,6 +256,16 @@ export function AppShell() {
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
       </nav>
+
+      {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
+      {menuOpen && (
+        <MenuSheet
+          open={menuOpen}
+          onClose={closeMenu}
+          username={me?.username ?? "aarav_sharma"}
+          onReset={reset}
+        />
+      )}
 
       {/* ------- global overlays ------- */}
       {/* Overlays are code-split and mounted after the first paint, so their JS is not on the critical path. */}
