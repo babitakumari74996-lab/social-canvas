@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Users, Clock, Bookmark, UsersRound, Film, Rss, CalendarDays, BarChart3, Gamepad2, Gift,
   MessageCircle, Receipt, Flag, LifeBuoy, Megaphone, Settings, RotateCcw, X,
+  Joystick, UserPlus, Contrast,
 } from "lucide-react";
 import { toast } from "sonner";
+import { isColorInverted, setColorInverted } from "@/lib/color-invert";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -22,6 +24,7 @@ export function MenuSheet({
   username: string;
   onReset: () => void;
 }) {
+  const [inverted, setInverted] = useState(() => isColorInverted());
   // Escape closes the menu.
   useEffect(() => {
     if (!open) return;
@@ -36,6 +39,7 @@ export function MenuSheet({
 
   const sections: Section[] = [
     { label: "Friends", icon: Users, color: "text-[#1877F2]" },
+    { label: "Requests", icon: UserPlus, color: "text-[#1877F2]" },
     { label: "Memories", icon: Clock, color: "text-[#1877F2]" },
     { label: "Saved", icon: Bookmark, color: "text-[#A033FF]", to: "/profile/$username", params: { username }, search: { tab: "saved" } },
     { label: "Groups", icon: UsersRound, color: "text-[#1877F2]" },
@@ -44,6 +48,7 @@ export function MenuSheet({
     { label: "Events", icon: CalendarDays, color: "text-[#F02849]" },
     { label: "Ads Manager", icon: BarChart3, color: "text-[#1877F2]" },
     { label: "Play games", icon: Gamepad2, color: "text-[#1877F2]" },
+    { label: "Gaming", icon: Joystick, color: "text-[#7D3AED]" },
     { label: "Birthdays", icon: Gift, color: "text-[#F7B928]" },
     { label: "Messenger", icon: MessageCircle, color: "text-[#0084FF]", to: "/dm" },
     { label: "Orders and payments", icon: Receipt, color: "text-[#31A24C]" },
@@ -101,6 +106,28 @@ export function MenuSheet({
         <div className="flex-1 overflow-y-auto py-2">
           {sections.map(row)}
           <div className="my-2 border-t border-border" />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={inverted}
+            className={rowClass}
+            onClick={() => {
+              const next = !inverted;
+              setColorInverted(next);
+              setInverted(next);
+            }}
+          >
+            <Contrast className="h-6 w-6 stroke-[2] shrink-0 text-[#1877F2]" />
+            <span className="flex-1">Color inversion</span>
+            <span
+              aria-hidden
+              className={`relative h-6 w-11 rounded-full transition-colors ${inverted ? "bg-[#1877F2]" : "bg-muted-foreground/40"}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${inverted ? "translate-x-5" : "translate-x-0.5"}`}
+              />
+            </span>
+          </button>
           <Link to="/settings" className={rowClass} onClick={onClose}>
             <Settings className="h-6 w-6 stroke-[1.8] shrink-0" />
             <span>Settings</span>

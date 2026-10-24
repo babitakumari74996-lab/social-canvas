@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { applyDemoSnapshot, hydrateDemo } from "@/lib/demo-store";
+import { applyStoredColorInvert } from "@/lib/color-invert";
 import {
   Outlet,
   Link,
@@ -185,6 +186,7 @@ function RootComponent() {
     // Hydrated: apply the saved demo changes. Swipe-preview pages (embed) do this too, so they show the
     // saved state even before the opening page's snapshot arrives. The snapshot then keeps them in step.
     hydrateDemo();
+    applyStoredColorInvert();
   }, []);
 
   useEffect(() => {

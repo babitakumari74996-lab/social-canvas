@@ -249,3 +249,12 @@ img[data-fade][data-loaded] {
   background-size: 200% 100%;
   animation: media-shimmer 1.2s linear infinite;
 }
+
+/* Color inversion (menu). Photos and videos are inverted back so they keep their real colours. */
+html.sv-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+html.sv-invert img,
+html.sv-invert video {
+  filter: invert(1) hue-rotate(180deg);
+}
