@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, X, Clock } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Avatar } from "@/components/Avatar";
-import { useUserSearch } from "@/lib/data";
+import { useReels, useUserSearch } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 
 const RECENT_KEY = "sv-recent-searches";
@@ -21,6 +22,7 @@ export function SearchPanel() {
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
   const results = useUserSearch(q);
+  const { reels } = useReels();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -80,6 +82,16 @@ export function SearchPanel() {
               <RecentRow key={r} username={r} onPick={go} />
             ))}
           </>
+        )}
+        {!q && reels.length > 0 && (
+          // Instagram-style reels grid under the recent searches
+          <div className="grid grid-cols-3 gap-0.5 pt-1">
+            {reels.map((r) => (
+              <Link key={r.id} to="/reels" onClick={() => ui.closeAll()} className="relative aspect-[9/16] bg-muted overflow-hidden">
+                {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
+              </Link>
+            ))}
+          </div>
         )}
         {q && results.map((u) => (
           <button

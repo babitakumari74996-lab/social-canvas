@@ -155,8 +155,10 @@ export function AppShell() {
           : onOwnProfile
             ? 4
             : -1;
-  const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "create"
-    : activeTabIndex === 3 ? "moods" : activeTabIndex === 4 ? "profile" : null;
+  // While search is open no tab is selected (Instagram-style): only the nav highlight changes, not the swipe position.
+  const navIndex = overlay.overlay === "search" ? -1 : activeTabIndex;
+  const activeKey = navIndex === 0 ? "home" : navIndex === 1 ? "reels" : navIndex === 2 ? "create"
+    : navIndex === 3 ? "moods" : navIndex === 4 ? "profile" : null;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -219,7 +221,7 @@ export function AppShell() {
       {/* ------- second bar under the top bar: Community tab ------- */}
       <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
-        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 items-center gap-2 mr-4 rounded-lg bg-muted px-3 py-1.5 text-sm text-muted-foreground">
+        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground">
           <Search className="h-4 w-4" /> Search
         </button>
         <div className="flex items-center gap-5">
@@ -245,26 +247,26 @@ export function AppShell() {
       {/* ------- mobile bottom nav ------- */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
         <NavIndicator activeKey={activeKey} />
-        <Link to="/feed" aria-label="Home" className={cell(activeTabIndex === 0)} onClick={() => ui.closeAll()}>
+        <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
         </Link>
-        <Link to="/reels" aria-label="Reels" className={cell(activeTabIndex === 1)}>
+        <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
           <Film className="h-6 w-6" />
         </Link>
-        <Link to="/create" aria-label="Create" className={cell(activeTabIndex === 2)}>
+        <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
         </Link>
-        <Link to="/moods" aria-label="Moods" className={cell(activeTabIndex === 3)}>
+        <Link to="/moods" aria-label="Moods" className={cell(navIndex === 3)}>
           <Smile className="h-6 w-6" />
         </Link>
         <Link
           to="/profile/$username"
           params={{ username: me?.username ?? "aarav_sharma" }}
           aria-label="Profile"
-          className={cell(activeTabIndex === 4)}
+          className={cell(navIndex === 4)}
         >
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
