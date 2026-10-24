@@ -165,6 +165,19 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
+    // Swipe preview pages (embed mode) keep their data from when they loaded. The app asks them to
+    // refresh when a swipe starts, so the preview shows the same content as the page that opens.
+    if (!document.documentElement.hasAttribute("data-embed")) return;
+    const onMsg = (e: MessageEvent) => {
+      if (e.source === window.parent && e.data?.type === "sv-embed-refresh") {
+        void queryClient.invalidateQueries();
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [queryClient]);
+
+  useEffect(() => {
     // Hydrated (this effect runs only on the client). Wait for the first screen's images, then hide the splash.
     let cancelled = false;
     const check = () => {

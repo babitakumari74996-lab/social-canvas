@@ -310,3 +310,12 @@ export function useUI(): UIState {
     () => uiState,
   );
 }
+
+// Another tab or a swipe-preview page wrote the demo data: take over its state, so every open copy matches.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== LS_KEY && e.key !== null) return;
+    state = buildInitial();
+    listeners.forEach((l) => l());
+  });
+}

@@ -142,6 +142,8 @@ export function SwipeTabs({
       if (busy || tracking || !latest.current.enabled) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (blocked(e.target)) return;
+      // Ask the preview pages to pick up the latest data, so they match the page that will open.
+      pv.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "sv-embed-refresh" }, window.location.origin));
       tracking = true;
       pid = e.pointerId;
       sx = e.clientX;
@@ -355,7 +357,7 @@ export function SwipeTabs({
         ref={previewRef}
         aria-hidden
         className="fixed top-0 bottom-0 bg-background pointer-events-none"
-        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%" }}
+        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%", background: pvTab?.key === "reels" ? "#000" : undefined }}
       >
         {armed && pages.map((pg) => (
           <div
