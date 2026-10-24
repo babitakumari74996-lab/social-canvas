@@ -208,8 +208,8 @@ export function AppShell() {
       {/* ------- mobile top bar ------- */}
       <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
-          {/* splash logo, to the left of the wordmark */}
-          <img src="/splash-logo.png" alt="" aria-hidden width={312} height={222} className="h-7 w-auto" />
+          {/* logo icon only (no text), to the left of the wordmark */}
+          <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
           <Wordmark className="text-[22px]" />
         </Link>
         <div className="flex items-center gap-5">
