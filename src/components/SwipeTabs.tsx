@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { setSwipeProgress } from "@/lib/swipe-progress";
-import { getDemo } from "@/lib/demo-store";
+import { getDemo, subscribeDemo } from "@/lib/demo-store";
 
 export type SwipeTab = {
   key: string;
@@ -152,6 +152,10 @@ export function SwipeTabs({
       if (e.data?.type === "sv-embed-ready" && e.source) sendState(e.source as Window, true);
     };
     window.addEventListener("message", onEmbedReady);
+    // Keep every preview in step with the page as the data changes, not only when a swipe starts.
+    const unsubDemo = subscribeDemo(() => {
+      pv.querySelectorAll("iframe").forEach((f) => sendState(f.contentWindow));
+    });
 
     const onDown = (e: PointerEvent) => {
       if (busy || tracking || !latest.current.enabled) return;
@@ -340,6 +344,7 @@ export function SwipeTabs({
     return () => {
       document.removeEventListener("pointerdown", onDocDown);
       window.removeEventListener("message", onEmbedReady);
+      unsubDemo();
       main.removeEventListener("touchmove", onTouchMove);
       main.removeEventListener("wheel", onWheel);
       main.removeEventListener("dragstart", onDragStart);

@@ -2,8 +2,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession, useMyProfile } from "@/lib/auth";
 import { uploadMedia } from "@/lib/media";
-import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS } from "@/lib/demo-data";
-import { demoActions, demoCommentsFor, demoMe, useDemo } from "@/lib/demo-store";
+import { makePoster, saveMedia } from "@/lib/media-store";
+import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
+import { demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
 import type { StoryGroup, UComment, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -218,7 +219,7 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
     enabled: !!userId,
   });
   if (userId) return { reels: data ?? [], loading: isLoading };
-  return { reels: [...demoState.reels], loading: false };
+  return { reels: demoState.reels.map(demoReel), loading: false };
 }
 
 // ---- profile -----------------------------------------------------------------------
@@ -284,7 +285,7 @@ export function useProfilePage(username: string): { page: ProfilePage | null; lo
   const profile = demoState.users.find((u) => u.username === username) ?? null;
   if (!profile) return { page: null, loading: false };
   const posts = demoState.posts.filter((p) => p.user_id === profile.id);
-  const reels = demoState.reels.filter((r) => r.user_id === profile.id);
+  const reels = demoState.reels.filter((r) => r.user_id === profile.id).map(demoReel);
   const followers = Object.values(demoState.following).filter(Boolean).length + 128 + (profile.id === "u2" ? 8000 : profile.id === DEMO_ME_ID ? 0 : 300);
   const followingCount = profile.id === DEMO_ME_ID ? Object.values(demoState.following).filter(Boolean).length : 245;
   return {
@@ -485,8 +486,22 @@ export function useActions() {
     },
     createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null }) => {
       if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption });
-      const url = input.file ? objectUrl(input.file) : input.galleryUrl!;
-      demoActions.addReel({ videoUrl: url, caption: input.caption, music: input.music });
+      if (input.file) {
+        // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint.
+        const poster = await makePoster(input.file);
+        const key = `m-${crypto.randomUUID()}`;
+        try {
+          await saveMedia(key, input.file);
+          demoActions.addReel({ videoUrl: `idb:${key}`, caption: input.caption, music: input.music, poster });
+          void ensureMedia();
+        } catch {
+          demoActions.addReel({ videoUrl: objectUrl(input.file), caption: input.caption, music: input.music, poster });
+        }
+        return;
+      }
+      const url = input.galleryUrl!;
+      const poster = DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
+      demoActions.addReel({ videoUrl: url, caption: input.caption, music: input.music, poster });
     },
     sendMessage: (receiverId: string, content: string) => (userId ? real.sendMessage(receiverId, content) : demoActions.sendMessage(receiverId, content)),
     updateProfile: (patch: { display_name?: string; bio?: string; avatar_url?: string }) => (userId ? real.updateProfile(patch) : demoActions.updateProfile(patch)),
@@ -497,6 +512,11 @@ function fileToDataUrl(file: File): string {
   // NOTE: for demo mode; small files only (localStorage-capped by persist())
   const url = URL.createObjectURL(file);
   return url;
+}
+
+/** A demo reel with a playable video URL (uploaded videos are resolved from IndexedDB). */
+function demoReel(r: UReel): UReel {
+  return { ...r, video_url: resolveVideoUrl(r.video_url) };
 }
 
 function objectUrl(file: File): string {
