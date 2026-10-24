@@ -7,18 +7,32 @@ import { useSignedUrl } from "@/lib/media";
  * visible while the photo is still transparent. Callers that set their own opacity (e.g. a dimmed
  * poster) keep it and get no fade. Handles photos that finished loading before hydration.
  */
-export function useImageFade(callerClassName = "") {
+// Image URLs that have already loaded in this session. When a page remounts (tab switch), its images
+// are shown at once instead of fading in again, so the page does not look like it reloaded.
+const loadedSrcs = new Set<string>();
+
+export function useImageFade(callerClassName = "", src?: string | null) {
   const ref = useRef<HTMLImageElement>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(() => !!src && loadedSrcs.has(src));
   useEffect(() => {
     const el = ref.current;
-    if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
-  }, []);
+    if (el && el.complete && el.naturalWidth > 0) {
+      if (src) loadedSrcs.add(src);
+      setLoaded(true);
+    }
+  }, [src]);
   const ownOpacity = /(^|\s)opacity-/.test(callerClassName);
   const props = ownOpacity
     ? {}
     : { "data-fade": "", "data-loaded": loaded ? "" : undefined };
-  return { ref, onLoad: () => setLoaded(true), props };
+  return {
+    ref,
+    onLoad: () => {
+      if (src) loadedSrcs.add(src);
+      setLoaded(true);
+    },
+    props,
+  };
 }
 
 function isDirectSrc(path?: string | null) {
@@ -57,7 +71,7 @@ export function Avatar({
 }
 
 function AvatarImg({ src, alt, size, className }: { src: string; alt: string; size: number; className: string }) {
-  const fade = useImageFade(className);
+  const fade = useImageFade(className, src);
   return (
     <img
       ref={fade.ref}
