@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
-  Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, User as UserIcon,
+  Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
 import { MenuSheet } from "@/components/MenuSheet";
@@ -61,7 +61,7 @@ function NavItem({
 // Bottom-nav section fill colour for the active tab.
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
-const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, explore: 3, profile: 4 };
+const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
@@ -126,12 +126,12 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // Swipe order matches the bottom nav: Home, Reels, Create, Explore, Profile. Every tab is a real page.
+  // Swipe order matches the bottom nav: Home, Reels, Create, Moods, Profile. Every tab is a real page.
   const swipeTabs: SwipeTab[] = [
     { key: "home", label: "Home", to: "/feed", icon: Home },
     { key: "reels", label: "Reels", to: "/reels", icon: Film },
     { key: "create", label: "Create", to: "/create", icon: PlusIcon },
-    { key: "explore", label: "Explore", to: "/explore", icon: Search },
+    { key: "moods", label: "Moods", to: "/moods", icon: Smile },
     {
       key: "profile",
       label: "Profile",
@@ -150,13 +150,13 @@ export function AppShell() {
       ? 1
       : pathname.startsWith("/create")
         ? 2
-        : pathname.startsWith("/explore")
+        : pathname.startsWith("/moods")
           ? 3
           : onOwnProfile
             ? 4
             : -1;
   const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "create"
-    : activeTabIndex === 3 ? "explore" : activeTabIndex === 4 ? "profile" : null;
+    : activeTabIndex === 3 ? "moods" : activeTabIndex === 4 ? "profile" : null;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -210,6 +210,9 @@ export function AppShell() {
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
             <Heart className="h-6 w-6" />
           </button>
+          <Link to="/explore" aria-label="Explore">
+            <Search className="h-6 w-6" />
+          </Link>
           <Link to="/dm" aria-label="Messages">
             <Send className="h-6 w-6 -rotate-12" />
           </Link>
@@ -244,8 +247,8 @@ export function AppShell() {
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
         </Link>
-        <Link to="/explore" aria-label="Explore" className={cell(activeTabIndex === 3)}>
-          <Search className="h-6 w-6" />
+        <Link to="/moods" aria-label="Moods" className={cell(activeTabIndex === 3)}>
+          <Smile className="h-6 w-6" />
         </Link>
         <Link
           to="/profile/$username"

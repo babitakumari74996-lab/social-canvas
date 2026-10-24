@@ -62,6 +62,32 @@ export interface UComment {
   profiles?: UProfile | null;
 }
 
+export interface UMoodMedia {
+  url: string; // remote URL, or "idb:<key>" for media saved on this device
+  kind: "image" | "video";
+}
+
+export interface UMood {
+  id: string;
+  user_id: string;
+  mood: string; // mood id, e.g. "happy"
+  note: string;
+  media: UMoodMedia[];
+  created_at: string;
+  likes: number;
+  commentsCount: number;
+  profiles?: UProfile | null;
+}
+
+export interface UMoodComment {
+  id: string;
+  mood_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  profiles?: UProfile | null;
+}
+
 export interface UNotif {
   id: string;
   type: "like" | "follow" | "comment" | "mention";

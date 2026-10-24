@@ -1,4 +1,4 @@
-import type { UPost, UProfile, UReel, UStory, UNotif } from "@/lib/types";
+import type { UMood, UMoodComment, UPost, UProfile, UReel, UStory, UNotif } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Demo world for Socialverse. Avatars/post images are local files in /public/demo.
@@ -270,6 +270,42 @@ export const DEMO_NOTIF_SEEDS: DemoNotifSeed[] = [
 
 // Users I already follow in the demo world (rest are suggestions).
 export const DEMO_FOLLOWING = ["u4", "u6", "u8"];
+
+// Moods posted by demo people. `media` is an index into DEMO_GALLERY (images only, so they always load).
+export interface DemoMoodSeed {
+  id: string; user_id: string; mood: string; note: string; media: number; mins: number; likes: number;
+  comments: { user_id: string; content: string; mins: number }[];
+}
+
+export const DEMO_MOOD_SEEDS: DemoMoodSeed[] = [
+  { id: "mo-u5-1", user_id: "u5", mood: "hyped", note: "Leg day done. Feeling unstoppable 💪", media: 3, mins: 240, likes: 311,
+    comments: [{ user_id: "u6", content: "beast mode 🔥", mins: 200 }] },
+  { id: "mo-u4-1", user_id: "u4", mood: "calm", note: "Deep work, chai, no notifications.", media: 1, mins: 90, likes: 64, comments: [] },
+  { id: "mo-u2-1", user_id: "u2", mood: "happy", note: "Sunrise over the ghats, best way to start a Monday ☀️", media: 0, mins: 30, likes: 128,
+    comments: [{ user_id: "u4", content: "goals 😍", mins: 20 }] },
+  { id: "mo-u6-1", user_id: "u6", mood: "tired", note: "Long night of street photos, worth it.", media: 5, mins: 600, likes: 42, comments: [] },
+  { id: "mo-u7-1", user_id: "u7", mood: "calm", note: "Riverside walk and no plans for the evening.", media: 2, mins: 900, likes: 77,
+    comments: [{ user_id: "u2", content: "so peaceful 🙌", mins: 800 }] },
+  { id: "mo-u8-1", user_id: "u8", mood: "happy", note: "New city, new food, new friends!", media: 4, mins: 1500, likes: 150, comments: [] },
+];
+
+export function buildDemoMoods(): UMood[] {
+  return DEMO_MOOD_SEEDS.map((m) => ({
+    id: m.id, user_id: m.user_id, mood: m.mood, note: m.note,
+    media: [{ url: DEMO_GALLERY[m.media % DEMO_GALLERY.length], kind: "image" as const }],
+    created_at: ago(m.mins), likes: m.likes, commentsCount: m.comments.length,
+    profiles: DEMO_USERS.find((u) => u.id === m.user_id),
+  }));
+}
+
+export function buildDemoMoodComments(): UMoodComment[] {
+  return DEMO_MOOD_SEEDS.flatMap((m) =>
+    m.comments.map((c, i) => ({
+      id: `${m.id}-c${i}`, mood_id: m.id, user_id: c.user_id, content: c.content,
+      created_at: ago(c.mins), profiles: DEMO_USERS.find((u) => u.id === c.user_id),
+    })),
+  );
+}
 
 export const DEMO_SUGGESTION_REASONS: Record<string, string> = {
   u2: "Followed by ananya.codes + 2 more",

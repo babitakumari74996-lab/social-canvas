@@ -5,7 +5,7 @@ import { uploadMedia } from "@/lib/media";
 import { makePoster, saveMedia } from "@/lib/media-store";
 import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
-import type { StoryGroup, UComment, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
+import type { StoryGroup, UComment, UMood, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Unified data layer: when the visitor has a real Supabase session we read
@@ -89,6 +89,15 @@ export function useFeed(): { posts: UPost[]; loading: boolean } {
     return { posts: real ?? [], loading: !real };
   }
   return { posts: [...demoState.posts], loading: false };
+}
+
+/** Moods shown on the Moods page, newest first. Demo mode only; the backend has no moods table yet. */
+export function useMoods(): { moods: UMood[]; loading: boolean } {
+  const { userId } = useSession();
+  const demo = useDemo();
+  if (userId) return { moods: [], loading: false };
+  const moods = [...demo.moods].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return { moods, loading: false };
 }
 
 export function useExplorePosts(): UPost[] {
