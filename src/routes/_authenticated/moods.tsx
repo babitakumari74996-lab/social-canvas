@@ -75,9 +75,9 @@ function MoodCard({ mood }: { mood: UMood }) {
       </header>
 
       {meta && (
-        <p className="px-3 pb-1 text-sm">
-          <span className="mr-1">{meta.emoji}</span>
-          <span className="font-semibold">Feeling {meta.label.toLowerCase()}</span>
+        <p className="px-3 pb-1 text-base">
+          <span className="mr-1.5 text-xl align-middle">{meta.emoji}</span>
+          <span className="font-semibold align-middle">Feeling {meta.label.toLowerCase()}</span>
         </p>
       )}
       {mood.note && <p className="px-3 pb-2 text-sm whitespace-pre-wrap">{mood.note}</p>}
