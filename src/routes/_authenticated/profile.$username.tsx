@@ -44,7 +44,7 @@ function ProfilePage() {
   return (
     <div className="max-w-[935px] mx-auto pb-12">
       {/* mobile top bar */}
-      <div className="md:hidden sticky top-12 z-20 bg-background/95 backdrop-blur flex items-center gap-4 px-4 h-12 border-b border-border">
+      <div className="md:hidden sticky top-24 z-20 bg-background/95 backdrop-blur flex items-center gap-4 px-4 h-12 border-b border-border">
         <Link to="/feed"><ChevronLeft className="h-6 w-6" /></Link>
         <span className="font-semibold flex items-center gap-1">
           {profile.username} {profile.is_verified && <BadgeCheck className="h-4 w-4 text-sky-500" />}

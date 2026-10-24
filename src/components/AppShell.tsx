@@ -169,7 +169,7 @@ export function AppShell() {
   // so the server-rendered HTML matches the client.
   if (embedMode) {
     return (
-      <div className="min-h-screen pt-12 pb-14 md:pt-0 md:pb-0">
+      <div className="min-h-screen pt-24 pb-14 md:pt-0 md:pb-0">
         <Outlet />
       </div>
     );
@@ -203,8 +203,9 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* ------- mobile top bar ------- */}
-      <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
+      {/* ------- mobile top bars (two identical rows, stacked) ------- */}
+      {[0, 1].map((row) => (
+      <header key={row} className={`md:hidden fixed ${row === 0 ? "top-0" : "top-12"} inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border`}>
         <Link to="/feed"><Wordmark className="text-[22px]" /></Link>
         <div className="flex items-center gap-5">
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
@@ -221,13 +222,14 @@ export function AppShell() {
           </button>
         </div>
       </header>
+      ))}
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
       <SwipeTabs
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen"
+        className="md:ml-[76px] xl:ml-[245px] pt-24 pb-14 md:pt-0 md:pb-0 min-h-screen"
       >
         <Outlet />
       </SwipeTabs>
