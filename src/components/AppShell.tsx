@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
-  Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, User as UserIcon,
+  Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, Joystick, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
 import { MenuSheet } from "@/components/MenuSheet";
@@ -211,6 +211,9 @@ export function AppShell() {
         <div className="flex items-center gap-5">
           <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
             <Heart className="h-6 w-6" />
+          </button>
+          <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")}>
+            <Joystick className="h-6 w-6" />
           </button>
           <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center cursor-pointer transition-opacity hover:opacity-60">
             <Grid3x3 className="h-6 w-6" />
