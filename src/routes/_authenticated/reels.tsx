@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send, MoreHorizontal, Music2, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { MediaImg } from "@/components/PostCard";
@@ -196,12 +196,6 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             </div>
             {reel.caption && (
               <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
-            )}
-            {reel.music && (
-              <div className="mt-2 flex items-center gap-1.5 text-xs overflow-hidden">
-                <Music2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="whitespace-nowrap animate-[marquee_10s_linear_infinite]">{reel.music} · {reel.music}</span>
-              </div>
             )}
           </div>
 
