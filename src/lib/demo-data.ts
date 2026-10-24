@@ -43,15 +43,6 @@ export const DEMO_USERS: UProfile[] = [
     subscription_tier: "free",
   },
   {
-    id: "u3",
-    username: "rohan.eats",
-    display_name: "Rohan Khanna",
-    bio: "Food blogger 🍜 | Delhi • Mumbai | New reel every Friday 🎥",
-    avatar_url: "/demo/av3.jpg",
-    is_verified: false,
-    subscription_tier: "free",
-  },
-  {
     id: "u4",
     username: "ananya.codes",
     display_name: "Ananya Iyer",
@@ -124,17 +115,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     caption: "Hot take: chai > coffee on rainy days ☕🌧️ Fight me in the comments.",
     mins: 65, likes: 96,
     comments: [
-      { user_id: "u3", content: "coffee gang assemble ☕", mins: 50 },
       { user_id: "u7", content: "finally you said it 🙌", mins: 40 },
-    ],
-  },
-  {
-    id: "p-u3-1", user_id: "u3", media_urls: ["/demo/p2.jpg"],
-    caption: "Chaat so good I forgot to take photos first 😅 #streetfood #delhifoodie",
-    location: "Chandni Chowk, Delhi", mins: 300, likes: 892,
-    comments: [
-      { user_id: "u2", content: "Recipe post when?? 👀", mins: 260 },
-      { user_id: "u5", content: "my gym trainer is crying rn 😭", mins: 200 },
     ],
   },
   {
@@ -143,7 +124,6 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     mins: 420, likes: 341,
     comments: [
       { user_id: DEMO_ME_ID, content: "Congrats!! 🎉", mins: 380 },
-      { user_id: "u3", content: "Inspiring 🔥", mins: 350 },
     ],
   },
   {
@@ -162,15 +142,6 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     comments: [
       { user_id: DEMO_ME_ID, content: "Beast 🔥", mins: 500 },
       { user_id: "u6", content: "form check please 🙏", mins: 450 },
-    ],
-  },
-  {
-    id: "p-u3-text-1", user_id: "u3", media_urls: [],
-    caption: "Open thread: best biryani in India. Wrong answers only 👇",
-    mins: 130, likes: 214,
-    comments: [
-      { user_id: "u8", content: "Hyderabad. Next question.", mins: 100 },
-      { user_id: "u5", content: "mom's kitchen 😌", mins: 80 },
     ],
   },
   {
@@ -223,14 +194,6 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     mins: 2040, likes: 432,
     comments: [],
   },
-  {
-    id: "p-u3-2", user_id: "u3", media_urls: [IMG.p10],
-    caption: "Cutting chai o'clock ☕ #chaitime",
-    mins: 2400, likes: 501,
-    comments: [
-      { user_id: "u4", content: "the进步 of this chai >>>", mins: 2300 },
-    ],
-  },
 ];
 
 export interface DemoStorySeed { user_id: string; media_url: string; mins: number; }
@@ -238,7 +201,6 @@ export interface DemoStorySeed { user_id: string; media_url: string; mins: numbe
 export const DEMO_STORIES: DemoStorySeed[] = [
   { user_id: "u2", media_url: "https://picsum.photos/id/1016/720/1280", mins: 40 },
   { user_id: "u2", media_url: "/demo/p1.jpg", mins: 90 },
-  { user_id: "u3", media_url: "/demo/p2.jpg", mins: 60 },
   { user_id: "u4", media_url: IMG.p3, mins: 120 },
   { user_id: "u5", media_url: "https://picsum.photos/id/1015/720/1280", mins: 30 },
   { user_id: "u6", media_url: IMG.p5, mins: 200 },
@@ -256,15 +218,6 @@ export interface DemoReelSeed {
 const V = (name: string) => `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/${name}.mp4`;
 
 export const DEMO_REELS: DemoReelSeed[] = [
-  {
-    id: "r-u3-1", user_id: "u3", video_url: V("ForBiggerFun"), poster: "/demo/p2.jpg",
-    caption: "Street chaat in 60 seconds 🔥 #foodreels #indianfood #chaat",
-    music: "Original audio · rohan.eats", mins: 200, likes: 3241,
-    comments: [
-      { user_id: "u2", content: "mouth watering rn 🤤", mins: 150 },
-      { user_id: DEMO_ME_ID, content: "location?? 👀", mins: 100 },
-    ],
-  },
   {
     id: "r-u5-1", user_id: "u5", video_url: V("ForBiggerBlazes"), poster: IMG.p4,
     caption: "5 moves for stronger legs 🦵 SAVE this for gym day! #fitness #legday",
@@ -309,7 +262,6 @@ export const DEMO_NOTIF_SEEDS: DemoNotifSeed[] = [
   { id: "n1", user_id: "u2", type: "like", post_id: "p-me-1", postThumb: IMG.p9, mins: 25 },
   { id: "n2", user_id: "u5", type: "follow", mins: 45 },
   { id: "n3", user_id: "u4", type: "comment", post_id: "p-me-text-1", text: "chai ☕🙌", mins: 120 },
-  { id: "n4", user_id: "u3", type: "like", post_id: "r-me-1", postThumb: IMG.p8, mins: 300 },
   { id: "n5", user_id: "u7", type: "follow", mins: 1500 },
   { id: "n6", user_id: "u6", type: "like", post_id: "p-me-text-1", mins: 1600 },
   { id: "n7", user_id: "u2", type: "follow", mins: 2900 },
@@ -317,10 +269,10 @@ export const DEMO_NOTIF_SEEDS: DemoNotifSeed[] = [
 ];
 
 // Users I already follow in the demo world (rest are suggestions).
-export const DEMO_FOLLOWING = ["u3", "u4", "u6", "u8"];
+export const DEMO_FOLLOWING = ["u4", "u6", "u8"];
 
 export const DEMO_SUGGESTION_REASONS: Record<string, string> = {
-  u2: "Followed by rohan.eats + 2 more",
+  u2: "Followed by ananya.codes + 2 more",
   u5: "Followed by mehra.streets",
   u7: "New on Socialverse",
 };

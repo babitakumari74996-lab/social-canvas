@@ -345,7 +345,6 @@ export function useNotifications(): UNotif[] {
     { id: "n1", user_id: "u2", type: "like", post_id: "p-me-1", postThumb: "/demo/p9.jpg", mins: 25 },
     { id: "n2", user_id: "u5", type: "follow", mins: 45 },
     { id: "n3", user_id: "u4", type: "comment", post_id: "p-me-text-1", text: "chai ☕🙌", mins: 120 },
-    { id: "n4", user_id: "u3", type: "like", post_id: "r-me-1", postThumb: "/demo/p8.jpg", mins: 300 },
     { id: "n5", user_id: "u7", type: "follow", mins: 1500 },
     { id: "n6", user_id: "u6", type: "like", post_id: "p-me-text-1", mins: 1600 },
     { id: "n7", user_id: "u2", type: "follow", mins: 2900 },

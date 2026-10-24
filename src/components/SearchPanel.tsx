@@ -74,7 +74,7 @@ export function SearchPanel() {
               )}
             </div>
             {recent.length === 0 && (
-              <p className="px-4 pb-6 text-sm text-muted-foreground">No recent searches. Try “priya”, “rohan” or “neha”.</p>
+              <p className="px-4 pb-6 text-sm text-muted-foreground">No recent searches. Try “priya”, “ananya” or “neha”.</p>
             )}
             {recent.map((r) => (
               <RecentRow key={r} username={r} onPick={go} />
