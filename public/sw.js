@@ -1,9 +1,10 @@
 // Shell cache so a repeat visit paints the splash (and the page) straight from cache,
 // instead of waiting for the HTML to come back from the network.
-//  - Page navigations: stale-while-revalidate. The cached HTML is returned at once and refreshed in the background.
+//  - Page navigations: network first, so a new deploy is picked up at once. If the network has not answered
+//    within 1s (slow or offline), the cached HTML is shown and the network answer still refreshes the cache.
 //  - Hashed build assets (/assets/*) and the splash logo: cache-first. The cached HTML and its assets always
 //    come from the same build, so an old cached page never points at deleted files.
-const CACHE = "sv-shell-v1";
+const CACHE = "sv-shell-v2";
 const ASSET_PATHS = ["/splash-logo.png"];
 
 self.addEventListener("install", () => {
@@ -27,7 +28,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -36,22 +37,18 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-async function staleWhileRevalidate(request) {
+async function networkFirst(request) {
   const cache = await caches.open(CACHE);
   const cached = await cache.match(request);
-  const network = fetch(request)
-    .then((response) => {
-      if (response.ok && response.type === "basic") cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => null);
-  if (cached) {
-    // Refresh in the background; the cached copy is what the user sees right now.
-    network.catch(() => {});
-    return cached;
-  }
-  const fresh = await network;
-  return fresh || Response.error();
+  const network = fetch(request).then((response) => {
+    if (response.ok && response.type === "basic") cache.put(request, response.clone());
+    return response;
+  });
+  const fallback = new Promise((resolve) => setTimeout(() => resolve(cached || null), 1000));
+  const first = await Promise.race([network.catch(() => null), fallback]);
+  if (first) return first;
+  const fresh = await network.catch(() => null);
+  return fresh || cached || Response.error();
 }
 
 async function cacheFirst(request) {
