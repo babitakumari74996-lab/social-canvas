@@ -207,7 +207,11 @@ export function AppShell() {
 
       {/* ------- mobile top bar ------- */}
       <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
-        <Link to="/feed"><Wordmark className="text-[22px]" /></Link>
+        <Link to="/feed" className="relative grid place-items-center">
+          {/* logo behind the wordmark, faded so the text stays readable */}
+          <img src="/socialverse-logo.png" alt="" aria-hidden className="absolute h-10 w-10 object-contain opacity-25" />
+          <Wordmark className="relative text-[22px]" />
+        </Link>
         <div className="flex items-center gap-5">
           <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")}>
             <Gamepad2 className="h-6 w-6" />
