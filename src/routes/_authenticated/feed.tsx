@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Heart, MessageCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
 import { StoriesRow } from "@/components/StoriesRow";
-import { useActions, useFeed, useMe, useSuggestions } from "@/lib/data";
+import { useActions, useFeed, useMe, useReels, useSuggestions } from "@/lib/data";
 import { Wordmark } from "@/components/AppShell";
 import { formatCount } from "@/lib/time";
 import type { UPost } from "@/lib/types";
@@ -17,6 +17,7 @@ function FeedPage() {
   const me = useMe();
   const { posts, loading } = useFeed();
   const suggestions = useSuggestions();
+  const { reels } = useReels();
 
   return (
     <div className="flex justify-center">
@@ -32,7 +33,9 @@ function FeedPage() {
         {posts.map((p, i) => (
           <div key={p.id}>
             <PostCard post={p} tall={i === 0} />
-            {i === 1 && suggestions.length > 0 && <MobileSuggestions />}
+            {/* Facebook-style inserts between posts. Never both at the same spot (Reels after post 3, People after post 7). */}
+            {i === 2 && reels.length > 0 && <ReelsStrip reels={reels} />}
+            {i === 6 && suggestions.length > 0 && <PeopleYouMayKnow people={suggestions} />}
           </div>
         ))}
         <div className="text-center text-[11px] text-muted-foreground uppercase tracking-widest pt-8">
@@ -109,40 +112,78 @@ function SuggestionRow({ user, reason }: { user: { id: string; username: string;
   );
 }
 
-function MobileSuggestions() {
-  const suggestions = useSuggestions();
-  if (suggestions.length === 0) return null;
+function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[] }) {
+  const rowRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="mx-3 my-4 rounded-xl border border-border p-4 hidden md:block">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold">Suggested for you</span>
-        <Link to="/explore" className="text-xs font-semibold text-primary">See all</Link>
+    <section className="my-4 rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <Film className="h-5 w-5" />
+        <span className="text-sm font-semibold">Reels</span>
       </div>
-      <div className="flex gap-4 overflow-x-auto no-scrollbar">
-        {suggestions.map((s) => (
-          <MiniSuggest key={s.user.id} user={s.user} />
-        ))}
+      <div className="relative">
+        <div ref={rowRef} className="flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3 snap-x">
+          {reels.slice(0, 8).map((r) => (
+            <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 snap-start overflow-hidden rounded-lg bg-muted">
+              {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
+            </Link>
+          ))}
+        </div>
+        <button
+          type="button"
+          aria-label="Next reels"
+          onClick={() => rowRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
+          className="absolute right-3 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full bg-card shadow-md border border-border"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
-    </div>
+    </section>
   );
 }
 
-function MiniSuggest({ user }: { user: { id: string; username: string; avatar_url: string | null } }) {
-  const actions = useActions();
-  const [on, setOn] = useState(false);
+function PeopleYouMayKnow({ people }: { people: { user: { id: string; username: string; display_name: string | null; avatar_url: string | null }; reason: string }[] }) {
+  const [hidden, setHidden] = useState<Record<string, boolean>>({});
+  const visible = people.filter((p) => !hidden[p.user.id]).slice(0, 6);
+  if (visible.length === 0) return null;
   return (
-    <div className="flex flex-col items-center gap-1.5 w-24 shrink-0 text-center">
-      <Link to="/profile/$username" params={{ username: user.username }}>
-        <Avatar path={user.avatar_url} alt={user.username} size={64} />
-      </Link>
-      <span className="text-xs font-semibold truncate w-full">{user.username}</span>
-      <button
-        type="button"
-        onClick={() => { setOn((v) => !v); actions.follow(user.id, !on); }}
-        className={`text-xs font-semibold rounded-lg w-full py-1.5 ${on ? "bg-muted" : "bg-primary text-primary-foreground"}`}
-      >
-        {on ? "Following" : "Follow"}
+    <section className="my-4 rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <UsersRound className="h-5 w-5" />
+        <span className="text-sm font-semibold">People you may know</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3">
+        {visible.map((p) => (
+          <PersonCard key={p.user.id} user={p.user} reason={p.reason} onClose={() => setHidden((h) => ({ ...h, [p.user.id]: true }))} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PersonCard({ user, reason, onClose }: { user: { id: string; username: string; display_name: string | null; avatar_url: string | null }; reason: string; onClose: () => void }) {
+  const actions = useActions();
+  const [added, setAdded] = useState(false);
+  return (
+    <div className="relative w-40 shrink-0 overflow-hidden rounded-lg border border-border">
+      <button type="button" aria-label="Remove suggestion" onClick={onClose} className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-background/90">
+        <X className="h-4 w-4" />
       </button>
+      <Link to="/profile/$username" params={{ username: user.username }} className="grid h-36 w-full place-items-center bg-muted">
+        <Avatar path={user.avatar_url} alt={user.username} size={96} />
+      </Link>
+      <div className="px-3 pt-2 pb-3">
+        <Link to="/profile/$username" params={{ username: user.username }} className="block truncate text-sm font-semibold">
+          {user.display_name || user.username}
+        </Link>
+        <span className="block truncate text-xs text-muted-foreground">{reason}</span>
+        <button
+          type="button"
+          onClick={() => { setAdded((v) => !v); actions.follow(user.id, !added); }}
+          className={`mt-2 w-full rounded-md py-1.5 text-sm font-semibold ${added ? "bg-muted" : "bg-primary text-primary-foreground"}`}
+        >
+          {added ? "Following" : "Add friend"}
+        </button>
+      </div>
     </div>
   );
 }
