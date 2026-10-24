@@ -222,8 +222,13 @@ export function AppShell() {
         </div>
       </header>
 
-      {/* ------- empty second bar under the top bar (its elements were removed) ------- */}
-      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 bg-background/95 backdrop-blur border-b border-border" />
+      {/* ------- second bar under the top bar: Community tab ------- */}
+      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center px-4 bg-background/95 backdrop-blur border-b border-border">
+        <Link to="/groups" aria-label="Community" className="flex items-center gap-2">
+          <img src="/community-logos.png" alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
+          <span className="text-sm font-semibold">Community</span>
+        </Link>
+      </div>
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
       <SwipeTabs
