@@ -21,9 +21,21 @@ function ReelsPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
+  // The first render can settle after the list is laid out (the browser may keep the second reel), so
+  // the start position is set again after the first paint and once the reels arrive.
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, []);
+  const hasReels = reels.length > 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [hasReels]);
 
   return (
     <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
@@ -47,7 +59,7 @@ function ReelsPage() {
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <div ref={scrollRef} className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+      <div ref={scrollRef} className="h-[calc(100dvh-3.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
           <div className="h-full snap-start grid place-items-center">
             <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
@@ -88,6 +100,39 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   // The video stays hidden until its first frame is ready, so the poster shows instead of a black
   // frame and there is no visible swap ("blink") when the real video starts.
   const [frameReady, setFrameReady] = useState(false);
+
+  // Reveal the video only when its picture is actually bright. Uploaded clips often open with a black
+  // intro; a time-based reveal would show that black. While the reel plays, a tiny copy of the current
+  // frame is checked; the video appears once it is not black (with a time limit, so it never stays hidden).
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!playing || !reel.poster || frameReady || !vid) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 16;
+    canvas.height = 16;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const started = performance.now();
+    const id = window.setInterval(() => {
+      const timedOut = performance.now() - started > 4000;
+      let bright = false;
+      if (ctx && vid.readyState >= 2) {
+        try {
+          ctx.drawImage(vid, 0, 0, 16, 16);
+          const d = ctx.getImageData(0, 0, 16, 16).data;
+          let sum = 0;
+          for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+          bright = sum / (16 * 16 * 3) > 16;
+        } catch {
+          bright = true; // cannot read the frame (e.g. cross-origin): do not keep the poster forever
+        }
+      }
+      if (bright || timedOut) {
+        window.clearInterval(id);
+        setFrameReady(true);
+      }
+    }, 80);
+    return () => window.clearInterval(id);
+  }, [playing, reel.poster, frameReady]);
 
   useEffect(() => setLiked(reel.likedByMe), [reel.likedByMe]);
 
@@ -153,7 +198,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           <img
             src={reel.poster}
             alt=""
-            decoding="async"
+            decoding="sync"
             fetchPriority="high"
             draggable={false}
             className="absolute inset-0 h-full w-full object-cover bg-zinc-900"
@@ -165,8 +210,10 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           poster={reel.poster ?? undefined}
           preload="auto"
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
-          onLoadedData={() => setFrameReady(true)}
-          onPlaying={() => setFrameReady(true)}
+          // With a poster, reveal the video only once it is past its first frames (uploaded clips often
+          // start black). Without a poster, show the video as soon as its first frame is ready.
+          onLoadedData={() => { if (!reel.poster) setFrameReady(true); }}
+          onPlaying={() => { if (!reel.poster) setFrameReady(true); }}
           loop
           muted={muted}
           playsInline
