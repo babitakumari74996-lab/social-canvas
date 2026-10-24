@@ -213,7 +213,7 @@ export function AppShell() {
           <Link to="/dm" aria-label="Messages">
             <Send className="h-6 w-6 -rotate-12" />
           </Link>
-          <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center">
+          <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center cursor-pointer transition-opacity hover:opacity-60">
             <Grid3x3 className="h-6 w-6" />
           </button>
         </div>
