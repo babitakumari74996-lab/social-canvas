@@ -223,10 +223,10 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center px-4 bg-background/95 backdrop-blur border-b border-border">
-        <Link to="/groups" aria-label="Community" className="flex items-center gap-2">
-          <img src="/community-logos.png" alt="" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
-          <span className="text-sm font-semibold">Community</span>
+      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
+        {/* icon only, directly under the Menu button (same 24px box and right edge) */}
+        <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
+          <img src="/community-logos.png" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
         </Link>
       </div>
 
