@@ -61,7 +61,7 @@ function NavItem({
 // Bottom-nav section fill colour for the active tab.
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
-const NAV_POS: Record<string, number> = { home: 0, reels: 1, profile: 4 };
+const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, search: 3, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
@@ -124,9 +124,12 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  // Swipe order matches the bottom nav: Home, Reels, Create, Explore, Profile.
   const swipeTabs: SwipeTab[] = [
     { key: "home", label: "Home", to: "/feed", icon: Home },
     { key: "reels", label: "Reels", to: "/reels", icon: Film },
+    { key: "create", label: "Create", overlay: "create", icon: PlusIcon },
+    { key: "search", label: "Explore", overlay: "search", icon: Search },
     {
       key: "profile",
       label: "Profile",
@@ -145,7 +148,18 @@ export function AppShell() {
       : onOwnProfile
         ? 2
         : -1;
-  const activeKey = activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "profile" : null;
+  const overlayKey = overlay.overlay === "create" || overlay.overlay === "search" ? overlay.overlay : null;
+  const activeKey = overlayKey
+    ? overlayKey === "create" ? "create" : "search"
+    : activeTabIndex === 0 ? "home" : activeTabIndex === 1 ? "reels" : activeTabIndex === 2 ? "profile" : null;
+  // Position of the current section in swipeTabs (-1 when swiping is not possible here).
+  const swipeIndex = overlayKey === "create" ? 2
+    : overlayKey === "search" ? 3
+      : overlay.overlay !== null ? -1
+        : activeTabIndex === 0 ? 0
+          : activeTabIndex === 1 ? 1
+            : activeTabIndex === 2 ? 4
+              : -1;
 
   const reset = () => {
     if (confirm("Reset demo data? Your demo posts, likes and edits will be cleared.")) {
@@ -225,8 +239,14 @@ export function AppShell() {
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
       <SwipeTabs
         tabs={swipeTabs}
-        activeIndex={activeTabIndex}
-        enabled={overlay.overlay === null}
+        activeIndex={swipeIndex}
+        enabled={overlay.overlay === null || overlayKey !== null}
+        overlayKey={overlayKey}
+        onOverlay={(key) => {
+          if (key === null) ui.closeAll();
+          else if (key === "create") ui.openCreate();
+          else ui.openSearch();
+        }}
         className="md:ml-[76px] xl:ml-[245px] pt-12 pb-14 md:pt-0 md:pb-0 min-h-screen"
       >
         <Outlet />

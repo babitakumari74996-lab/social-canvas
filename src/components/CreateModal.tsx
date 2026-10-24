@@ -184,7 +184,7 @@ export function CreateModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6" role="dialog" aria-modal>
+    <div data-overlay-swipe="" className="fixed inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6" role="dialog" aria-modal>
       <div className="bg-card w-full h-full md:h-[min(660px,88vh)] md:max-w-[900px] md:rounded-2xl flex flex-col overflow-hidden animate-in-fade">
         {/* header */}
         <header className="flex items-center justify-between border-b border-border px-3 h-12 shrink-0">

@@ -5,8 +5,11 @@ import { setSwipeProgress } from "@/lib/swipe-progress";
 export type SwipeTab = {
   key: string;
   label: string;
-  to: string;
+  /** Route of the tab's page. Omitted for overlay tabs. */
+  to?: string;
   params?: Record<string, string>;
+  /** Overlay tabs (Create, Explore) open a panel instead of a page. */
+  overlay?: "create" | "search";
   icon: ComponentType<{ className?: string }>;
 };
 
@@ -17,7 +20,7 @@ const EASE = "cubic-bezier(.2,.8,.2,1)";
 
 // URL of a tab's page in embed mode (no header, nav or swipe chrome).
 function embedPath(t: SwipeTab) {
-  return `${t.to.replace(/\$(\w+)/g, (_, k: string) => t.params?.[k] ?? "")}?embed=1`;
+  return `${t.to!.replace(/\$(\w+)/g, (_, k: string) => t.params?.[k] ?? "")}?embed=1`;
 }
 
 /**
@@ -30,12 +33,18 @@ export function SwipeTabs({
   tabs,
   activeIndex,
   enabled,
+  overlayKey = null,
+  onOverlay,
   className = "",
   children,
 }: {
   tabs: SwipeTab[];
   activeIndex: number;
   enabled: boolean;
+  /** The open overlay (create or search), if any. Swiping from an overlay moves to the next overlay or page. */
+  overlayKey?: "create" | "search" | null;
+  /** Opens an overlay tab, or closes the open overlay when given null. */
+  onOverlay: (key: "create" | "search" | null) => void;
   className?: string;
   children: ReactNode;
 }) {
@@ -47,7 +56,7 @@ export function SwipeTabs({
   useEffect(() => {
     const id = window.setTimeout(() => {
       tabs.forEach((t) => {
-        void router.preloadRoute({ to: t.to, params: t.params } as never);
+        if (t.to) void router.preloadRoute({ to: t.to, params: t.params } as never);
       });
     }, 1500);
     return () => window.clearTimeout(id);
@@ -58,8 +67,10 @@ export function SwipeTabs({
   const [preview, setPreview] = useState<{ index: number; dir: 1 | -1 } | null>(null);
 
   // Latest values for the listeners, which are attached once.
-  const latest = useRef({ tabs, activeIndex, enabled });
-  latest.current = { tabs, activeIndex, enabled };
+  const latest = useRef({ tabs, activeIndex, enabled, overlayKey });
+  latest.current = { tabs, activeIndex, enabled, overlayKey };
+  const onOverlayRef = useRef(onOverlay);
+  onOverlayRef.current = onOverlay;
   const navRef = useRef(navigate);
   navRef.current = navigate;
 
@@ -166,9 +177,19 @@ export function SwipeTabs({
       if (valid) {
         target = ti;
         dir = d;
-        setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
-        setMain(dx, false);
-        setPv(dx + d * width, false);
+        const tgt = latest.current.tabs[ti];
+        const fromOverlay = !!latest.current.overlayKey;
+        if (tgt.to && !fromOverlay) {
+          // A page neighbour: reveal its real page from the swiped side.
+          setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
+          setMain(dx, false);
+          setPv(dx + d * width, false);
+        } else {
+          // An overlay (Create / Explore) has no page to reveal: the page only rubber-bands,
+          // or stays put while an overlay is already open over it.
+          setPreview(null);
+          setMain(fromOverlay ? 0 : dx * 0.25, false);
+        }
         // Progress toward the commit point (30% of the width), capped at 1.
         const tabsNow = latest.current.tabs;
         setSwipeProgress({
@@ -205,6 +226,28 @@ export function SwipeTabs({
       busy = true;
       const to = latest.current.tabs[target];
       const d = dir;
+      if (!to.to || latest.current.overlayKey) {
+        // Overlay target, or a swipe out of an open overlay: no page slide. Open the target after the
+        // indicator arrives; a page target closes the overlay and navigates to it.
+        setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, dx: 0, full: 1, committed: true });
+        later(() => setSwipeProgress(null), ANIM_MS * 2);
+        setMain(0, true);
+        later(async () => {
+          try {
+            if (to.overlay) {
+              onOverlayRef.current(to.overlay);
+            } else {
+              onOverlayRef.current(null);
+              await navRef.current({ to: to.to, params: to.params } as never);
+            }
+          } finally {
+            rest();
+            hidePreview();
+            busy = false;
+          }
+        }, ANIM_MS);
+        return;
+      }
       // Committed: fill the target line, then clear once the navigation has finished.
       // Committed: the line glides the rest of the way to the target, then clears after the navigation.
       setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, dx: 0, full: 1, committed: true });
@@ -248,7 +291,12 @@ export function SwipeTabs({
       }
     };
 
-    main.addEventListener("pointerdown", onDown);
+    // Gestures start on the page, or on an open Create/Explore panel (marked data-overlay-swipe).
+    const onDocDown = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (main.contains(t) || t?.closest?.("[data-overlay-swipe]")) onDown(e);
+    };
+    document.addEventListener("pointerdown", onDocDown);
     // Once a gesture is locked as horizontal, stop the browser from also scrolling a vertical
     // scroller underneath (e.g. the Reels feed, which snaps to the next reel).
     const onTouchMove = (e: TouchEvent) => {
@@ -267,7 +315,7 @@ export function SwipeTabs({
     setPv(window.innerWidth, false);
 
     return () => {
-      main.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointerdown", onDocDown);
       main.removeEventListener("touchmove", onTouchMove);
       main.removeEventListener("wheel", onWheel);
       window.removeEventListener("pointermove", onMove);
@@ -288,10 +336,10 @@ export function SwipeTabs({
     const id = window.setTimeout(() => setArmed(true), 1500);
     return () => window.clearTimeout(id);
   }, []);
-  const pvPath = pvTab ? embedPath(pvTab) : null;
-  // Every tab keeps its page mounted (embed mode: no header, nav or swipe chrome). Each is loaded
-  // and laid out before any swipe; only the one being revealed is visible.
-  const pages = tabs.map((t) => ({ label: t.label, path: embedPath(t) }));
+  const pvPath = pvTab && pvTab.to ? embedPath(pvTab) : null;
+  // Every page tab keeps its page mounted (embed mode: no header, nav or swipe chrome). Each is loaded
+  // and laid out before any swipe; only the one being revealed is visible. Overlay tabs have no page.
+  const pages = tabs.filter((t) => t.to).map((t) => ({ label: t.label, path: embedPath(t) }));
 
   return (
     <>
