@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  Users, Clock, Bookmark, UsersRound, Film, Rss, CalendarDays, BarChart3, Gamepad2, Gift,
+  Users, Clock, Bookmark, UsersRound, Film, Rss, CalendarDays, BarChart3, Gift,
   MessageCircle, Receipt, Flag, LifeBuoy, Megaphone, Settings, RotateCcw, X,
   Joystick, UserPlus, Contrast,
 } from "lucide-react";
@@ -47,7 +47,6 @@ export function MenuSheet({
     { label: "Feeds", icon: Rss, color: "text-[#1877F2]" },
     { label: "Events", icon: CalendarDays, color: "text-[#F02849]" },
     { label: "Ads Manager", icon: BarChart3, color: "text-[#1877F2]" },
-    { label: "Play games", icon: Gamepad2, color: "text-[#1877F2]" },
     { label: "Gaming", icon: Joystick, color: "text-[#7D3AED]" },
     { label: "Birthdays", icon: Gift, color: "text-[#F7B928]" },
     { label: "Messenger", icon: MessageCircle, color: "text-[#0084FF]", to: "/dm" },
@@ -57,7 +56,7 @@ export function MenuSheet({
     { label: "Your AD activity", icon: Megaphone, color: "text-[#1877F2]" },
   ];
 
-  const rowClass = "flex w-full items-center gap-4 px-4 py-3 text-[15px] text-left hover:bg-muted transition-colors";
+  const rowClass = "flex w-full items-center gap-4 px-4 py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors";
 
   const row = (s: Section) => {
     const content = (
@@ -91,7 +90,7 @@ export function MenuSheet({
   return (
     <div className="fixed inset-0 z-50">
       {/* backdrop: tap outside to close (desktop) */}
-      <button type="button" aria-label="Close menu" className="absolute inset-0 bg-black/30 md:bg-transparent" onClick={onClose} />
+      <button type="button" aria-label="Close menu" className="absolute inset-0 cursor-pointer bg-black/30 md:bg-transparent" onClick={onClose} />
       <div
         role="dialog"
         aria-label="Menu"
@@ -99,7 +98,7 @@ export function MenuSheet({
       >
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <span className="font-bold text-lg">Menu</span>
-          <button type="button" aria-label="Close" onClick={onClose} className="grid place-items-center h-9 w-9 rounded-full hover:bg-muted">
+          <button type="button" aria-label="Close" onClick={onClose} className="grid cursor-pointer place-items-center h-9 w-9 rounded-full hover:bg-muted">
             <X className="h-5 w-5" />
           </button>
         </div>
