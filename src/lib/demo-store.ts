@@ -311,11 +311,11 @@ export function useUI(): UIState {
   );
 }
 
-// Another tab or a swipe-preview page wrote the demo data: take over its state, so every open copy matches.
-if (typeof window !== "undefined") {
-  window.addEventListener("storage", (e) => {
-    if (e.key !== LS_KEY && e.key !== null) return;
-    state = buildInitial();
-    listeners.forEach((l) => l());
-  });
+/**
+ * Swipe-preview pages take over the full state of the page that opened them. Reels with large media
+ * are not saved to localStorage, so a separate page cannot rebuild them from storage.
+ */
+export function applyDemoSnapshot(snap: DemoState) {
+  state = snap;
+  listeners.forEach((l) => l());
 }

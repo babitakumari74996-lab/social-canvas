@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { applyDemoSnapshot } from "@/lib/demo-store";
 import {
   Outlet,
   Link,
@@ -165,15 +166,18 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    // Swipe preview pages (embed mode) keep their data from when they loaded. The app asks them to
-    // refresh when a swipe starts, so the preview shows the same content as the page that opens.
+    // Swipe preview pages (embed mode) take the opening page's state, so the preview shows the same
+    // content as the page that opens. The parent sends it when this page says it is ready and on each swipe.
     if (!document.documentElement.hasAttribute("data-embed")) return;
     const onMsg = (e: MessageEvent) => {
-      if (e.source === window.parent && e.data?.type === "sv-embed-refresh") {
+      if (e.source !== window.parent) return;
+      if (e.data?.type === "sv-embed-refresh") {
+        if (e.data.demo) applyDemoSnapshot(e.data.demo);
         void queryClient.invalidateQueries();
       }
     };
     window.addEventListener("message", onMsg);
+    window.parent.postMessage({ type: "sv-embed-ready" }, window.location.origin);
     return () => window.removeEventListener("message", onMsg);
   }, [queryClient]);
 

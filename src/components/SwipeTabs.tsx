@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { setSwipeProgress } from "@/lib/swipe-progress";
+import { getDemo } from "@/lib/demo-store";
 
 export type SwipeTab = {
   key: string;
@@ -138,12 +139,25 @@ export function SwipeTabs({
       }, ANIM_MS);
     };
 
+    // Preview pages get the opening page's state; each gets a copy only when it has changed.
+    const sentTo = new WeakMap<Window, unknown>();
+    const sendState = (w: Window | null | undefined, force = false) => {
+      if (!w) return;
+      const snap = getDemo();
+      if (!force && sentTo.get(w) === snap) return;
+      sentTo.set(w, snap);
+      w.postMessage({ type: "sv-embed-refresh", demo: snap }, window.location.origin);
+    };
+    const onEmbedReady = (e: MessageEvent) => {
+      if (e.data?.type === "sv-embed-ready" && e.source) sendState(e.source as Window, true);
+    };
+    window.addEventListener("message", onEmbedReady);
+
     const onDown = (e: PointerEvent) => {
       if (busy || tracking || !latest.current.enabled) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (blocked(e.target)) return;
-      // Ask the preview pages to pick up the latest data, so they match the page that will open.
-      pv.querySelectorAll("iframe").forEach((f) => f.contentWindow?.postMessage({ type: "sv-embed-refresh" }, window.location.origin));
+      pv.querySelectorAll("iframe").forEach((f) => sendState(f.contentWindow));
       tracking = true;
       pid = e.pointerId;
       sx = e.clientX;
@@ -325,6 +339,7 @@ export function SwipeTabs({
 
     return () => {
       document.removeEventListener("pointerdown", onDocDown);
+      window.removeEventListener("message", onEmbedReady);
       main.removeEventListener("touchmove", onTouchMove);
       main.removeEventListener("wheel", onWheel);
       main.removeEventListener("dragstart", onDragStart);
