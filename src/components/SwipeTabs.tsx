@@ -309,6 +309,12 @@ export function SwipeTabs({
       if ((tracking || busy) && e.cancelable) e.preventDefault();
     };
     main.addEventListener("wheel", onWheel, { passive: false });
+    // A mouse drag on an image or link would start the browser's native drag, which cancels the
+    // pointer gesture. Block it inside the page so horizontal drags reach the swipe logic.
+    const onDragStart = (e: DragEvent) => {
+      if (main.contains(e.target as Node)) e.preventDefault();
+    };
+    main.addEventListener("dragstart", onDragStart);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
@@ -319,6 +325,7 @@ export function SwipeTabs({
       document.removeEventListener("pointerdown", onDocDown);
       main.removeEventListener("touchmove", onTouchMove);
       main.removeEventListener("wheel", onWheel);
+      main.removeEventListener("dragstart", onDragStart);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);

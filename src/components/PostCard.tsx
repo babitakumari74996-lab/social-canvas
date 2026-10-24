@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
@@ -52,6 +52,63 @@ function MediaImgLoaded({
   );
 }
 
+/**
+ * Mouse drag for a horizontal carousel. Touch and trackpad already scroll natively; a mouse
+ * drag does not, so the carousel is moved by hand and snapped to the nearest photo on release.
+ */
+function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let down = false;
+    let moved = false;
+    let startX = 0;
+    let startLeft = 0;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      down = true;
+      moved = false;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+      el.style.scrollSnapType = "none";
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
+      const dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) < 5) return;
+      moved = true;
+      el.scrollLeft = startLeft - dx;
+    };
+    const onUp = () => {
+      if (!down) return;
+      down = false;
+      el.style.scrollSnapType = "";
+      if (!moved) return;
+      const i = Math.round(el.scrollLeft / el.clientWidth);
+      el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+    };
+    // A drag must not also count as a click (e.g. opening the post).
+    const onClick = (e: MouseEvent) => {
+      if (moved) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("click", onClick, true);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("click", onClick, true);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [ref]);
+}
+
 export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,6 +119,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const isText = post.media_urls.length === 0;
+  useMouseDragCarousel(scrollRef);
 
   const like = (on: boolean) => {
     setLiked(on);
