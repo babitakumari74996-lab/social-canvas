@@ -92,7 +92,10 @@ export function useFeed(): { posts: UPost[]; loading: boolean } {
 
 export function useExplorePosts(): UPost[] {
   const { posts } = useFeed();
-  return [...posts].sort(() => 0.5 - Math.random() * 0.001).sort((a, b) => (b.likes + b.commentsCount) - (a.likes + a.commentsCount));
+  // Most engaging first; ties broken by id. A stable order keeps the swipe preview and the opened page identical.
+  return [...posts].sort(
+    (a, b) => (b.likes + b.commentsCount) - (a.likes + a.commentsCount) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
 }
 
 export function useSavedPosts(): UPost[] {
