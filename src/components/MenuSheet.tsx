@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Users, Clock, Bookmark, UsersRound, Film, Rss, CalendarDays, BarChart3, Gift,
   MessageCircle, Receipt, Flag, LifeBuoy, Megaphone, Settings, RotateCcw, X,
-  Joystick, UserPlus, Contrast,
+  Joystick, UserPlus, Contrast, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { isColorInverted, setColorInverted } from "@/lib/color-invert";
@@ -12,6 +12,9 @@ type Icon = React.ComponentType<{ className?: string }>;
 
 // Sections of the menu. Items with `to` open a page; the others have no page in this demo yet.
 type Section = { label: string; icon: Icon; color: string; to?: string; params?: Record<string, string>; search?: { tab: string } };
+
+// Desktop sidebar shows this many tabs before "Show more".
+const INLINE_VISIBLE = 9;
 
 // The menu's tabs and icons. Used by the mobile sheet and by the desktop sidebar.
 // `inline` is the desktop sidebar: icons only at md (the sidebar is narrow there), icons + labels from xl.
@@ -27,6 +30,8 @@ export function MenuList({
   inline?: boolean;
 }) {
   const [inverted, setInverted] = useState(() => isColorInverted());
+  // Desktop sidebar: only the first few tabs show until "Show more" is pressed.
+  const [expanded, setExpanded] = useState(false);
 
   const sections: Section[] = [
     { label: "Friends", icon: Users, color: "text-[#1877F2]" },
@@ -49,6 +54,9 @@ export function MenuList({
 
   const rowClass = `flex w-full items-center gap-4 ${inline ? "px-3 xl:px-4" : "px-4"} py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors`;
   const labelClass = inline ? "hidden xl:inline" : "";
+
+  const collapsed = inline && !expanded;
+  const visibleSections = collapsed ? sections.slice(0, INLINE_VISIBLE) : sections;
 
   const row = (s: Section) => {
     const content = (
@@ -79,9 +87,26 @@ export function MenuList({
     );
   };
 
+  const showMore = inline ? (
+    <button type="button" className={rowClass} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+      {expanded ? <ChevronUp className="h-6 w-6 stroke-[2] shrink-0 text-muted-foreground" /> : <ChevronDown className="h-6 w-6 stroke-[2] shrink-0 text-muted-foreground" />}
+      <span className={labelClass}>{expanded ? "Show less" : "Show more"}</span>
+    </button>
+  ) : null;
+
+  if (collapsed) {
+    return (
+      <>
+        {visibleSections.map(row)}
+        {showMore}
+      </>
+    );
+  }
+
   return (
     <>
       {sections.map(row)}
+      {showMore}
       <div className="my-2 border-t border-border" />
       <button
         type="button"
