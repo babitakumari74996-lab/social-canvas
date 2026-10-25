@@ -22,7 +22,7 @@ function FeedPage() {
   return (
     <div className="flex justify-center">
       {/* main column */}
-      <div className="w-full max-w-[470px] md:px-0 pb-8">
+      <div className="w-full max-w-[470px] md:max-w-[518px] md:px-0 pb-8">
         <StoriesRow />
         {loading && <div className="py-10 text-center text-sm text-muted-foreground animate-pulse">Loading feed…</div>}
         {!loading && posts.length === 0 && (
