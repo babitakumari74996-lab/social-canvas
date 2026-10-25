@@ -263,3 +263,21 @@ html.sv-invert video {
 :root { --bar-pad: 96px; }
 .sv-barpad { transition: padding-top 260ms cubic-bezier(.2,.8,.2,1); }
 html[data-swiping="1"] .sv-barpad { transition: none; }
+
+/* Hand cursor on everything clickable. Lives in the base layer, so utility classes such as
+   cursor-text (search bar) or cursor-grab (carousels) still win where they are set. */
+@layer base {
+  button:not(:disabled),
+    [role="button"],
+    [role="switch"],
+    a[href],
+    label[for],
+    select:not(:disabled),
+    summary,
+    input[type="button"]:not(:disabled),
+    input[type="submit"]:not(:disabled),
+    input[type="checkbox"]:not(:disabled),
+    input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
