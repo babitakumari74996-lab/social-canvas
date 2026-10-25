@@ -211,7 +211,7 @@ export function AppShell() {
       {/* ------- desktop sidebar: the full menu list ------- */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-card px-3 py-6 z-40">
         {/* logo icon, then the search bar (pill from xl; a full-width icon button on md) */}
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 px-3 mb-4">
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 pl-3 pr-0 mb-4">
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
             <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-10 w-10" />
           </Link>
@@ -219,10 +219,10 @@ export function AppShell() {
             type="button"
             onClick={ui.openSearch}
             aria-label="Search"
-            className="flex flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted py-2.5 xl:px-4 text-base text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]"
+            className="flex h-10 flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted xl:px-4 text-base text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]"
           >
             <Search className="h-5 w-5 shrink-0" />
-            <span className="hidden xl:inline">Search</span>
+            <span className="hidden xl:inline">Search social</span>
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
