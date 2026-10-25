@@ -258,3 +258,8 @@ html.sv-invert img,
 html.sv-invert video {
   filter: invert(1) hue-rotate(180deg);
 }
+
+/* Top bars and page padding: no animation while a finger is dragging, so they follow the swipe exactly. */
+:root { --bar-pad: 96px; }
+.sv-barpad { transition: padding-top 260ms cubic-bezier(.2,.8,.2,1); }
+html[data-swiping="1"] .sv-barpad { transition: none; }

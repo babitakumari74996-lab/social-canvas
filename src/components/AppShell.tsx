@@ -118,6 +118,23 @@ export function AppShell() {
   const isDemo = !me?.id || me.id === "me";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
+  // The top bars (header + second bar, 96px together) slide up on Reels, following a swipe in or out.
+  const swipeP = useSwipeProgress();
+  const onReels = pathname.startsWith("/reels");
+  const swipeAmt = swipeP ? (swipeP.committed ? 1 : Math.min(1, Math.abs(swipeP.dx) / Math.max(1, swipeP.full))) : 0;
+  let barHide = onReels ? 1 : 0;
+  if (swipeP && swipeP.to === "reels" && !onReels) barHide = swipeAmt;
+  if (swipeP && swipeP.from === "reels" && onReels) barHide = 1 - swipeAmt;
+  const swiping = !!swipeP && !swipeP.committed;
+  useEffect(() => {
+    // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
+    document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
+    document.documentElement.dataset.swiping = swiping ? "1" : "0";
+  }, [barHide, swiping]);
+  const barStyle = {
+    transform: `translate3d(0, ${-barHide * 96}px, 0)`,
+    transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+  } as const;
 
   // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
   useEffect(() => {
@@ -171,7 +188,7 @@ export function AppShell() {
   // so the server-rendered HTML matches the client.
   if (embedMode) {
     return (
-      <div className="min-h-screen pt-24 pb-14 md:pt-0 md:pb-0">
+      <div className="min-h-screen pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-0 sv-barpad">
         <Outlet />
       </div>
     );
@@ -206,7 +223,7 @@ export function AppShell() {
       </aside>
 
       {/* ------- mobile top bar ------- */}
-      <header className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
+      <header style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
           {/* logo icon only (no text), to the left of the wordmark */}
           <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
@@ -226,7 +243,7 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
+      <div style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
         <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
           <Search className="h-4 w-4" /> Search
@@ -246,7 +263,7 @@ export function AppShell() {
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className="md:ml-[76px] xl:ml-[245px] pt-24 pb-14 md:pt-0 md:pb-0 min-h-screen"
+        className="md:ml-[76px] xl:ml-[245px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-0 min-h-screen sv-barpad"
       >
         <Outlet />
       </SwipeTabs>
