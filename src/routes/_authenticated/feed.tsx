@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
@@ -112,31 +112,69 @@ function SuggestionRow({ user, reason }: { user: { id: string; username: string;
   );
 }
 
-function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[] }) {
+// Horizontal row for the feed modules. Touch and trackpad scroll natively; a mouse can also drag it
+// (desktop), and the arrow button scrolls it. A drag never triggers the click on the item under it.
+function Carousel({ children, className = "", label }: { children: ReactNode; className?: string; label: string }) {
   const rowRef = useRef<HTMLDivElement>(null);
+  const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = rowRef.current;
+    if (!el || e.button !== 0) return;
+    const startX = e.clientX;
+    const startLeft = el.scrollLeft;
+    let moved = false;
+    e.preventDefault(); // no text selection or native image drag while dragging
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      el.scrollLeft = startLeft - dx;
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (moved) {
+        const swallow = (ev: MouseEvent) => { ev.stopPropagation(); ev.preventDefault(); };
+        window.addEventListener("click", swallow, { capture: true, once: true });
+        setTimeout(() => window.removeEventListener("click", swallow, true), 0);
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+  return (
+    <div className="relative">
+      <div
+        ref={rowRef}
+        onMouseDown={onMouseDown}
+        className={`flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3 cursor-grab select-none ${className}`}
+      >
+        {children}
+      </div>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={() => rowRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
+        className="absolute right-3 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full bg-card shadow-md border border-border"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[] }) {
   return (
     <section className="my-4 rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-4 pt-3 pb-2">
         <Film className="h-5 w-5" />
         <span className="text-sm font-semibold">Reels</span>
       </div>
-      <div className="relative">
-        <div ref={rowRef} className="flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3 snap-x">
-          {reels.slice(0, 8).map((r) => (
-            <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 snap-start overflow-hidden rounded-lg bg-muted">
-              {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
-            </Link>
-          ))}
-        </div>
-        <button
-          type="button"
-          aria-label="Next reels"
-          onClick={() => rowRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
-          className="absolute right-3 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center rounded-full bg-card shadow-md border border-border"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </div>
+      <Carousel label="Next reels" className="snap-x">
+        {reels.slice(0, 8).map((r) => (
+          <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 snap-start overflow-hidden rounded-lg bg-muted">
+            {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />}
+          </Link>
+        ))}
+      </Carousel>
     </section>
   );
 }
@@ -151,11 +189,11 @@ function PeopleYouMayKnow({ people }: { people: { user: { id: string; username: 
         <UsersRound className="h-5 w-5" />
         <span className="text-sm font-semibold">People you may know</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3">
+      <Carousel label="Next people">
         {visible.map((p) => (
           <PersonCard key={p.user.id} user={p.user} reason={p.reason} onClose={() => setHidden((h) => ({ ...h, [p.user.id]: true }))} />
         ))}
-      </div>
+      </Carousel>
     </section>
   );
 }
