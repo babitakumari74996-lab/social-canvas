@@ -238,8 +238,10 @@ export function AppShell() {
     <div className="min-h-screen">
       {/* ------- desktop sidebar: the full menu list ------- */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[245px] flex-col border-r border-border bg-card px-3 py-6 z-40">
-        <Link to="/feed" className="px-3 mb-4 md:block xl:hidden" aria-label="Home">
-          <span className="font-serif italic font-bold text-2xl">S</span>
+        <Link to="/feed" className="flex items-center gap-2 px-3 mb-4" aria-label="Socialverse home">
+          {/* logo icon, with the Socialverse wordmark beside it from xl */}
+          <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7 shrink-0" />
+          <span className="hidden xl:inline"><Wordmark className="text-[22px]" /></span>
         </Link>
         <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
           <MenuList

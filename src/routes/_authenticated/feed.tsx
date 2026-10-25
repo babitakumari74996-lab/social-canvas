@@ -5,7 +5,6 @@ import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
 import { StoriesRow } from "@/components/StoriesRow";
 import { useActions, useFeed, useMe, useReels, useSuggestions } from "@/lib/data";
-import { Wordmark } from "@/components/AppShell";
 import { formatCount } from "@/lib/time";
 import type { UPost } from "@/lib/types";
 
@@ -45,7 +44,6 @@ function FeedPage() {
 
       {/* right rail (desktop) */}
       <aside className="hidden lg:block w-[320px] shrink-0 pl-16 pt-9 pr-8">
-        <div className="mb-6"><Wordmark /></div>
         {me && (
           <div className="flex items-center gap-3 mb-5">
             <Link to="/profile/$username" params={{ username: me.username }}>
