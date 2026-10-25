@@ -17,6 +17,39 @@ const StoryViewer = lazy(() => import("@/components/StoryViewer").then((m) => ({
 const ShareSheet = lazy(() => import("@/components/ShareSheet").then((m) => ({ default: m.ShareSheet })));
 const EditProfileModal = lazy(() => import("@/components/EditProfileModal").then((m) => ({ default: m.EditProfileModal })));
 
+function BarCell({
+  icon: Icon, label, to, params, onClick, active, avatarUrl,
+}: {
+  icon?: React.ComponentType<{ className?: string }>;
+  label: string;
+  to?: string;
+  params?: Record<string, string>;
+  onClick?: () => void;
+  active?: boolean;
+  avatarUrl?: string | null;
+}) {
+  const inner = avatarUrl ? (
+    <Avatar path={avatarUrl} alt={label} size={24} className={active ? "ring-2 ring-foreground" : ""} />
+  ) : Icon ? (
+    <Icon className={`h-6 w-6 ${active ? "stroke-[2.5]" : "stroke-[1.8]"}`} />
+  ) : null;
+  const cls = `flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg hover:bg-muted transition-colors ${active ? "font-bold" : "font-normal"}`;
+  if (to) {
+    return (
+      <Link to={to} params={params} aria-label={label} className={cls} onClick={onClick}>
+        {inner}
+        <span className="text-[11px] leading-none">{label}</span>
+      </Link>
+    );
+  }
+  return (
+    <button type="button" aria-label={label} className={cls} onClick={onClick}>
+      {inner}
+      <span className="text-[11px] leading-none">{label}</span>
+    </button>
+  );
+}
+
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`font-serif italic font-bold tracking-tight text-[26px] leading-none bg-gradient-to-r from-[#D62976] via-[#962FBF] to-[#4F5BD5] bg-clip-text text-transparent ${className}`}>
@@ -203,7 +236,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen">
-      {/* ------- desktop sidebar: menu tabs on top, nav (like the bottom bar) at the bottom ------- */}
+      {/* ------- desktop sidebar: the full menu list ------- */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[245px] flex-col border-r border-border bg-card px-3 py-6 z-40">
         <Link to="/feed" className="px-3 mb-4 md:block xl:hidden" aria-label="Home">
           <span className="font-serif italic font-bold text-2xl">S</span>
@@ -216,17 +249,19 @@ export function AppShell() {
             onReset={reset}
           />
         </div>
-        <nav className="flex flex-col gap-0.5 shrink-0 border-t border-border pt-2 mt-2">
-          <NavItem icon={Home} label="Home" to="/feed" />
-          <NavItem icon={Search} label="Search" onClick={ui.openSearch} active={overlay.overlay === "search"} />
-          <NavItem icon={Compass} label="Explore" to="/explore" />
-          <NavItem icon={Film} label="Reels" to="/reels" />
-          <NavItem icon={Send} label="Messages" to="/dm" />
-          <NavItem icon={Heart} label="Notifications" onClick={ui.openNotifications} active={overlay.overlay === "notifications"} />
-          <NavItem icon={PlusIcon} label="Create" to="/create" />
-          <NavItem label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} />
-        </nav>
       </aside>
+
+      {/* ------- desktop bottom bar: the main sections, like the mobile bottom nav ------- */}
+      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[245px] h-14 z-40 items-center justify-evenly border-t border-border bg-background/95 backdrop-blur">
+        <BarCell icon={Home} label="Home" to="/feed" active={navIndex === 0} />
+        <BarCell icon={Search} label="Search" onClick={ui.openSearch} active={overlay.overlay === "search"} />
+        <BarCell icon={Compass} label="Explore" to="/explore" active={pathname.startsWith("/explore")} />
+        <BarCell icon={Film} label="Reels" to="/reels" active={navIndex === 1} />
+        <BarCell icon={Send} label="Messages" to="/dm" active={pathname.startsWith("/dm")} />
+        <BarCell icon={Heart} label="Notifications" onClick={ui.openNotifications} active={overlay.overlay === "notifications"} />
+        <BarCell icon={PlusIcon} label="Create" to="/create" active={navIndex === 2} />
+        <BarCell label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} active={navIndex === 4} />
+      </nav>
 
       {/* ------- mobile top bar ------- */}
       <header style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
@@ -269,7 +304,7 @@ export function AppShell() {
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className="md:ml-[76px] xl:ml-[245px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-0 min-h-screen sv-barpad"
+        className="md:ml-[76px] xl:ml-[245px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
       >
         <Outlet />
       </SwipeTabs>
