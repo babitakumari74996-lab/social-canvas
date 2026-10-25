@@ -17,39 +17,6 @@ const StoryViewer = lazy(() => import("@/components/StoryViewer").then((m) => ({
 const ShareSheet = lazy(() => import("@/components/ShareSheet").then((m) => ({ default: m.ShareSheet })));
 const EditProfileModal = lazy(() => import("@/components/EditProfileModal").then((m) => ({ default: m.EditProfileModal })));
 
-function BarCell({
-  icon: Icon, label, to, params, onClick, active, avatarUrl,
-}: {
-  icon?: React.ComponentType<{ className?: string }>;
-  label: string;
-  to?: string;
-  params?: Record<string, string>;
-  onClick?: () => void;
-  active?: boolean;
-  avatarUrl?: string | null;
-}) {
-  const inner = avatarUrl ? (
-    <Avatar path={avatarUrl} alt={label} size={24} className={active ? "ring-2 ring-foreground" : ""} />
-  ) : Icon ? (
-    <Icon className={`h-6 w-6 ${active ? "stroke-[2.5]" : "stroke-[1.8]"}`} />
-  ) : null;
-  const cls = `flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg hover:bg-muted transition-colors ${active ? "font-bold" : "font-normal"}`;
-  if (to) {
-    return (
-      <Link to={to} params={params} aria-label={label} className={cls} onClick={onClick}>
-        {inner}
-        <span className="text-[11px] leading-none">{label}</span>
-      </Link>
-    );
-  }
-  return (
-    <button type="button" aria-label={label} className={cls} onClick={onClick}>
-      {inner}
-      <span className="text-[11px] leading-none">{label}</span>
-    </button>
-  );
-}
-
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <span className={`font-serif italic font-bold tracking-tight text-[26px] leading-none bg-gradient-to-r from-[#D62976] via-[#962FBF] to-[#4F5BD5] bg-clip-text text-transparent ${className}`}>
@@ -95,28 +62,33 @@ function NavItem({
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
+// Desktop bottom bar: the same cells plus Messages next to Moods.
+const DESKTOP_NAV_CELLS = 6;
+const DESKTOP_NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, messages: 4, profile: 5 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
 // slides from the current icon to the neighbouring one, following the drag.
-function NavIndicator({ activeKey }: { activeKey: string | null }) {
+function NavIndicator({ activeKey, desktop = false }: { activeKey: string | null; desktop?: boolean }) {
+  const pos_map = desktop ? DESKTOP_NAV_POS : NAV_POS;
+  const cells = desktop ? DESKTOP_NAV_CELLS : NAV_CELLS;
   // During a swipe the line slides from the current icon to the neighbouring one, following the drag.
   const p = useSwipeProgress();
   let pos: number | null = null;
   if (p) {
-    const a = NAV_POS[p.from];
-    const b = NAV_POS[p.to];
+    const a = pos_map[p.from];
+    const b = pos_map[p.to];
     if (a !== undefined && b !== undefined) {
       // The indicator moves in step with the swipe while the finger is held. After a committed swipe
       // it glides the rest of the way to the target icon.
       const amount = p.committed ? 1 : Math.min(1, p.dx / p.full);
       pos = a + (b - a) * amount;
     }
-  } else if (activeKey && NAV_POS[activeKey] !== undefined) {
-    pos = NAV_POS[activeKey];
+  } else if (activeKey && pos_map[activeKey] !== undefined) {
+    pos = pos_map[activeKey];
   }
   if (pos === null) return null;
-  const center = ((pos + 0.5) / NAV_CELLS) * 100;
+  const center = ((pos + 0.5) / cells) * 100;
   return (
     <span
       aria-hidden
@@ -254,15 +226,34 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the main sections, like the mobile bottom nav ------- */}
-      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[245px] h-14 z-40 items-center justify-evenly border-t border-border bg-background/95 backdrop-blur">
-        <BarCell icon={Home} label="Home" to="/feed" active={navIndex === 0} />
-        <BarCell icon={Search} label="Search" onClick={ui.openSearch} active={overlay.overlay === "search"} />
-        <BarCell icon={Compass} label="Explore" to="/explore" active={pathname.startsWith("/explore")} />
-        <BarCell icon={Film} label="Reels" to="/reels" active={navIndex === 1} />
-        <BarCell icon={Send} label="Messages" to="/dm" active={pathname.startsWith("/dm")} />
-        <BarCell icon={Heart} label="Notifications" onClick={ui.openNotifications} active={overlay.overlay === "notifications"} />
-        <BarCell icon={PlusIcon} label="Create" to="/create" active={navIndex === 2} />
-        <BarCell label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} active={navIndex === 4} />
+      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[245px] h-14 z-40 items-stretch bg-background border-t border-border">
+        <NavIndicator activeKey={pathname.startsWith("/dm") ? "messages" : activeKey} desktop />
+        <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
+          <Home className="h-6 w-6" />
+        </Link>
+        <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
+          <Film className="h-6 w-6" />
+        </Link>
+        <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
+          <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
+            <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
+            <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
+          </span>
+        </Link>
+        <Link to="/moods" aria-label="Moods" className={cell(navIndex === 3)}>
+          <Smile className="h-6 w-6" />
+        </Link>
+        <Link to="/dm" aria-label="Messages" className={cell(pathname.startsWith("/dm"))}>
+          <Send className="h-6 w-6 -rotate-12" />
+        </Link>
+        <Link
+          to="/profile/$username"
+          params={{ username: me?.username ?? "aarav_sharma" }}
+          aria-label="Profile"
+          className={cell(navIndex === 4)}
+        >
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+        </Link>
       </nav>
 
       {/* ------- mobile top bar ------- */}
