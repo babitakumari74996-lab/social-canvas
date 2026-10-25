@@ -120,11 +120,18 @@ export function AppShell() {
   const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
   // The top bars (header + second bar, 96px together) slide up on Reels, following a swipe in or out.
   const swipeP = useSwipeProgress();
-  const onReels = pathname.startsWith("/reels");
+  // Pages that hide the top bars (Reels, Create, Moods, Profile). Home and Explore keep them.
+  const HIDE_BARS = ["reels", "create", "moods", "profile"];
+  const pageKey = pathname.startsWith("/reels") ? "reels" : pathname.startsWith("/create") ? "create"
+    : pathname.startsWith("/moods") ? "moods" : pathname.startsWith("/profile") ? "profile" : "other";
+  const onReels = HIDE_BARS.includes(pageKey);
   const swipeAmt = swipeP ? (swipeP.committed ? 1 : Math.min(1, Math.abs(swipeP.dx) / Math.max(1, swipeP.full))) : 0;
+  const toHides = swipeP ? HIDE_BARS.includes(swipeP.to) : false;
   let barHide = onReels ? 1 : 0;
-  if (swipeP && swipeP.to === "reels" && !onReels) barHide = swipeAmt;
-  if (swipeP && swipeP.from === "reels" && onReels) barHide = 1 - swipeAmt;
+  if (swipeP) {
+    if (onReels) barHide = toHides ? 1 : 1 - swipeAmt;
+    else barHide = toHides ? swipeAmt : 0;
+  }
   const swiping = !!swipeP && !swipeP.committed;
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
