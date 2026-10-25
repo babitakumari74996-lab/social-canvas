@@ -94,7 +94,7 @@ export function MenuSheet({
       <div
         role="dialog"
         aria-label="Menu"
-        className="absolute inset-0 md:inset-auto md:bottom-4 md:left-[84px] xl:left-[253px] md:w-80 md:max-h-[85vh] md:rounded-2xl md:border md:border-border bg-background md:shadow-xl flex flex-col overflow-hidden animate-in-fade"
+        className="absolute inset-0 md:inset-auto md:bottom-20 md:left-3 md:w-80 md:max-h-[85vh] md:rounded-2xl md:border md:border-border bg-background md:shadow-xl flex flex-col overflow-hidden animate-in-fade"
       >
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <span className="font-bold text-lg">Menu</span>
