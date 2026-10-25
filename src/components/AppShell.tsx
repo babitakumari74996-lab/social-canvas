@@ -5,7 +5,7 @@ import {
   Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, Gamepad2, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
-import { MenuSheet } from "@/components/MenuSheet";
+import { MenuSheet, MenuList } from "@/components/MenuSheet";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
 import { ui, useUI, resetDemo } from "@/lib/demo-store";
@@ -203,15 +203,20 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen">
-      {/* ------- desktop sidebar ------- */}
+      {/* ------- desktop sidebar: menu tabs on top, nav (like the bottom bar) at the bottom ------- */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[245px] flex-col border-r border-border bg-card px-3 py-6 z-40">
-        <Link to="/feed" className="px-3 mb-7 hidden xl:block">
-          <Wordmark />
-        </Link>
-        <Link to="/feed" className="px-3 mb-7 xl:hidden" aria-label="Home">
+        <Link to="/feed" className="px-3 mb-4 md:block xl:hidden" aria-label="Home">
           <span className="font-serif italic font-bold text-2xl">S</span>
         </Link>
-        <nav className="flex flex-col gap-0.5 flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
+          <MenuList
+            inline
+            username={me?.username ?? "aarav_sharma"}
+            onClose={closeMenu}
+            onReset={reset}
+          />
+        </div>
+        <nav className="flex flex-col gap-0.5 shrink-0 border-t border-border pt-2 mt-2">
           <NavItem icon={Home} label="Home" to="/feed" />
           <NavItem icon={Search} label="Search" onClick={ui.openSearch} active={overlay.overlay === "search"} />
           <NavItem icon={Compass} label="Explore" to="/explore" />
@@ -221,12 +226,6 @@ export function AppShell() {
           <NavItem icon={PlusIcon} label="Create" to="/create" />
           <NavItem label="Profile" to="/profile/$username" params={{ username: me?.username ?? "aarav_sharma" }} avatarUrl={me?.avatar_url ?? null} />
         </nav>
-        <div className="relative">
-          <button type="button" onClick={() => setMenuOpen((v) => !v)} className="flex items-center gap-4 rounded-lg p-3 hover:bg-muted transition-colors w-full text-left">
-            <Menu className="h-6 w-6 stroke-[1.8]" />
-            <span className="hidden xl:inline text-[15px]">More</span>
-          </button>
-        </div>
       </aside>
 
       {/* ------- mobile top bar ------- */}

@@ -13,29 +13,20 @@ type Icon = React.ComponentType<{ className?: string }>;
 // Sections of the menu. Items with `to` open a page; the others have no page in this demo yet.
 type Section = { label: string; icon: Icon; color: string; to?: string; params?: Record<string, string>; search?: { tab: string } };
 
-export function MenuSheet({
-  open,
-  onClose,
+// The menu's tabs and icons. Used by the mobile sheet and by the desktop sidebar.
+// `inline` is the desktop sidebar: icons only at md (the sidebar is narrow there), icons + labels from xl.
+export function MenuList({
   username,
+  onClose,
   onReset,
+  inline = false,
 }: {
-  open: boolean;
-  onClose: () => void;
   username: string;
+  onClose: () => void;
   onReset: () => void;
+  inline?: boolean;
 }) {
   const [inverted, setInverted] = useState(() => isColorInverted());
-  // Escape closes the menu.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const sections: Section[] = [
     { label: "Friends", icon: Users, color: "text-[#1877F2]" },
@@ -56,13 +47,14 @@ export function MenuSheet({
     { label: "Your AD activity", icon: Megaphone, color: "text-[#1877F2]" },
   ];
 
-  const rowClass = "flex w-full items-center gap-4 px-4 py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors";
+  const rowClass = `flex w-full items-center gap-4 ${inline ? "px-3 xl:px-4" : "px-4"} py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors`;
+  const labelClass = inline ? "hidden xl:inline" : "";
 
   const row = (s: Section) => {
     const content = (
       <>
         <s.icon className={`h-6 w-6 stroke-[2] shrink-0 ${s.color}`} />
-        <span>{s.label}</span>
+        <span className={labelClass}>{s.label}</span>
       </>
     );
     if (s.to) {
@@ -88,13 +80,81 @@ export function MenuSheet({
   };
 
   return (
+    <>
+      {sections.map(row)}
+      <div className="my-2 border-t border-border" />
+      <button
+        type="button"
+        role="switch"
+        aria-checked={inverted}
+        className={rowClass}
+        onClick={() => {
+          const next = !inverted;
+          setColorInverted(next);
+          setInverted(next);
+        }}
+      >
+        <Contrast className="h-6 w-6 stroke-[2] shrink-0 text-[#1877F2]" />
+        <span className={`${inline ? "hidden xl:inline " : ""}flex-1`}>Color inversion</span>
+        <span
+          aria-hidden
+          className={`relative h-6 w-11 rounded-full transition-colors ${inverted ? "bg-[#1877F2]" : "bg-muted-foreground/40"}`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${inverted ? "translate-x-5" : "translate-x-0.5"}`}
+          />
+        </span>
+      </button>
+      <Link to="/settings" className={rowClass} onClick={onClose}>
+        <Settings className="h-6 w-6 stroke-[1.8] shrink-0" />
+        <span className={labelClass}>Settings</span>
+      </Link>
+      <button
+        type="button"
+        className={rowClass}
+        onClick={() => {
+          onClose();
+          onReset();
+        }}
+      >
+        <RotateCcw className="h-6 w-6 stroke-[1.8] shrink-0" />
+        <span className={labelClass}>Reset demo data</span>
+      </button>
+    </>
+  );
+}
+
+// Mobile menu sheet (opened from the grid button in the top bar).
+export function MenuSheet({
+  open,
+  onClose,
+  username,
+  onReset,
+}: {
+  open: boolean;
+  onClose: () => void;
+  username: string;
+  onReset: () => void;
+}) {
+  // Escape closes the menu.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
     <div className="fixed inset-0 z-50">
-      {/* backdrop: tap outside to close (desktop) */}
-      <button type="button" aria-label="Close menu" className="absolute inset-0 cursor-pointer bg-black/30 md:bg-transparent" onClick={onClose} />
+      <button type="button" aria-label="Close menu" className="absolute inset-0 cursor-pointer bg-black/30" onClick={onClose} />
       <div
         role="dialog"
         aria-label="Menu"
-        className="absolute inset-0 md:inset-y-0 md:left-0 md:right-auto md:w-[245px] md:max-h-none md:rounded-none md:border-0 md:border-r md:border-border bg-background md:shadow-none flex flex-col overflow-hidden animate-in-fade"
+        className="absolute inset-0 bg-background flex flex-col overflow-hidden animate-in-fade"
       >
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <span className="font-bold text-lg">Menu</span>
@@ -103,45 +163,7 @@ export function MenuSheet({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto py-2">
-          {sections.map(row)}
-          <div className="my-2 border-t border-border" />
-          <button
-            type="button"
-            role="switch"
-            aria-checked={inverted}
-            className={rowClass}
-            onClick={() => {
-              const next = !inverted;
-              setColorInverted(next);
-              setInverted(next);
-            }}
-          >
-            <Contrast className="h-6 w-6 stroke-[2] shrink-0 text-[#1877F2]" />
-            <span className="flex-1">Color inversion</span>
-            <span
-              aria-hidden
-              className={`relative h-6 w-11 rounded-full transition-colors ${inverted ? "bg-[#1877F2]" : "bg-muted-foreground/40"}`}
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${inverted ? "translate-x-5" : "translate-x-0.5"}`}
-              />
-            </span>
-          </button>
-          <Link to="/settings" className={rowClass} onClick={onClose}>
-            <Settings className="h-6 w-6 stroke-[1.8] shrink-0" />
-            <span>Settings</span>
-          </Link>
-          <button
-            type="button"
-            className={rowClass}
-            onClick={() => {
-              onClose();
-              onReset();
-            }}
-          >
-            <RotateCcw className="h-6 w-6 stroke-[1.8] shrink-0" />
-            <span>Reset demo data</span>
-          </button>
+          <MenuList username={username} onClose={onClose} onReset={onReset} />
         </div>
       </div>
     </div>
