@@ -145,7 +145,7 @@ function Carousel({ children, className = "", label }: { children: ReactNode; cl
       <div
         ref={rowRef}
         onMouseDown={onMouseDown}
-        className={`flex gap-2 overflow-x-auto no-scrollbar px-3 pb-3 cursor-grab select-none ${className}`}
+        className={`flex gap-2 overflow-x-auto no-scrollbar overscroll-x-contain touch-pan-x px-3 pb-3 cursor-grab select-none ${className}`}
       >
         {children}
       </div>
@@ -168,9 +168,9 @@ function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[]
         <Film className="h-5 w-5" />
         <span className="text-sm font-semibold">Reels</span>
       </div>
-      <Carousel label="Next reels" className="snap-x">
+      <Carousel label="Next reels">
         {reels.slice(0, 8).map((r) => (
-          <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 snap-start overflow-hidden rounded-lg bg-muted">
+          <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
             {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />}
           </Link>
         ))}
