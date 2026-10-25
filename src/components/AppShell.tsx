@@ -209,19 +209,19 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       {/* ------- desktop sidebar: the full menu list ------- */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[290px] flex-col border-r border-border bg-card px-3 py-6 z-40">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-card px-3 py-6 z-40">
         {/* logo icon, then the search bar (pill from xl; a full-width icon button on md) */}
         <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 px-3 mb-4">
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
-            <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
+            <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-10 w-10" />
           </Link>
           <button
             type="button"
             onClick={ui.openSearch}
             aria-label="Search"
-            className="flex flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted py-1.5 xl:px-3 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]"
+            className="flex flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted py-2.5 xl:px-4 text-base text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]"
           >
-            <Search className="h-4 w-4 shrink-0" />
+            <Search className="h-5 w-5 shrink-0" />
             <span className="hidden xl:inline">Search</span>
           </button>
         </div>
@@ -236,7 +236,7 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the main sections, like the mobile bottom nav ------- */}
-      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[290px] h-14 z-40 items-stretch bg-background border-t border-border">
+      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch bg-background border-t border-border">
         <NavIndicator activeKey={pathname.startsWith("/dm") ? "messages" : activeKey} desktop />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
@@ -307,7 +307,7 @@ export function AppShell() {
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className="md:ml-[76px] xl:ml-[290px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
+        className="md:ml-[76px] xl:ml-[330px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
       >
         <Outlet />
       </SwipeTabs>
