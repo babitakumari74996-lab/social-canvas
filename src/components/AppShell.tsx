@@ -209,7 +209,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       {/* ------- desktop sidebar: the full menu list ------- */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-card px-3 py-6 z-40">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40">
         {/* logo icon, then the search bar (pill from xl; a full-width icon button on md) */}
         <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 pl-3 pr-0 mb-4">
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
