@@ -60,6 +60,7 @@ function NavItem({
 
 // Bottom-nav section fill colour for the active tab.
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
+const FAB = "grid h-11 w-11 place-items-center rounded-full bg-background text-foreground shadow-md ring-1 ring-border transition-opacity hover:opacity-70";
 const NAV_CELLS = 5;
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
@@ -384,6 +385,22 @@ export function AppShell() {
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
       </nav>
+
+      {/* ------- quick icons: circles stacked upward from the bottom-right corner of the bottom nav ------- */}
+      <div className="fixed right-4 bottom-[72px] z-40 flex flex-col items-center gap-3">
+        <button type="button" aria-label="Messages" className={FAB}>
+          <Send className="h-6 w-6 -rotate-12" />
+        </button>
+        <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className={FAB}>
+          <Grid3x3 className="h-6 w-6" />
+        </button>
+        <button type="button" aria-label="Notifications" onClick={ui.openNotifications} className={FAB}>
+          <Heart className="h-6 w-6" />
+        </button>
+        <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")} className={FAB}>
+          <Gamepad2 className="h-6 w-6" />
+        </button>
+      </div>
 
       {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
       {menuOpen && (

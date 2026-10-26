@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronRight, Film, Gamepad2, Grid3x3, Heart, MessageCircle, Send, UsersRound, X } from "lucide-react";
+import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
 import { StoriesRow } from "@/components/StoriesRow";
@@ -93,13 +93,6 @@ function FeedPage() {
             <span>·</span><span>Jobs</span><span>·</span><span>Privacy</span><span>·</span><span>Terms</span><span>·</span><span>Locations</span>
           </p>
           <p>© 2026 SOCIALVERSE FROM SOCIALVERSE LABS</p>
-        </div>
-        <div className="mt-6 flex items-center gap-5 text-foreground">
-          <button type="button" aria-label="Gaming"><Gamepad2 className="h-6 w-6" /></button>
-          <button type="button" aria-label="Notifications"><Heart className="h-6 w-6" /></button>
-          <button type="button" aria-label="Menu"><Grid3x3 className="h-6 w-6" /></button>
-          <Link to="/dm" aria-label="Messages"><Send className="h-6 w-6 -rotate-12" /></Link>
-          <Link to="/groups" aria-label="Community"><img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" /></Link>
         </div>
       </aside>
     </div>
