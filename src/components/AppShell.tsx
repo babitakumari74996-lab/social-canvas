@@ -286,13 +286,13 @@ export function AppShell() {
         >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
-          <Home className="h-7 w-7" />
+          <Home className="h-6 w-6" />
         </Link>
         <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
-          <Film className="h-7 w-7" />
+          <Film className="h-6 w-6" />
         </Link>
         <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
-          <span className="block h-5 w-5 rounded-[6px] border-2 border-current relative">
+          <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
@@ -306,7 +306,7 @@ export function AppShell() {
           aria-label="Profile"
           className={cell(navIndex === 4)}
         >
-          <Avatar path={me?.avatar_url} alt="me" size={22} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
         </div>
       </nav>
@@ -361,13 +361,13 @@ export function AppShell() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
-          <Home className="h-7 w-7" />
+          <Home className="h-6 w-6" />
         </Link>
         <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
-          <Film className="h-7 w-7" />
+          <Film className="h-6 w-6" />
         </Link>
         <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
-          <span className="block h-5 w-5 rounded-[6px] border-2 border-current relative">
+          <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
@@ -381,7 +381,7 @@ export function AppShell() {
           aria-label="Profile"
           className={cell(navIndex === 4)}
         >
-          <Avatar path={me?.avatar_url} alt="me" size={22} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
       </nav>
 
