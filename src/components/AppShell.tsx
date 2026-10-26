@@ -89,7 +89,7 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute bottom-0 h-1 w-12 rounded-full"
+      className="pointer-events-none absolute bottom-0 h-1 w-16 rounded-full"
       style={{
         left: `${center}%`,
         transform: "translateX(-50%)",
