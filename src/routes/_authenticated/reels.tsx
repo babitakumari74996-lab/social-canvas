@@ -38,7 +38,7 @@ function ReelsPage() {
   }, [hasReels]);
 
   return (
-    <div className="fixed inset-0 md:inset-y-0 md:left-[76px] xl:left-[330px] md:right-0 z-30 bg-black">
+    <div className="fixed inset-0 z-30 md:z-50 bg-black">
       {/* header */}
       <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
         <span className="text-white font-bold text-lg">Reels</span>
@@ -212,7 +212,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
 
   return (
     <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0">
-      <div className="relative h-full w-full md:h-full md:w-[518px] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900">
+      <div className="relative h-full w-full md:h-full md:w-full md:flex-none overflow-hidden bg-zinc-900">
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
           <img
