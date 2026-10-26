@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck, ChevronUp, ChevronDown } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck, ChevronUp, ChevronDown, Star, Users, CircleUser } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { useActions, useMe, useReels } from "@/lib/data";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/reels")({
 
 function ReelsPage() {
   const { reels, loading } = useReels();
+  const me = useMe();
   const [muted, setMuted] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -41,11 +42,11 @@ function ReelsPage() {
     <div className="fixed inset-0 z-30 md:z-50 bg-black">
       {/* header */}
       <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
-        <span className="text-white font-bold text-lg">Reels</span>
+        <span className="text-white font-bold text-lg md:hidden">Reels</span>
         <button
           type="button"
           onClick={() => ui.openCreate("video")}
-          className="flex items-center gap-1.5 text-white text-sm font-semibold bg-white/15 backdrop-blur rounded-full px-3 py-1.5"
+          className="flex items-center gap-1.5 text-white text-sm font-semibold bg-white/15 backdrop-blur rounded-full px-3 py-1.5 md:ml-auto"
         >
           <Plus className="h-4 w-4" /> Create reel
         </button>
@@ -58,6 +59,24 @@ function ReelsPage() {
       >
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
+
+      {/* desktop: left panel with the Reels sections */}
+      <aside className="hidden md:flex absolute left-0 top-0 bottom-0 w-[220px] flex-col px-3 pt-3 z-40 text-white">
+        <span className="px-3 mb-3 text-lg font-bold">Reels</span>
+        <Link to="/reels" className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2.5 text-sm font-semibold">
+          <Star className="h-5 w-5" /> For you
+        </Link>
+        <Link to="/feed" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5">
+          <Users className="h-5 w-5" /> Following
+        </Link>
+        <Link
+          to="/profile/$username"
+          params={{ username: me?.username ?? "" }}
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5"
+        >
+          <CircleUser className="h-5 w-5" /> Profile
+        </Link>
+      </aside>
 
       {/* desktop: up / down buttons to move between reels */}
       <div className="hidden md:flex flex-col gap-3 absolute right-6 top-1/2 -translate-y-1/2 z-30">
@@ -210,9 +229,31 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
     });
   };
 
+  const rail = (cls: string) => (
+            <div className={`flex flex-col items-center gap-4 text-white pb-1 ${cls}`}>
+            <RailBtn
+              onClick={likeNow}
+              label={formatCount(reel.likes + (liked && !reel.likedByMe ? 1 : !liked && reel.likedByMe ? -1 : 0))}
+              icon={<Heart className={`h-7 w-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />}
+            />
+            <RailBtn onClick={() => setCommentsOpen(true)} label={formatCount(reel.commentsCount)} icon={<MessageCircle className="h-7 w-7 -scale-x-100" />} />
+            <RailBtn
+              onClick={() => ui.openShare({
+                id: reel.id, user_id: reel.user_id, media_urls: reel.poster ? [reel.poster] : [],
+                caption: reel.caption, created_at: reel.created_at, profiles: reel.profiles,
+                likes: reel.likes, likedByMe: liked, savedByMe: false, commentsCount: reel.commentsCount,
+              }, "reel")}
+              label="Share"
+              icon={<Send className="h-7 w-7" />}
+            />
+            <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
+            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] animate-[spin_6s_linear_infinite]" />
+          </div>
+  );
+
   return (
-    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0">
-      <div className="relative h-full w-full md:h-full md:w-full md:flex-none overflow-hidden bg-zinc-900">
+    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-3 md:relative">
+      <div className="relative h-full w-full md:h-full md:w-auto md:aspect-[9/16] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900">
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
           <img
@@ -282,26 +323,8 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             )}
           </div>
 
-          {/* action rail */}
-          <div className="flex flex-col items-center gap-4 text-white pb-1">
-            <RailBtn
-              onClick={likeNow}
-              label={formatCount(reel.likes + (liked && !reel.likedByMe ? 1 : !liked && reel.likedByMe ? -1 : 0))}
-              icon={<Heart className={`h-7 w-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />}
-            />
-            <RailBtn onClick={() => setCommentsOpen(true)} label={formatCount(reel.commentsCount)} icon={<MessageCircle className="h-7 w-7 -scale-x-100" />} />
-            <RailBtn
-              onClick={() => ui.openShare({
-                id: reel.id, user_id: reel.user_id, media_urls: reel.poster ? [reel.poster] : [],
-                caption: reel.caption, created_at: reel.created_at, profiles: reel.profiles,
-                likes: reel.likes, likedByMe: liked, savedByMe: false, commentsCount: reel.commentsCount,
-              }, "reel")}
-              label="Share"
-              icon={<Send className="h-7 w-7" />}
-            />
-            <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
-            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] animate-[spin_6s_linear_infinite]" />
-          </div>
+          {/* action rail (inside the card on mobile) */}
+          {rail("md:hidden")}
         </div>
 
         {/* progress bar */}
@@ -310,6 +333,10 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
         </div>
 
         {commentsOpen && <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />}
+      </div>
+      {/* desktop: action buttons sit beside the reel, like the reference layout */}
+      <div className="hidden md:flex absolute bottom-16 md:left-[calc(50%+(100dvh-24px)*9/32+16px)] text-white">
+        {rail("")}
       </div>
     </div>
   );
