@@ -37,12 +37,26 @@ function NotFoundComponent() {
   );
 }
 
+// A page can fail to load its code after a new deploy (the old file names no longer exist). Reload once
+// to get the new files; a timestamp in sessionStorage stops it from reloading in a loop.
+const CHUNK_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i;
+const RELOAD_KEY = "sv-chunk-reload-at";
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const isChunkError = CHUNK_ERROR.test(String(error?.message ?? error));
   useEffect(() => {
+    if (isChunkError) {
+      const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    }
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+  }, [error, isChunkError]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
