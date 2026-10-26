@@ -281,7 +281,7 @@ export function AppShell() {
       >
         <div
           style={{ backgroundColor: navBg, borderTopColor: navBorder, transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease" }}
-          className="relative flex w-[518px] max-w-full h-full items-stretch border-t"
+          className="relative flex w-[517px] max-w-full h-full items-stretch border-t"
         >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
