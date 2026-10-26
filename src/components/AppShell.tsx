@@ -387,12 +387,9 @@ export function AppShell() {
       </nav>
 
       {/* ------- quick icons: circles stacked upward from the bottom-right corner of the bottom nav ------- */}
-      <div className="fixed right-4 bottom-[72px] z-40 flex flex-col items-center gap-3">
+      <div className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
         <button type="button" aria-label="Messages" className={FAB}>
-          <Send className="h-6 w-6 -rotate-12" />
-        </button>
-        <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className={FAB}>
-          <Grid3x3 className="h-6 w-6" />
+          <Send className="h-7 w-7 -rotate-12" />
         </button>
         <button type="button" aria-label="Notifications" onClick={ui.openNotifications} className={FAB}>
           <Heart className="h-7 w-7" />
