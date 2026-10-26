@@ -43,7 +43,7 @@ function GridItem({ post, tall }: { post: UPost; tall: boolean }) {
     <Link
       to="/post/$id"
       params={{ id: post.id }}
-      className={`relative group overflow-hidden bg-muted ${tall ? "row-span-2 aspect-[1/2.04]" : "aspect-square"}`}
+      className={`relative group overflow-hidden bg-muted ${tall ? "row-span-2 aspect-[1/2.04] md:row-span-1 md:aspect-square" : "aspect-square"}`}
     >
       {isText ? (
         <span
