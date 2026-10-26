@@ -138,10 +138,12 @@ export function AppShell() {
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
     document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
-    // Desktop sidebar: 1 = open, 0 = slid away (follows the same swipe progress as the mobile bars).
-    document.documentElement.style.setProperty("--side-open", String(1 - barHide));
+    // Desktop sidebar slides away with the swipe (transform only, so the page layout never moves).
+    // Swiping to Reels fades the leaving page, so no Home content shows beside the Reels page.
+    const toReels = !!swipeP && swipeP.to === "reels";
+    document.documentElement.style.setProperty("--feed-opacity", String(toReels ? 1 - Math.min(1, swipeAmt * 2.5) : 1));
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
-  }, [barHide, swiping]);
+  }, [barHide, swiping, swipeP, swipeAmt]);
   const barStyle = {
     transform: `translate3d(0, ${-barHide * 96}px, 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
@@ -317,7 +319,7 @@ export function AppShell() {
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className={`md:ml-[calc(76px*var(--side-open,1))] xl:ml-[calc(330px*var(--side-open,1))] ${swiping ? "" : "md:transition-[margin] md:duration-[260ms]"} pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad`}
+        className="md:ml-[76px] xl:ml-[330px] md:opacity-[var(--feed-opacity,1)] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
       >
         <Outlet />
       </SwipeTabs>
