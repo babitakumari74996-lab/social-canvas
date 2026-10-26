@@ -144,7 +144,6 @@ export function AppShell() {
   const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
   const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
   const navFg = `rgb(${mix(38, 255)},${mix(38, 255)},${mix(38, 255)})`;
-  const navBorder = `rgb(${mix(229, 38)},${mix(229, 38)},${mix(229, 38)})`;
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
     document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
@@ -264,11 +263,10 @@ export function AppShell() {
       {/* Full-width bar background: same colours as the bar (light, or black on Reels). The bar itself keeps its width. */}
       <div
         aria-hidden
-        className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none border-t"
+        className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
         style={{
           backgroundColor: navBg,
-          borderTopColor: navBorder,
-          transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease",
+          transition: swiping ? "none" : "background-color 260ms ease",
         }}
       />
       {/* On Reels the bar stays and turns black; the colour follows the swipe (0 = light, 1 = black). */}
@@ -283,8 +281,8 @@ export function AppShell() {
         className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch"
       >
         <div
-          style={{ backgroundColor: navBg, borderTopColor: navBorder, transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease" }}
-          className="relative flex w-[517px] max-w-full h-full items-stretch border-t"
+          style={{ backgroundColor: navBg, transition: swiping ? "none" : "background-color 260ms ease" }}
+          className="relative flex w-[517px] max-w-full h-full items-stretch"
         >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
