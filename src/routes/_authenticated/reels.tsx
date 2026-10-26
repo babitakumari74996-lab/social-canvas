@@ -39,7 +39,7 @@ function ReelsPage() {
   }, [hasReels]);
 
   return (
-    <div className="fixed inset-0 z-30 md:z-50 bg-black">
+    <div className="fixed inset-0 md:bottom-14 z-30 md:z-50 bg-black">
       {/* header */}
       <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
         <span className="text-white font-bold text-lg md:hidden">Reels</span>

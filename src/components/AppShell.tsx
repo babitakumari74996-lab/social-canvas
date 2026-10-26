@@ -135,6 +135,15 @@ export function AppShell() {
     else barHide = toHides ? swipeAmt : 0;
   }
   const swiping = !!swipeP && !swipeP.committed;
+  // Desktop bottom bar colour: black while Reels is shown, and it blends with the swipe as it goes to or from Reels.
+  const toR = swipeP?.to === "reels";
+  const fromR = swipeP?.from === "reels";
+  let navBlack = onReels ? 1 : 0;
+  if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
+  const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
+  const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
+  const navFg = `rgb(${mix(38, 255)},${mix(38, 255)},${mix(38, 255)})`;
+  const navBorder = `rgb(${mix(229, 38)},${mix(229, 38)},${mix(229, 38)})`;
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
     document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
@@ -251,8 +260,27 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the same 5 tabs as the phone bottom nav, kept to phone width ------- */}
-      <nav aria-label="Main" style={{ opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1 }} className={`${onReels && pageKey === "reels" ? "hidden" : "hidden md:flex"} fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch pl-[56px]`}>
-        <div className="relative flex w-[518px] max-w-full h-full items-stretch bg-background border-t border-border">
+      {/* Full-width strip under the bottom bar: black on Reels (fades with the swipe), transparent elsewhere. */}
+      <div
+        aria-hidden
+        className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
+        style={{ backgroundColor: `rgba(0,0,0,${navBlack})`, transition: swiping ? "none" : "background-color 260ms ease" }}
+      />
+      {/* On Reels the bar stays and turns black; the colour follows the swipe (0 = light, 1 = black). */}
+      <nav
+        aria-label="Main"
+        style={{
+          color: navFg,
+          // Full-width strip behind the bar: transparent on other pages, black on Reels.
+          backgroundColor: `rgba(0,0,0,${navBlack})`,
+          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease",
+        }}
+        className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch pl-[56px]"
+      >
+        <div
+          style={{ backgroundColor: navBg, borderTopColor: navBorder, transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease" }}
+          className="relative flex w-[518px] max-w-full h-full items-stretch border-t"
+        >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
