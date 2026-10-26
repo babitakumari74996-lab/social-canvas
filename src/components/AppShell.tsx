@@ -271,8 +271,6 @@ export function AppShell() {
         aria-label="Main"
         style={{
           color: navFg,
-          // Full-width strip behind the bar: transparent on other pages, black on Reels.
-          backgroundColor: `rgba(0,0,0,${navBlack})`,
           // On Reels the bar sits 37px further right; it moves with the swipe, so only the Reels tab shows the shift.
           paddingLeft: `${56 + 37 * navBlack}px`,
           transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
