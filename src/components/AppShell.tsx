@@ -215,11 +215,17 @@ export function AppShell() {
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
             <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-10 w-10" />
           </Link>
+          {/* On Explore (desktop) the search bar is swapped for the Socialverse wordmark; it returns when you leave */}
+          {pathname.startsWith("/explore") && (
+            <span className="hidden xl:flex flex-1 min-w-0 items-center">
+              <Wordmark className="text-[26px]" />
+            </span>
+          )}
           <button
             type="button"
             onClick={ui.openSearch}
             aria-label="Search"
-            className="flex h-10 flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted xl:px-4 text-base text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]"
+            className={`${pathname.startsWith("/explore") ? "xl:hidden " : ""}flex h-10 flex-1 min-w-0 cursor-text items-center justify-center xl:justify-start gap-2 rounded-full bg-muted xl:px-4 text-base text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]`}
           >
             <Search className="h-5 w-5 shrink-0" />
             <span className="hidden xl:inline">Search social</span>
