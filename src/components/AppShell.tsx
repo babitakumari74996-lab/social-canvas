@@ -214,6 +214,8 @@ export function AppShell() {
         style={{
           transform: `translate3d(${-barHide * 100}%, 0, 0)`,
           transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+          // Fades out as the swipe heads to Reels, so no light panel shows over the black Reels page.
+          opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
         }}
         className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40"
       >
@@ -249,7 +251,7 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the same 5 tabs as the phone bottom nav, kept to phone width ------- */}
-      <nav aria-label="Main" className={`${onReels && pageKey === "reels" ? "hidden" : "hidden md:flex"} fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch pl-[56px]`}>
+      <nav aria-label="Main" style={{ opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1 }} className={`${onReels && pageKey === "reels" ? "hidden" : "hidden md:flex"} fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch pl-[56px]`}>
         <div className="relative flex w-[518px] max-w-full h-full items-stretch bg-background border-t border-border">
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
