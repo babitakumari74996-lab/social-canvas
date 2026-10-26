@@ -138,6 +138,8 @@ const SPLASH_CSS = `
 html[data-sv-done] #sv-splash{animation:sv-splash-out .2s ease-in 0s forwards}
 @keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
 html[data-embed] #sv-splash{display:none}
+/* Reels preview pages are black from the first paint (no white flash while the swipe reveals them). */
+html[data-reels],html[data-reels] body{background:#000 !important}
 `;
 
 function Splash() {
@@ -167,7 +169,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {/* Embedded pages (the swipe preview) never show the splash. Hard stop: splash is gone by 2s after navigation start (fade starts at 1.8s). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "(function(){var l=document.getElementById('sv-app-css');if(!l)return;function on(){l.media='all'}if(l.sheet)on();else l.addEventListener('load',on)})();if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');var done=function(){document.documentElement.setAttribute('data-sv-done','')};var css=document.getElementById('sv-app-css');var wait=function(){if(css&&css.media!=='all'){css.addEventListener('load',done)}else done()};setTimeout(wait,Math.max(0,1800-performance.now()))",
+            __html: "(function(){var l=document.getElementById('sv-app-css');if(!l)return;function on(){l.media='all'}if(l.sheet)on();else l.addEventListener('load',on)})();if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');if(/[?&]embed=/.test(location.search)&&location.pathname.indexOf('/reels')===0)document.documentElement.setAttribute('data-reels','');var done=function(){document.documentElement.setAttribute('data-sv-done','')};var css=document.getElementById('sv-app-css');var wait=function(){if(css&&css.media!=='all'){css.addEventListener('load',done)}else done()};setTimeout(wait,Math.max(0,1800-performance.now()))",
           }}
         />
         {children}
