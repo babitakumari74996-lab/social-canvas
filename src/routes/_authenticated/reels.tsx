@@ -191,7 +191,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   };
 
   return (
-    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-4">
+    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0">
       <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
