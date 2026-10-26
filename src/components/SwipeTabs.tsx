@@ -180,10 +180,12 @@ export function SwipeTabs({
       pv.style.width = `${window.innerWidth}px`;
     };
 
-    const onMove = (e: PointerEvent) => {
-      if (!tracking || busy || e.pointerId !== pid) return;
-      const cx = e.clientX - sx;
-      const cy = e.clientY - sy;
+    // Pointer moves can fire faster than the screen refreshes. Only the latest position is applied,
+    // once per animation frame, so the page follows the finger without re-rendering on every event.
+    let frame = 0;
+    let lastX = 0;
+    let lastY = 0;
+    const applyMove = (cx: number, cy: number) => {
       if (lock === null) {
         if (Math.abs(cx) < 8 && Math.abs(cy) < 8) return;
         lock = Math.abs(cx) > Math.abs(cy) ? "h" : "v";
@@ -238,8 +240,23 @@ export function SwipeTabs({
       }
     };
 
+    const onMove = (e: PointerEvent) => {
+      if (!tracking || busy || e.pointerId !== pid) return;
+      lastX = e.clientX - sx;
+      lastY = e.clientY - sy;
+      if (!frame) frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (tracking && !busy) applyMove(lastX, lastY);
+      });
+    };
+
     const onUp = (e: PointerEvent) => {
       if (!tracking || e.pointerId !== pid) return;
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        applyMove(lastX, lastY); // apply the final position before deciding
+      }
       tracking = false;
       if (lock !== "h") return;
       suppressClick = Math.abs(dx) > 8; // don't let the drag also trigger a click
@@ -361,6 +378,7 @@ export function SwipeTabs({
       main.removeEventListener("wheel", onWheel);
       main.removeEventListener("dragstart", onDragStart);
       window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(frame);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("click", onClickCapture, true);
