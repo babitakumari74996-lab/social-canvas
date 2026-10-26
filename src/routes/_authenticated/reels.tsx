@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { useActions, useMe, useReels } from "@/lib/data";
@@ -58,6 +58,26 @@ function ReelsPage() {
       >
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
+
+      {/* desktop: up / down buttons to move between reels */}
+      <div className="hidden md:flex flex-col gap-3 absolute right-6 top-1/2 -translate-y-1/2 z-30">
+        <button
+          type="button"
+          aria-label="Previous reel"
+          onClick={() => scrollRef.current?.scrollBy({ top: -scrollRef.current.clientHeight, behavior: "smooth" })}
+          className="grid place-items-center h-10 w-10 rounded-full border border-white/50 text-white hover:bg-white/10"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next reel"
+          onClick={() => scrollRef.current?.scrollBy({ top: scrollRef.current.clientHeight, behavior: "smooth" })}
+          className="grid place-items-center h-10 w-10 rounded-full border border-white/50 text-white hover:bg-white/10"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      </div>
 
       <div ref={scrollRef} className="h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-3.5rem)] overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
@@ -192,7 +212,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
 
   return (
     <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0">
-      <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
+      <div className="relative h-full w-full md:h-full md:w-[518px] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900">
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
           <img
