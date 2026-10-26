@@ -25,6 +25,7 @@ interface DemoState {
   liked: Record<string, boolean>;
   saved: Record<string, boolean>;
   following: Record<string, boolean>;
+  requestsHandled: Record<string, boolean>; // friend requests already accepted or deleted
   viewedStories: Record<string, boolean>; // by story user_id
   edits: Partial<UProfile>;
   followingUsers: Record<string, boolean>; // follows of other demo users? not needed
@@ -33,7 +34,7 @@ interface DemoState {
 }
 
 type Persisted = Pick<
-  DemoState, "liked" | "saved" | "following" | "viewedStories" | "edits"
+  DemoState, "liked" | "saved" | "following" | "requestsHandled" | "viewedStories" | "edits"
 > & {
   myPosts: UPost[]; myStories: UStory[]; myReels: UReel[];
   myComments: UComment[]; myMessages: UMessage[];
@@ -110,6 +111,7 @@ function buildInitial(saved: Partial<Persisted> = {}): DemoState {
     liked: saved.liked ?? {},
     saved: saved.saved ?? {},
     following,
+    requestsHandled: saved.requestsHandled ?? {},
     viewedStories: saved.viewedStories ?? {},
     edits: saved.edits ?? {},
     followingUsers: {},
@@ -200,6 +202,7 @@ function persist() {
       liked: state.liked,
       saved: state.saved,
       following: state.following,
+      requestsHandled: state.requestsHandled,
       viewedStories: state.viewedStories,
       edits: state.edits,
       myPosts: small(state.posts.filter((p) => p.user_id === DEMO_ME_ID && !seedIds().has(p.id))),
@@ -278,6 +281,13 @@ export const demoActions = {
       const following = { ...s.following, [userId]: !s.following[userId] };
       if (s.following[userId]) delete following[userId];
       return { ...s, following };
+    });
+  },
+  handleRequest(userId: string, accept: boolean) {
+    set((s) => {
+      const following = { ...s.following };
+      if (accept) following[userId] = true;
+      return { ...s, following, requestsHandled: { ...s.requestsHandled, [userId]: true } };
     });
   },
   addComment(postId: string, content: string) {

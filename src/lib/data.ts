@@ -3,7 +3,7 @@ import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession, useMyProfile } from "@/lib/auth";
 import { uploadMedia } from "@/lib/media";
 import { makePoster, saveMedia } from "@/lib/media-store";
-import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
+import { DEMO_ME_ID, DEMO_REQUESTS, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
 import type { StoryGroup, UComment, UMood, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
 
@@ -390,6 +390,30 @@ export function useSuggestions(): { user: UProfile; reason: string }[] {
     .filter((s) => s.user);
 }
 
+// Friend requests: people who follow me and whom I do not follow back.
+export function useFriendRequests(): UProfile[] {
+  const demo = useDemo();
+  const { userId } = useSession();
+  const { data } = useQuery({
+    queryKey: ["friend-requests", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<UProfile[]> => {
+      const sb = await getSupabase();
+      const { data: followers } = await sb.from("follows").select("follower_id, profiles!follows_follower_id_fkey(id, username, display_name, avatar_url)").eq("following_id", userId!);
+      const { data: following } = await sb.from("follows").select("following_id").eq("follower_id", userId!);
+      const followingSet = new Set((following ?? []).map((f) => f.following_id as string));
+      return ((followers ?? []) as unknown as { follower_id: string; profiles: Record<string, unknown> | null }[])
+        .filter((f) => f.profiles && !followingSet.has(f.follower_id))
+        .map((f) => supabaseProfile(f.profiles!, f.follower_id));
+    },
+  });
+  if (userId) return data ?? [];
+  return DEMO_REQUESTS
+    .filter((id) => !demo.requestsHandled[id] && !demo.following[id])
+    .map((id) => demo.users.find((u) => u.id === id))
+    .filter((u): u is UProfile => !!u);
+}
+
 // ---- search ---------------------------------------------------------------------------
 
 export function useUserSearch(q: string): UProfile[] {
@@ -470,6 +494,14 @@ export function useActions() {
       if (!userId) return;
       await (await getSupabase()).from("messages").insert({ sender_id: userId, receiver_id: receiverId, content });
     },
+    async handleRequest(requesterId: string, accept: boolean) {
+      if (!userId) return;
+      const sb = await getSupabase();
+      if (accept) await sb.from("follows").insert({ follower_id: userId, following_id: requesterId });
+      else await sb.from("follows").delete().eq("follower_id", requesterId).eq("following_id", userId);
+      qc.invalidateQueries({ queryKey: ["friend-requests", userId] });
+      qc.invalidateQueries({ queryKey: ["following", userId] });
+    },
     async updateProfile(patch: { display_name?: string; bio?: string }) {
       if (!userId) return;
       await (await getSupabase()).from("profiles").update(patch).eq("id", userId);
@@ -482,6 +514,7 @@ export function useActions() {
     like: (postId: string, on: boolean) => (userId ? real.like(postId, on) : demoActions.toggleLike(postId)),
     comment: (postId: string, content: string) => (userId ? real.comment(postId, content) : demoActions.addComment(postId, content)),
     follow: (targetId: string, on: boolean) => (userId ? real.follow(targetId, on) : demoActions.toggleFollow(targetId)),
+    handleRequest: (requesterId: string, accept: boolean) => (userId ? real.handleRequest(requesterId, accept) : demoActions.handleRequest(requesterId, accept)),
     createPost: async (input: { files?: File[]; galleryUrls?: string[]; caption: string; location?: string | null }) => {
       if (userId) return real.createPost({ ...input, files: input.files ?? [] });
       const urls = [...(input.files ?? []).map((f) => fileToDataUrl(f)), ...(input.galleryUrls ?? [])];

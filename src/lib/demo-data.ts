@@ -271,6 +271,9 @@ export const DEMO_NOTIF_SEEDS: DemoNotifSeed[] = [
 // Users I already follow in the demo world (rest are suggestions).
 export const DEMO_FOLLOWING = ["u4", "u6", "u8"];
 
+// Demo friend requests: people who want to follow me and whom I do not follow back yet.
+export const DEMO_REQUESTS = ["u5", "u7"];
+
 // Moods posted by demo people. `media` is an index into DEMO_GALLERY (images only, so they always load).
 export interface DemoMoodSeed {
   id: string; user_id: string; mood: string; note: string; media: number; mins: number; likes: number;

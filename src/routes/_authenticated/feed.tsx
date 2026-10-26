@@ -4,9 +4,9 @@ import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
 import { StoriesRow } from "@/components/StoriesRow";
-import { useActions, useFeed, useMe, useReels, useSuggestions } from "@/lib/data";
+import { useActions, useFeed, useFriendRequests, useMe, useReels, useSuggestions } from "@/lib/data";
 import { formatCount } from "@/lib/time";
-import type { UPost } from "@/lib/types";
+import type { UPost, UProfile } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/feed")({
   component: FeedPage,
@@ -15,7 +15,8 @@ export const Route = createFileRoute("/_authenticated/feed")({
 function FeedPage() {
   const me = useMe();
   const { posts, loading } = useFeed();
-  const suggestions = useSuggestions();
+  const requests = useFriendRequests();
+  const suggestions = useSuggestions().filter((s) => !requests.some((r) => r.id === s.user.id));
   const { reels } = useReels();
 
   return (
@@ -60,6 +61,19 @@ function FeedPage() {
             </Link>
           </div>
         )}
+        {requests.length > 0 && (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-muted-foreground">Friend requests</span>
+              <Link to="/friends" className="text-xs font-semibold hover:opacity-60">See all</Link>
+            </div>
+            <div className="space-y-3 mb-6">
+              {requests.map((u) => (
+                <RequestRow key={u.id} user={u} />
+              ))}
+            </div>
+          </>
+        )}
         {suggestions.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-3">
@@ -81,6 +95,29 @@ function FeedPage() {
           <p>© 2026 SOCIALVERSE FROM SOCIALVERSE LABS</p>
         </div>
       </aside>
+    </div>
+  );
+}
+
+function RequestRow({ user }: { user: UProfile }) {
+  const actions = useActions();
+  return (
+    <div className="flex items-center gap-3">
+      <Link to="/profile/$username" params={{ username: user.username }}>
+        <Avatar path={user.avatar_url} alt={user.username} size={44} />
+      </Link>
+      <div className="min-w-0 flex-1 leading-tight">
+        <Link to="/profile/$username" params={{ username: user.username }} className="block text-sm font-semibold truncate hover:opacity-70">
+          {user.username}
+        </Link>
+        <span className="block text-xs text-muted-foreground truncate">{user.display_name ?? "wants to follow you"}</span>
+      </div>
+      <button type="button" onClick={() => actions.handleRequest(user.id, true)} className="text-xs font-semibold text-primary">
+        Confirm
+      </button>
+      <button type="button" onClick={() => actions.handleRequest(user.id, false)} className="text-xs font-semibold text-muted-foreground">
+        Delete
+      </button>
     </div>
   );
 }
