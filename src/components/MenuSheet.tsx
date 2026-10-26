@@ -52,7 +52,7 @@ export function MenuList({
     { label: "Your AD activity", icon: Megaphone, color: "text-[#1877F2]" },
   ];
 
-  const rowClass = `flex w-full items-center gap-4 ${inline ? "px-3 xl:px-4" : "px-4"} py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors`;
+  const rowClass = `flex w-full items-center gap-4 ${inline ? "rounded-lg px-3 xl:px-4" : "px-4"} py-3 text-[15px] text-left cursor-pointer hover:bg-muted transition-colors`;
   const labelClass = inline ? "hidden xl:inline" : "";
 
   const collapsed = inline && !expanded;
