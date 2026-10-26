@@ -239,7 +239,7 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the same 5 tabs as the phone bottom nav, kept to phone width ------- */}
-      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch pl-[96px]">
+      <nav aria-label="Main" className={`${onReels && pageKey === "reels" ? "hidden" : "hidden md:flex"} fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch pl-[96px]`}>
         <div className="relative flex w-[518px] max-w-full h-full items-stretch bg-background border-t border-border">
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
