@@ -194,7 +194,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {/* header */}
         <header className="flex items-center justify-between border-b border-border px-3 h-12 shrink-0">
           <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : setStep("pick"))} className="p-1 hover:opacity-60">
-            {step === "pick" || step === "text" ? <X className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            {step === "pick" || step === "text" ? (page ? null : <X className="h-5 w-5" />) : <ChevronLeft className="h-5 w-5" />}
           </button>
           <span className="font-semibold text-[15px]">{title}</span>
           <button
