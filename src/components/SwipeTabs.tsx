@@ -130,6 +130,13 @@ export function SwipeTabs({
     };
 
     const hidePreview = () => setPreview(null);
+    // The page fades out while swiping to Reels, and stays faded until the commit finishes. Once the new
+    // page is in place, bring it back at once: otherwise the Reels page itself stays invisible (a white screen)
+    // until the swipe state clears a moment later.
+    const endCommitFade = () => {
+      setSwipeProgress(null);
+      document.documentElement.style.setProperty("--feed-opacity", "1");
+    };
 
     const snapBack = () => {
       setSwipeProgress(null);
@@ -302,6 +309,7 @@ export function SwipeTabs({
           } finally {
             rest();
             hidePreview();
+            endCommitFade();
             busy = false;
           }
         }, ANIM_MS);
@@ -325,6 +333,7 @@ export function SwipeTabs({
           await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
           rest();
           hidePreview();
+          endCommitFade();
           busy = false;
         }
       }, ANIM_MS);
