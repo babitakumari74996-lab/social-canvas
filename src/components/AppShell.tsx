@@ -273,9 +273,11 @@ export function AppShell() {
           color: navFg,
           // Full-width strip behind the bar: transparent on other pages, black on Reels.
           backgroundColor: `rgba(0,0,0,${navBlack})`,
-          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease",
+          // On Reels the bar sits 40px further right; it moves with the swipe, so only the Reels tab shows the shift.
+          paddingLeft: `${56 + 40 * navBlack}px`,
+          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
-        className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch pl-[56px]"
+        className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch"
       >
         <div
           style={{ backgroundColor: navBg, borderTopColor: navBorder, transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease" }}
