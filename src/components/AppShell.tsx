@@ -138,6 +138,8 @@ export function AppShell() {
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
     document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
+    // Desktop sidebar: 1 = open, 0 = slid away (follows the same swipe progress as the mobile bars).
+    document.documentElement.style.setProperty("--side-open", String(1 - barHide));
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
   }, [barHide, swiping]);
   const barStyle = {
@@ -206,7 +208,13 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       {/* ------- desktop sidebar: the full menu list ------- */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40">
+      <aside
+        style={{
+          transform: `translate3d(${-barHide * 100}%, 0, 0)`,
+          transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+        }}
+        className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40"
+      >
         {/* logo icon, then the search bar (pill from xl; a full-width icon button on md) */}
         <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 pl-3 pr-0 mb-4">
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
@@ -309,7 +317,7 @@ export function AppShell() {
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
-        className="md:ml-[76px] xl:ml-[330px] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
+        className={`md:ml-[calc(76px*var(--side-open,1))] xl:ml-[calc(330px*var(--side-open,1))] ${swiping ? "" : "md:transition-[margin] md:duration-[260ms]"} pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad`}
       >
         <Outlet />
       </SwipeTabs>
