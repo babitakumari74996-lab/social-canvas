@@ -60,7 +60,7 @@ function NavItem({
 
 // Bottom-nav section fill colour for the active tab.
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
-const FAB = "grid h-11 w-11 place-items-center rounded-full bg-background text-foreground shadow-md ring-1 ring-border transition-opacity hover:opacity-70";
+const FAB = "grid h-14 w-14 place-items-center rounded-full bg-background text-foreground shadow-md ring-1 ring-border transition-opacity hover:opacity-70";
 const NAV_CELLS = 5;
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
@@ -395,11 +395,14 @@ export function AppShell() {
           <Grid3x3 className="h-6 w-6" />
         </button>
         <button type="button" aria-label="Notifications" onClick={ui.openNotifications} className={FAB}>
-          <Heart className="h-6 w-6" />
+          <Heart className="h-7 w-7" />
         </button>
         <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")} className={FAB}>
-          <Gamepad2 className="h-6 w-6" />
+          <Gamepad2 className="h-7 w-7" />
         </button>
+        <Link to="/groups" aria-label="Community" className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
+          <img src="/community.jpg" alt="" width={56} height={56} className="h-full w-full object-cover" />
+        </Link>
       </div>
 
       {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
