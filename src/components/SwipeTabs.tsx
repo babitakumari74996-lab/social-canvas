@@ -172,9 +172,10 @@ export function SwipeTabs({
       target = null;
       suppressClick = false;
       width = main.getBoundingClientRect().width || window.innerWidth;
-      const rect = main.getBoundingClientRect();
-      pv.style.left = `${rect.left}px`;
-      pv.style.width = `${rect.width}px`;
+      // The preview covers the whole window (on desktop the sidebar column too), so the incoming page is
+      // never cut off at the sidebar edge. On mobile the main column is already full width.
+      pv.style.left = "0px";
+      pv.style.width = `${window.innerWidth}px`;
     };
 
     const onMove = (e: PointerEvent) => {
