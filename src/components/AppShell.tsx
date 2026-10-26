@@ -62,16 +62,13 @@ function NavItem({
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const NAV_CELLS = 5;
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
-// Desktop bottom bar: the same cells plus Messages next to Moods.
-const DESKTOP_NAV_CELLS = 6;
-const DESKTOP_NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, messages: 4, profile: 5 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
 // slides from the current icon to the neighbouring one, following the drag.
-function NavIndicator({ activeKey, desktop = false }: { activeKey: string | null; desktop?: boolean }) {
-  const pos_map = desktop ? DESKTOP_NAV_POS : NAV_POS;
-  const cells = desktop ? DESKTOP_NAV_CELLS : NAV_CELLS;
+function NavIndicator({ activeKey }: { activeKey: string | null }) {
+  const pos_map = NAV_POS;
+  const cells = NAV_CELLS;
   // During a swipe the line slides from the current icon to the neighbouring one, following the drag.
   const p = useSwipeProgress();
   let pos: number | null = null;
@@ -241,9 +238,10 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* ------- desktop bottom bar: the main sections, like the mobile bottom nav ------- */}
-      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 items-stretch bg-background border-t border-border">
-        <NavIndicator activeKey={pathname.startsWith("/dm") ? "messages" : activeKey} desktop />
+      {/* ------- desktop bottom bar: the same 5 tabs as the phone bottom nav, kept to phone width ------- */}
+      <nav aria-label="Main" className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-40 justify-center items-start">
+        <div className="relative flex w-[390px] max-w-full h-full items-stretch bg-background border-t border-border">
+        <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
         </Link>
@@ -259,9 +257,6 @@ export function AppShell() {
         <Link to="/moods" aria-label="Moods" className={cell(navIndex === 3)}>
           <Smile className="h-6 w-6" />
         </Link>
-        <Link to="/dm" aria-label="Messages" className={cell(pathname.startsWith("/dm"))}>
-          <Send className="h-6 w-6 -rotate-12" />
-        </Link>
         <Link
           to="/profile/$username"
           params={{ username: me?.username ?? "aarav_sharma" }}
@@ -270,6 +265,7 @@ export function AppShell() {
         >
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
         </Link>
+        </div>
       </nav>
 
       {/* ------- mobile top bar ------- */}
