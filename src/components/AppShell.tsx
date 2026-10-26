@@ -138,7 +138,8 @@ export function AppShell() {
   // Desktop bottom bar colour: black while Reels is shown, and it blends with the swipe as it goes to or from Reels.
   const toR = swipeP?.to === "reels";
   const fromR = swipeP?.from === "reels";
-  let navBlack = onReels ? 1 : 0;
+  // Only the Reels page itself (not Create / Moods / Profile) turns the bar black and hides the sidebar.
+  let navBlack = pageKey === "reels" ? 1 : 0;
   if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
   const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
   const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
@@ -221,7 +222,7 @@ export function AppShell() {
       {/* ------- desktop sidebar: the full menu list ------- */}
       <aside
         style={{
-          transform: `translate3d(${-barHide * 100}%, 0, 0)`,
+          transform: `translate3d(${-navBlack * 100}%, 0, 0)`,
           transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
           // Fades out as the swipe heads to Reels, so no light panel shows over the black Reels page.
           opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
