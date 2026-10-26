@@ -261,11 +261,15 @@ export function AppShell() {
       </aside>
 
       {/* ------- desktop bottom bar: the same 5 tabs as the phone bottom nav, kept to phone width ------- */}
-      {/* Full-width strip under the bottom bar: black on Reels (fades with the swipe), transparent elsewhere. */}
+      {/* Full-width bar background: same colours as the bar (light, or black on Reels). The bar itself keeps its width. */}
       <div
         aria-hidden
-        className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
-        style={{ backgroundColor: `rgba(0,0,0,${navBlack})`, transition: swiping ? "none" : "background-color 260ms ease" }}
+        className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none border-t"
+        style={{
+          backgroundColor: navBg,
+          borderTopColor: navBorder,
+          transition: swiping ? "none" : "background-color 260ms ease, border-color 260ms ease",
+        }}
       />
       {/* On Reels the bar stays and turns black; the colour follows the swipe (0 = light, 1 = black). */}
       <nav
