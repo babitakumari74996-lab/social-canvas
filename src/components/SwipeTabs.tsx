@@ -180,6 +180,7 @@ export function SwipeTabs({
       mainBox = { left: main.getBoundingClientRect().left, width: width };
       pv.style.left = "0px";
       pv.style.width = `${window.innerWidth}px`;
+      pv.style.background = ""; // no light flash before the target is known
     };
 
     // Pointer moves can fire faster than the screen refreshes. Only the latest position is applied,
@@ -209,12 +210,16 @@ export function SwipeTabs({
         const tgt = latest.current.tabs[ti];
         // Reels covers the whole window (its sidebar column too). Other pages render in the main column's box,
         // so their layout matches the page and the sidebar never covers them.
+        // Black is set here, in the same frame as the geometry. The layer's React style would apply it one
+        // render later, and until then the light background class would flash over the whole window.
         if (tgt.key === "reels") {
           pv.style.left = "0px";
           pv.style.width = `${window.innerWidth}px`;
+          pv.style.background = "#000";
         } else {
           pv.style.left = `${mainBox.left}px`;
           pv.style.width = `${mainBox.width}px`;
+          pv.style.background = "";
         }
         const fromOverlay = !!latest.current.overlayKey;
         if (tgt.to && !fromOverlay) {
