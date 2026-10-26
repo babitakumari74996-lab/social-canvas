@@ -94,6 +94,7 @@ export function SwipeTabs({
     let sy = 0;
     let st = 0;
     let lock: "h" | "v" | null = null;
+    let touchGesture = false; // touch: a vertical start hands the gesture to the browser's scroll
     let dx = 0;
     let target: number | null = null;
     let dir: 1 | -1 = 1;
@@ -169,6 +170,7 @@ export function SwipeTabs({
       sy = e.clientY;
       st = Date.now();
       lock = null;
+      touchGesture = e.pointerType !== "mouse";
       dx = 0;
       target = null;
       suppressClick = false;
@@ -188,11 +190,13 @@ export function SwipeTabs({
     const applyMove = (cx: number, cy: number) => {
       if (lock === null) {
         if (Math.abs(cx) < 8 && Math.abs(cy) < 8) return;
-        lock = Math.abs(cx) > Math.abs(cy) ? "h" : "v";
-        if (lock === "v") {
-          tracking = false;
+        if (Math.abs(cx) <= Math.abs(cy)) {
+          // Vertical so far. Touch hands the gesture to the page's scroll; a mouse keeps waiting,
+          // so a hold with a small vertical drift can still become a horizontal swipe.
+          if (touchGesture) tracking = false;
           return;
         }
+        lock = "h";
       }
       dx = cx;
       const idx = latest.current.activeIndex;
