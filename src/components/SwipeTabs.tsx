@@ -205,6 +205,7 @@ export function SwipeTabs({
           return;
         }
         lock = "h";
+        window.getSelection()?.removeAllRanges(); // clear anything the drag already selected
       }
       dx = cx;
       const idx = latest.current.activeIndex;
@@ -385,6 +386,11 @@ export function SwipeTabs({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
+    // A mouse drag would otherwise select text and images on the page. While a swipe is tracked, selection is off.
+    const onSelectStart = (e: Event) => {
+      if (tracking && !busy) e.preventDefault();
+    };
+    document.addEventListener("selectstart", onSelectStart);
     window.addEventListener("click", onClickCapture, true);
     setPv(window.innerWidth, false);
 
@@ -399,6 +405,7 @@ export function SwipeTabs({
       cancelAnimationFrame(frame);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
+      document.removeEventListener("selectstart", onSelectStart);
       window.removeEventListener("click", onClickCapture, true);
       timers.forEach((t) => window.clearTimeout(t));
     };
