@@ -107,7 +107,7 @@ export function MenuList({
     <>
       {sections.map(row)}
       {showMore}
-      <div className="my-2 border-t border-border" />
+      <div className={`my-2 border-t ${inline ? "border-transparent" : "border-border"}`} />
       <button
         type="button"
         role="switch"
