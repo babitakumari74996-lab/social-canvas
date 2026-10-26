@@ -44,7 +44,7 @@ function FeedPage() {
       </div>
 
       {/* right rail (desktop) */}
-      <aside className="hidden lg:block w-[320px] shrink-0 pl-16 pt-9 pr-8">
+      <aside className="hidden lg:block w-[400px] shrink-0 pl-10 pt-9 pr-8">
         {me && (
           <div className="flex items-center gap-3 mb-5">
             <Link to="/profile/$username" params={{ username: me.username }}>
