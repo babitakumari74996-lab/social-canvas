@@ -86,6 +86,7 @@ export function SwipeTabs({
     };
 
     let width = window.innerWidth; // width of the swipeable area, measured at gesture start
+    let mainBox = { left: 0, width: window.innerWidth }; // the main column's box at gesture start
     let tracking = false;
     let busy = false;
     let pid = -1;
@@ -174,6 +175,7 @@ export function SwipeTabs({
       width = main.getBoundingClientRect().width || window.innerWidth;
       // The preview covers the whole window (on desktop the sidebar column too), so the incoming page is
       // never cut off at the sidebar edge. On mobile the main column is already full width.
+      mainBox = { left: main.getBoundingClientRect().left, width: width };
       pv.style.left = "0px";
       pv.style.width = `${window.innerWidth}px`;
     };
@@ -199,6 +201,15 @@ export function SwipeTabs({
         target = ti;
         dir = d;
         const tgt = latest.current.tabs[ti];
+        // Reels covers the whole window (its sidebar column too). Other pages render in the main column's box,
+        // so their layout matches the page and the sidebar never covers them.
+        if (tgt.key === "reels") {
+          pv.style.left = "0px";
+          pv.style.width = `${window.innerWidth}px`;
+        } else {
+          pv.style.left = `${mainBox.left}px`;
+          pv.style.width = `${mainBox.width}px`;
+        }
         const fromOverlay = !!latest.current.overlayKey;
         if (tgt.to && !fromOverlay) {
           // A page neighbour: reveal its real page from the swiped side.
