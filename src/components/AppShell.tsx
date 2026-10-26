@@ -271,8 +271,8 @@ export function AppShell() {
         aria-label="Main"
         style={{
           color: navFg,
-          // On Reels the bar sits 37px further right; it moves with the swipe, so only the Reels tab shows the shift.
-          paddingLeft: `${56 + 37 * navBlack}px`,
+          // On Reels the bar sits 35px further right; it moves with the swipe, so only the Reels tab shows the shift.
+          paddingLeft: `${57 + 35 * navBlack}px`,
           transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
         className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch"
