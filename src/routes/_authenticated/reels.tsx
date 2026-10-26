@@ -38,7 +38,7 @@ function ReelsPage() {
   }, [hasReels]);
 
   return (
-    <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
+    <div className="fixed md:relative inset-0 md:inset-auto md:h-[calc(100dvh-3.5rem)] z-30 bg-black">
       {/* header */}
       <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
         <span className="text-white font-bold text-lg">Reels</span>
@@ -59,7 +59,7 @@ function ReelsPage() {
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <div ref={scrollRef} className="h-[calc(100dvh-3.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+      <div ref={scrollRef} className="h-[calc(100dvh-3.5rem)] md:h-[calc(100dvh-3.5rem)] overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
           <div className="h-full snap-start grid place-items-center">
             <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
