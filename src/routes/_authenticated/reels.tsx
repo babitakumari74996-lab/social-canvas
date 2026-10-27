@@ -321,6 +321,12 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             {reel.caption && (
               <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
             )}
+            <button
+              type="button"
+              className="mt-3 w-full rounded-lg bg-sky-500 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+            >
+              Buy product
+            </button>
           </div>
 
           {/* action rail (inside the card on mobile) */}
