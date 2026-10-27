@@ -235,7 +235,8 @@ export function AppShell() {
           transform: `translate3d(${-navBlack * 100}%, 0, 0)`,
           transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
           // Fades out as the swipe heads to Reels, so no light panel shows over the black Reels page.
-          opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
+          // Leaving Reels: the sidebar stays hidden during the drag, so it never covers the Home page sliding in; it shows at commit.
+          opacity: swipeP?.from === "reels" ? 0 : swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
         }}
         className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40"
       >
