@@ -1,3 +1,4 @@
+import { PostNote } from "./PostNote";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -109,7 +110,7 @@ function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
-export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
+export function PostCard({ post, withComments = false, tall = false, note }: { post: UPost; withComments?: boolean; tall?: boolean; note?: string }) {
   const actions = useActions();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -172,6 +173,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           <MoreHorizontal className="h-5 w-5" />
         </button>
       </header>
+      {note && <PostNote text={note} />}
 
       {/* media */}
       {isText ? (

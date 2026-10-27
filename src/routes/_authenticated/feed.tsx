@@ -3,7 +3,6 @@ import { useRef, useState, type ReactNode } from "react";
 import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
-import { PostNote } from "@/components/PostNote";
 import { DEMO_NOTES } from "@/lib/demo-data";
 import { StoriesRow } from "@/components/StoriesRow";
 import { useActions, useFeed, useFriendRequests, useMe, useReels, useSuggestions } from "@/lib/data";
@@ -34,8 +33,7 @@ function FeedPage() {
         )}
         {posts.map((p, i) => (
           <div key={p.id}>
-            {DEMO_NOTES[p.id] && <PostNote text={DEMO_NOTES[p.id]} />}
-            <PostCard post={p} tall={i === 0} />
+            <PostCard post={p} tall={i === 0} note={DEMO_NOTES[p.id]} />
             {/* Facebook-style inserts between posts. Never both at the same spot (Reels after post 3, People after post 7). */}
             {i === 2 && reels.length > 0 && <ReelsStrip reels={reels} />}
             {i === 6 && suggestions.length > 0 && <PeopleYouMayKnow people={suggestions} />}

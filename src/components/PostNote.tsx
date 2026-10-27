@@ -53,7 +53,7 @@ export function PostNote({ text }: { text: string }) {
   const truncated = !open && cut !== null;
 
   return (
-    <div className="mx-3 mb-2 rounded-xl border border-border bg-card px-3 py-2 md:mx-0">
+    <div className="px-3 pb-2">
       <div className="relative">
         <p ref={ref} className="text-sm leading-5 whitespace-pre-wrap break-words">
           {truncated ? (
