@@ -124,6 +124,12 @@ function MoodCard({ mood }: { mood: UMood }) {
           <MessageCircle className="h-6 w-6" />
           <span>{formatCount(comments.length)}</span>
         </button>
+        <button
+          type="button"
+          className="flex-1 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+        >
+          Buy product
+        </button>
       </div>
 
       {showComments && (
