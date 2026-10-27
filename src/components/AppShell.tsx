@@ -148,10 +148,21 @@ export function AppShell() {
   const swiping = !!swipeP && !swipeP.committed;
   // Floating window opened from a corner icon (desktop). One at a time; clicking the same icon again closes it.
   const [dock, setDock] = useState<DockPanel | null>(null);
-  const openDock = (id: string, title: string, path: string) =>
-    setDock((d) => (d?.id === id ? null : { id, title, path }));
-  // Switching tabs closes the window.
-  useEffect(() => setDock(null), [pageKey]);
+  const [dockLeaving, setDockLeaving] = useState(false);
+  // Same icon again closes it; another icon replaces it.
+  const openDock = (id: string, title: string, extra: Partial<DockPanel> = {}) => {
+    if (dock?.id === id && !dockLeaving) {
+      setDockLeaving(true);
+      return;
+    }
+    setDock({ id, title, locked: false, ...extra });
+    setDockLeaving(false);
+  };
+  // Switching tabs: an unlocked window slides out to the right; a locked one stays open.
+  useEffect(() => {
+    if (dock && !dock.locked) setDockLeaving(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageKey]);
   // Desktop bottom bar colour: black while Reels is shown, and it blends with the swipe as it goes to or from Reels.
   const toR = swipeP?.to === "reels";
   const fromR = swipeP?.from === "reels";
@@ -424,20 +435,32 @@ export function AppShell() {
           opacity: Math.max(0, Math.min(1, (homeAmt - 0.5) * 2)),
         }}
         className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
-        <button type="button" aria-label="Messages" onClick={() => openDock("messages", "Messages", "/dm?embed=1")} className={FAB}>
+        <button type="button" aria-label="Messages" onClick={() => openDock("messages", "Messages", { path: "/dm?embed=1" })} className={FAB}>
           <Send className="h-7 w-7 -rotate-12" />
         </button>
-        <button type="button" aria-label="Notifications" onClick={() => openDock("notifications", "Notifications", "/notifications?embed=1")} className={FAB}>
+        <button type="button" aria-label="Notifications" onClick={() => openDock("notifications", "Notifications", { path: "/notifications?embed=1" })} className={FAB}>
           <Heart className="h-7 w-7" />
         </button>
-        <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")} className={FAB}>
+        <button type="button" aria-label="Gaming" onClick={() => openDock("gaming", "Gaming", { unavailable: true, w: 320, h: 300 })} className={FAB}>
           <Gamepad2 className="h-7 w-7" />
         </button>
-        <button type="button" aria-label="Community" onClick={() => openDock("community", "Community", "/groups?embed=1")} className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
+        <button type="button" aria-label="Community" onClick={() => openDock("community", "Community", { path: "/groups?embed=1" })} className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
           <img src="/community.jpg" alt="" width={56} height={56} className="h-full w-full object-cover" />
         </button>
       </div>
-      {dock && <FloatingPanel key={dock.id} panel={dock} onClose={() => setDock(null)} />}
+      {dock && (
+        <FloatingPanel
+          key={dock.id}
+          panel={dock}
+          leaving={dockLeaving}
+          onClose={() => setDockLeaving(true)}
+          onGone={() => {
+            setDock(null);
+            setDockLeaving(false);
+          }}
+          onToggleLock={() => setDock((d) => (d ? { ...d, locked: !d.locked } : d))}
+        />
+      )}
 
       {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
       {menuOpen && (
