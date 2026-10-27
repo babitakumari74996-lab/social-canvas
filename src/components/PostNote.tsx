@@ -1,5 +1,34 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+// Notepad-with-pencil icon, drawn in currentColor so it follows the theme.
+function NoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 540 540"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={40}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="inline-block h-[1em] w-[1em] mr-1.5"
+      style={{ verticalAlign: "-0.15em" }}
+    >
+      <path d="M250 435 H205 C160 435 133 405 133 365 V185 C133 155 155 140 185 140 H330 C360 140 378 160 378 190 V245" />
+      <path d="M133 210 H378" />
+      <path d="M185 110 V140 M255 110 V140 M325 110 V140" />
+      <path d="M185 268 H325 M185 323 H300 M185 379 H255" />
+      <path d="M290 428 L282 388 L398 272 Q412 258 426 272 Q440 286 426 300 L314 418 Z" />
+      <path d="M375 292 L408 325" />
+    </svg>
+  );
+}
+
+// Same width as the icon, used in the measuring copy so the cut is exact.
+function IconSpacer() {
+  return <span className="inline-block h-[1em] w-[1em] mr-1.5" style={{ verticalAlign: "-0.15em" }} />;
+}
+
 // A short note shown above a post on Home. It shows 2 lines. When the text is longer, the text is cut where it
 // fits and "… more" follows inline at the end of the 2nd line; "more" reveals the full note.
 export function PostNote({ text }: { text: string }) {
@@ -18,25 +47,30 @@ export function PostNote({ text }: { text: string }) {
     const lh = parseFloat(getComputedStyle(p).lineHeight) || 20;
     const maxH = lh * 2 + 1;
     m.style.width = `${p.clientWidth}px`;
-    m.textContent = text;
+
+    // Keep the icon spacer (first child); replace everything after it with the given text.
+    const setMeasure = (plain: string, withMore: boolean) => {
+      while (m.childNodes.length > 1) m.removeChild(m.lastChild!);
+      m.append(document.createTextNode(plain));
+      if (withMore) {
+        // Same markup as the real line: the "more" is bold, so it must be measured bold too.
+        const more = document.createElement("span");
+        more.style.fontWeight = "600";
+        more.textContent = "more";
+        m.append(more);
+      }
+    };
+
+    setMeasure(text, false);
     if (m.offsetHeight <= maxH) {
       setCut(null);
       return;
     }
-    // Same markup as the real line: the "more" is bold, so it must be measured bold too.
-    const measureCut = (n: number) => {
-      m.textContent = "";
-      m.append(document.createTextNode(text.slice(0, n).trimEnd() + "… "));
-      const more = document.createElement("span");
-      more.style.fontWeight = "600";
-      more.textContent = "more";
-      m.append(more);
-    };
     let lo = 0;
     let hi = text.length;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      measureCut(mid);
+      setMeasure(text.slice(0, mid).trimEnd() + "… ", true);
       if (m.offsetHeight <= maxH) lo = mid;
       else hi = mid - 1;
     }
@@ -56,6 +90,7 @@ export function PostNote({ text }: { text: string }) {
     <div className="mx-3 mt-2 mb-2 rounded-xl border border-border bg-card px-3 py-2 md:mx-0">
       <div className="relative">
         <p ref={ref} className="text-sm leading-5 whitespace-pre-wrap break-words">
+          <NoteIcon />
           {truncated ? (
             <>
               {text.slice(0, cut).trimEnd()}… <button
@@ -75,7 +110,9 @@ export function PostNote({ text }: { text: string }) {
           ref={measureRef}
           aria-hidden
           className="invisible pointer-events-none absolute left-0 top-0 text-sm leading-5 whitespace-pre-wrap break-words"
-        />
+        >
+          <IconSpacer />
+        </div>
       </div>
       {open && cut !== null && (
         <button
