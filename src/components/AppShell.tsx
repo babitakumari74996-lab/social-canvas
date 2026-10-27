@@ -131,6 +131,13 @@ export function AppShell() {
     : pathname.startsWith("/moods") ? "moods" : pathname.startsWith("/profile") ? "profile" : "other";
   const onReels = HIDE_BARS.includes(pageKey);
   const swipeAmt = swipeP ? (swipeP.committed ? 1 : Math.min(1, Math.abs(swipeP.dx) / Math.max(1, swipeP.full))) : 0;
+  // Quick icons belong to Home only: they follow a swipe to or from Home, and jump on a click.
+  const onHome = pathname.startsWith("/feed");
+  const toHome = swipeP?.to === "home";
+  const fromHome = swipeP?.from === "home";
+  const homeAmt = swipeP
+    ? toHome && !fromHome ? swipeAmt : fromHome && !toHome ? 1 - swipeAmt : toHome ? 1 : 0
+    : onHome ? 1 : 0;
   const toHides = swipeP ? HIDE_BARS.includes(swipeP.to) : false;
   let barHide = onReels ? 1 : 0;
   if (swipeP) {
@@ -394,7 +401,13 @@ export function AppShell() {
       </nav>
 
       {/* ------- quick icons: circles stacked upward from the bottom-right corner of the bottom nav ------- */}
-      <div className={`fixed right-4 bottom-3 z-40 hidden flex-col items-center gap-3 ${pageKey === "reels" ? "" : "md:flex"}`}>
+      <div
+        style={{
+          // 1 = Home showing, 0 = any other tab. It follows the swipe; a click jumps straight to the end state.
+          transform: `translate3d(${(1 - homeAmt) * 90}px,0,0)`,
+          pointerEvents: homeAmt > 0.5 ? "auto" : "none",
+        }}
+        className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
         <button type="button" aria-label="Messages" className={FAB}>
           <Send className="h-7 w-7 -rotate-12" />
         </button>
