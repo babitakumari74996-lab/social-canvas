@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
-import { ChevronRight, Film, Heart, MessageCircle, UsersRound, X } from "lucide-react";
+import { ChevronRight, Film, Heart, MessageCircle, ShoppingBag, UsersRound, X } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { PostCard, MediaImg } from "@/components/PostCard";
 import { DEMO_NOTES } from "@/lib/demo-data";
 import { PostNote } from "@/components/PostNote";
+import { DEMO_PRODUCTS } from "@/lib/demo-products";
 import { StoriesRow } from "@/components/StoriesRow";
 import { useActions, useFeed, useFriendRequests, useMe, useReels, useSuggestions } from "@/lib/data";
 import { formatCount } from "@/lib/time";
@@ -38,6 +39,7 @@ function FeedPage() {
             <PostCard post={p} tall={i === 0} />
             {/* Facebook-style inserts between posts. Never both at the same spot (Reels after post 3, People after post 7). */}
             {i === 2 && reels.length > 0 && <ReelsStrip reels={reels} />}
+            {i === 4 && <ProductsStrip />}
             {i === 6 && suggestions.length > 0 && <PeopleYouMayKnow people={suggestions} />}
           </div>
         ))}
@@ -196,6 +198,34 @@ function Carousel({ children, className = "", label }: { children: ReactNode; cl
         <ChevronRight className="h-5 w-5" />
       </button>
     </div>
+  );
+}
+
+function ProductsStrip() {
+  return (
+    <section className="my-4 rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <ShoppingBag className="h-5 w-5" />
+        <span className="text-sm font-semibold">Products</span>
+      </div>
+      <Carousel label="Next products">
+        {DEMO_PRODUCTS.map((pr) => (
+          <div key={pr.id} className="w-36 shrink-0">
+            <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
+              <img src={pr.image} alt={pr.name} loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />
+            </div>
+            <div className="pt-1.5 text-sm font-semibold truncate">{pr.name}</div>
+            <div className="text-xs text-muted-foreground">{pr.price}</div>
+            <button
+              type="button"
+              className="mt-1.5 w-full rounded-lg bg-sky-500 py-1.5 text-xs font-semibold text-white hover:bg-sky-600 active:opacity-80"
+            >
+              Buy product
+            </button>
+          </div>
+        ))}
+      </Carousel>
+    </section>
   );
 }
 
