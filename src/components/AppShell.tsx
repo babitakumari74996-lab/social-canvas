@@ -151,6 +151,14 @@ export function AppShell() {
   // Only the Reels page itself (not Create / Moods / Profile) turns the bar black and hides the sidebar.
   let navBlack = pageKey === "reels" ? 1 : 0;
   if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
+  // Sidebar travels with the Home tab during a Home <-> Reels drag: its left edge is the Home page's left edge minus the sidebar width.
+  const sideW = typeof window !== "undefined" && window.innerWidth >= 1280 ? 330 : 76;
+  const dragPx = swipeP ? Math.abs(swipeP.dx) : 0;
+  let asideX = `${-navBlack * 100}%`;
+  if (swipeP && !swipeP.committed) {
+    if (swipeP.from === "home" && swipeP.to === "reels") asideX = `${-dragPx}px`;
+    else if (swipeP.from === "reels" && swipeP.to === "home") asideX = `${dragPx - (window.innerWidth - sideW)}px`;
+  }
   const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
   // Bar position (not colour): it stays where it was while a swipe is in progress and only moves after the tab changes.
   const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
@@ -233,11 +241,8 @@ export function AppShell() {
       {/* ------- desktop sidebar: the full menu list ------- */}
       <aside
         style={{
-          transform: `translate3d(${-navBlack * 100}%, 0, 0)`,
+          transform: `translate3d(${asideX}, 0, 0)`,
           transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
-          // Fades out as the swipe heads to Reels, so no light panel shows over the black Reels page.
-          // Leaving Reels: the sidebar stays hidden during the drag, so it never covers the Home page sliding in; it shows at commit.
-          opacity: swipeP?.from === "reels" ? 0 : swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
         }}
         className="hidden md:flex fixed inset-y-0 left-0 w-[76px] xl:w-[330px] flex-col bg-background px-3 py-6 z-40"
       >

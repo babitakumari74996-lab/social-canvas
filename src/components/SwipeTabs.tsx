@@ -241,7 +241,8 @@ export function SwipeTabs({
           // A page neighbour: reveal its real page from the swiped side.
           setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
           setMain(dx, false);
-          setPv(dx + d * width, false);
+          // Reels preview is full-window (left 0), so it sits one window-width away; other pages sit one column-width away.
+          setPv(dx + d * (tgt.key === "reels" ? window.innerWidth : width), false);
         } else {
           // An overlay (Create / Explore) has no page to reveal: the page only rubber-bands,
           // or stays put while an overlay is already open over it.
