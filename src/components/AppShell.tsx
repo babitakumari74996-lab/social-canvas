@@ -212,8 +212,30 @@ export function AppShell() {
     document.documentElement.style.setProperty("--feed-opacity", "1");
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
   }, [barHide, swiping, swipeP, swipeAmt]);
+  // Home: scrolling down hides the top bars and the bottom bar; scrolling back up brings them back.
+  // Only the transform changes here (the page padding does not), so the content never jumps.
+  const [scrollHide, setScrollHide] = useState(false);
+  useEffect(() => {
+    if (pathname !== "/feed") {
+      setScrollHide(false);
+      return;
+    }
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const d = y - last;
+      last = y;
+      if (y <= 8) setScrollHide(false);
+      else if (d > 4) setScrollHide(true);
+      else if (d < -4) setScrollHide(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
+  // A swipe between tabs takes priority: the bars follow the swipe rules above, not the scroll.
+  const hiddenByScroll = scrollHide && !swipeP;
   const barStyle = {
-    transform: `translate3d(0, ${-barHide * 96}px, 0)`,
+    transform: `translate3d(0, ${-Math.max(barHide, hiddenByScroll ? 1 : 0) * 96}px, 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
   } as const;
 
@@ -323,7 +345,8 @@ export function AppShell() {
         className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
         style={{
           backgroundColor: navBg,
-          transition: swiping ? "none" : "background-color 260ms ease",
+          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transition: swiping ? "none" : "transform 220ms ease, background-color 260ms ease",
         }}
       />
       {/* On Reels the bar stays and turns black; the colour follows the swipe (0 = light, 1 = black). */}
@@ -333,7 +356,8 @@ export function AppShell() {
           color: navFg,
           // On Reels the bar sits 35px further right; it moves with the swipe, so only the Reels tab shows the shift.
           paddingLeft: `calc(var(--bar-home) + ${navBlack} * (50vw - (${REEL_W}) / 2 - var(--bar-home)))`,
-          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
+          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transition: swiping ? "none" : "transform 220ms ease, color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
         className="hidden md:flex fixed bottom-0 left-0 right-0 h-14 z-[60] items-stretch pointer-events-none"
       >
@@ -419,7 +443,13 @@ export function AppShell() {
       </SwipeTabs>
 
       {/* ------- mobile bottom nav ------- */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border">
+      <nav
+        style={{
+          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transition: swiping ? "none" : "transform 220ms ease",
+        }}
+        className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border"
+      >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
           <Home className="h-6 w-6" />
