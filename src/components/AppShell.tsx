@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { X as CloseIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
   Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, Gamepad2, User as UserIcon,
@@ -123,6 +124,7 @@ export function AppShell() {
   }, []);
   const isDemo = !me?.id || me.id === "me";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
   const embedMode = useRouterState({ select: (s) => s.location.href.includes("embed=") });
   // The top bars (header + second bar, 96px together) slide up on Reels, following a swipe in or out.
   const swipeP = useSwipeProgress();
@@ -467,6 +469,25 @@ export function AppShell() {
           <img src="/community.jpg" alt="" width={56} height={56} className="h-full w-full object-cover" />
         </button>
       </div>
+      {/* Close (X) for the pages opened from the menu. Bottom-nav tabs and Home keep no close button. */}
+      {!(
+        pathname === "/feed" ||
+        pathname === "/reels" ||
+        pathname === "/create" ||
+        pathname === "/moods" ||
+        pathname === "/profile" ||
+        (!!me && pathname === `/profile/${me.username}`)
+      ) && (
+        <button
+          type="button"
+          aria-label="Close"
+          title="Close"
+          onClick={() => navigate({ to: "/feed" })}
+          className="fixed right-3 bottom-16 z-40 grid h-9 w-9 place-items-center rounded-full border border-border bg-card/95 shadow-md hover:bg-muted md:bottom-auto md:right-4 md:top-4"
+        >
+          <CloseIcon className="h-4 w-4" />
+        </button>
+      )}
       {docks.map((d, i) => (
         <FloatingPanel
           key={`${d.id}-${d.seq}`}
