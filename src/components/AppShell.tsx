@@ -216,7 +216,7 @@ export function AppShell() {
   // Only the transform changes here (the page padding does not), so the content never jumps.
   const [scrollHide, setScrollHide] = useState(false);
   useEffect(() => {
-    if (pathname !== "/feed") {
+    if (pathname !== "/feed" && pathname !== "/moods") {
       setScrollHide(false);
       return;
     }
@@ -234,8 +234,10 @@ export function AppShell() {
   }, [pathname]);
   // A swipe between tabs takes priority: the bars follow the swipe rules above, not the scroll.
   const hiddenByScroll = scrollHide && !swipeP;
+  // The top bars only hide on Home; on Moods just the bottom nav slides away.
+  const headerHiddenByScroll = hiddenByScroll && pathname === "/feed";
   const barStyle = {
-    transform: `translate3d(0, ${-Math.max(barHide, hiddenByScroll ? 1 : 0) * 96}px, 0)`,
+    transform: `translate3d(0, ${-Math.max(barHide, headerHiddenByScroll ? 1 : 0) * 96}px, 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
   } as const;
 
