@@ -408,6 +408,8 @@ export function AppShell() {
           // 1 = Home showing, 0 = any other tab. It follows the swipe; a click jumps straight to the end state.
           transform: `translate3d(${(1 - homeAmt) * 90}px,0,0)`,
           pointerEvents: homeAmt > 0.5 ? "auto" : "none",
+          // Gone before the Reels page reaches them: fully hidden once the swipe passes the midpoint.
+          opacity: Math.max(0, Math.min(1, (homeAmt - 0.5) * 2)),
         }}
         className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
         <button type="button" aria-label="Messages" className={FAB}>
