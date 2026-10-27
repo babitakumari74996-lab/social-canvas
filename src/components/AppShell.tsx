@@ -152,12 +152,6 @@ export function AppShell() {
   let navBlack = pageKey === "reels" ? 1 : 0;
   if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
   const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
-  // Sidebar position. Reels <-> Home swipes move it with the Home layer (full window width); otherwise it
-  // keeps the Reels slide-out it had before.
-  const asideX =
-    swipeP && fromR && toHome ? `calc(${-(1 - swipeAmt)} * 100vw)`
-    : swipeP && fromHome && toR ? `calc(${-swipeAmt} * 100vw)`
-    : `${-navBlack * 100}%`;
   // Bar position (not colour): it stays where it was while a swipe is in progress and only moves after the tab changes.
   const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
   const navFg = `rgb(${mix(38, 255)},${mix(38, 255)},${mix(38, 255)})`;
@@ -238,7 +232,7 @@ export function AppShell() {
       {/* ------- desktop sidebar: the full menu list ------- */}
       <aside
         style={{
-          transform: `translate3d(${asideX}, 0, 0)`,
+          transform: `translate3d(${-navBlack * 100}%, 0, 0)`,
           transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
           // Fades out as the swipe heads to Reels, so no light panel shows over the black Reels page.
           opacity: swipeP?.to === "reels" ? 1 - Math.min(1, swipeAmt * 2.5) : 1,
