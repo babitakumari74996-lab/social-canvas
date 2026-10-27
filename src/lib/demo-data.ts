@@ -359,3 +359,18 @@ export function demoBaseLikes(postId: string): number {
   if (postId.startsWith("r-")) return DEMO_REELS.find((r) => r.id === postId)?.likes ?? 0;
   return DEMO_POSTS.find((p) => p.id === postId)?.likes ?? 0;
 }
+
+// Short note shown above each demo post on Home (2 lines; "more" reveals the rest).
+export const DEMO_NOTES: Record<string, string> = {
+  "p-u2-1": "Sunrise at the Taj: we got there before the crowd, and the mist was still lifting off the water when the first light hit the marble. Worth the 4am alarm.",
+  "p-me-text-1": "Shipped the first version of the new feature today.",
+  "p-u4-1": "Deep work, chai, no notifications.",
+  "p-me-1": "Monday reset: back in the gym after a week off. Lighter weights, same focus.",
+  "p-u5-1": "Leg day done. Feeling unstoppable.",
+  "p-u6-1": "Long night of street photos, worth it. Trying a new lens on the wet roads and the reflections came out better than I expected.",
+  "p-u7-1": "Riverside walk and no plans for the evening.",
+  "p-u6-2": "Found an old studio with the best light.",
+  "p-u8-1": "New city, new food, new friends! Already planning the next stop on the list, and I have a long list.",
+  "p-u4-text-1": "Hot take: chai beats coffee on rainy days.",
+  "p-u5-2": "Three weeks of consistency. The results are finally showing up in the mirror.",
+};
