@@ -272,6 +272,16 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         </button>
       </div>
 
+      {/* buy product, between the action row and the likes */}
+      <div className="px-3 pt-2">
+        <button
+          type="button"
+          className="w-full rounded-lg bg-sky-500 py-2 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+        >
+          Buy product
+        </button>
+      </div>
+
       {/* likes + caption */}
       <div className="px-3 pt-1.5 pb-1 space-y-1 text-sm">
         <button type="button" className="font-semibold block" onClick={() => like(!liked)}>
