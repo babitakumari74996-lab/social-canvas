@@ -62,6 +62,8 @@ function NavItem({
 // Bottom-nav cell position (of 5 cells) for each swipeable section.
 const FAB = "grid h-14 w-14 place-items-center rounded-full bg-background text-foreground shadow-md ring-1 ring-border transition-opacity hover:opacity-70";
 const NAV_CELLS = 5;
+// Desktop Reels card width (9:16 at the window height, capped at 516px). The bottom bar matches it so it sits under the reel.
+const REEL_W = "min(516px, (100vh - 24px) * 9 / 16)";
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
 const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
 
@@ -276,14 +278,18 @@ export function AppShell() {
         style={{
           color: navFg,
           // On Reels the bar sits 35px further right; it moves with the swipe, so only the Reels tab shows the shift.
-          paddingLeft: `${57 + 35 * navBlack}px`,
+          paddingLeft: `calc(57px + ${navBlack} * (50vw - (${REEL_W}) / 2 - 57px))`,
           transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
         className={`hidden md:flex fixed bottom-0 right-0 h-14 z-[60] items-stretch ${pageKey === "reels" ? "left-0" : "left-[76px] xl:left-[330px]"}`}
       >
         <div
-          style={{ backgroundColor: navBg, transition: swiping ? "none" : "background-color 260ms ease" }}
-          className="relative flex w-[517px] max-w-full h-full items-stretch"
+          style={{
+            backgroundColor: navBg,
+            transition: swiping ? "none" : "background-color 260ms ease",
+            width: `calc(517px + ${navBlack} * ((${REEL_W}) - 517px))`,
+          }}
+          className="relative flex max-w-full h-full items-stretch"
         >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
