@@ -11,8 +11,8 @@ function NoteIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="inline-block h-[1em] w-[1em] mr-1.5"
-      style={{ verticalAlign: "-0.15em" }}
+      className="inline-block h-[1.25em] w-[1.25em] mr-1.5"
+      style={{ verticalAlign: "-0.2em" }}
     >
       <path d="M250 435 H205 C160 435 133 405 133 365 V185 C133 155 155 140 185 140 H330 C360 140 378 160 378 190 V245" />
       <path d="M133 210 H378" />
@@ -26,7 +26,7 @@ function NoteIcon() {
 
 // Same width as the icon, used in the measuring copy so the cut is exact.
 function IconSpacer() {
-  return <span className="inline-block h-[1em] w-[1em] mr-1.5" style={{ verticalAlign: "-0.15em" }} />;
+  return <span className="inline-block h-[1.25em] w-[1.25em] mr-1.5" style={{ verticalAlign: "-0.2em" }} />;
 }
 
 // A short note shown above a post on Home. It shows 2 lines. When the text is longer, the text is cut where it
@@ -77,11 +77,18 @@ export function PostNote({ text }: { text: string }) {
     setCut(lo);
   }, [text, open, tick]);
 
-  // Re-measure when the window width changes (the text wraps differently).
+  // Re-measure when the note's width changes, and once the web font has loaded (a late font swap changes the wrap).
   useEffect(() => {
-    const onResize = () => setTick((t) => t + 1);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const redo = () => setTick((t) => t + 1);
+    const el = ref.current;
+    const ro = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(redo) : null;
+    if (el && ro) ro.observe(el);
+    window.addEventListener("resize", redo);
+    document.fonts?.ready.then(redo);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", redo);
+    };
   }, []);
 
   const truncated = !open && cut !== null;
