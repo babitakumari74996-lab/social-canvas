@@ -113,6 +113,7 @@ export function SwipeTabs({
       main.style.transition = "";
       main.style.transform = "";
       main.style.marginLeft = "";
+      main.style.visibility = "";
     };
     const setPv = (x: number, anim: boolean) => {
       pv.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
@@ -327,6 +328,8 @@ export function SwipeTabs({
       setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, dx: 0, full: 1, committed: true });
       later(() => setSwipeProgress(null), ANIM_MS * 2);
       // Current page slides out on the far side while the neighbour panel covers the area.
+      // Leaving Reels: its full-window layer is hidden at once, so it never stays on top of the incoming page.
+      if (window.location.pathname.startsWith("/reels")) main.style.visibility = "hidden";
       setMain(-d * width, true);
       setPv(0, true);
       later(async () => {
