@@ -279,7 +279,7 @@ export function AppShell() {
           paddingLeft: `${57 + 35 * navBlack}px`,
           transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
-        className="hidden md:flex fixed bottom-0 left-[76px] right-0 xl:left-[330px] h-14 z-[60] items-stretch"
+        className={`hidden md:flex fixed bottom-0 right-0 h-14 z-[60] items-stretch ${pageKey === "reels" ? "left-0" : "left-[76px] xl:left-[330px]"}`}
       >
         <div
           style={{ backgroundColor: navBg, transition: swiping ? "none" : "background-color 260ms ease" }}
@@ -387,7 +387,7 @@ export function AppShell() {
       </nav>
 
       {/* ------- quick icons: circles stacked upward from the bottom-right corner of the bottom nav ------- */}
-      <div className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
+      <div className={`fixed right-4 bottom-3 z-40 hidden flex-col items-center gap-3 ${pageKey === "reels" ? "" : "md:flex"}`}>
         <button type="button" aria-label="Messages" className={FAB}>
           <Send className="h-7 w-7 -rotate-12" />
         </button>
