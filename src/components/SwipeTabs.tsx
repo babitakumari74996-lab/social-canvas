@@ -99,15 +99,20 @@ export function SwipeTabs({
     let target: number | null = null;
     let dir: 1 | -1 = 1;
     let suppressClick = false;
+    // A swipe that starts on Reels runs with <main> at margin 0, so the full-window Reels layer keeps its
+    // left edge while <main> moves (otherwise it starts at the sidebar's 330px and jumps back on release).
+    let fromReels = false;
 
     const setMain = (x: number, anim: boolean) => {
       main.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       main.style.transform = `translate3d(${x}px,0,0)`;
+      main.style.marginLeft = fromReels ? "0px" : "";
     };
     // Back to rest: no inline transform, so fixed-position children of the page behave normally.
     const rest = () => {
       main.style.transition = "";
       main.style.transform = "";
+      main.style.marginLeft = "";
     };
     const setPv = (x: number, anim: boolean) => {
       pv.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
@@ -167,6 +172,7 @@ export function SwipeTabs({
     });
 
     const onDown = (e: PointerEvent) => {
+      fromReels = window.location.pathname.startsWith("/reels");
       if (busy || tracking || !latest.current.enabled) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (blocked(e.target)) return;
