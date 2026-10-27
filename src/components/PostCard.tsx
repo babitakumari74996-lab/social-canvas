@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, useImageFade } from "@/components/Avatar";
-import { useActions } from "@/lib/data";
-import { demoActions, ui } from "@/lib/demo-store";
+import { useActions, useMyUserId } from "@/lib/data";
+import { demoActions, ui, useDemo } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
 import type { UPost } from "@/lib/types";
 
@@ -111,6 +111,16 @@ function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
 
 export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
+  const myId = useMyUserId();
+  const demo = useDemo();
+  const [followedLocal, setFollowedLocal] = useState(false);
+  const authorId = post.profiles.id;
+  const following = actions.isDemo ? !!demo.following[authorId] : followedLocal;
+  const toggleFollow = () => {
+    const next = !following;
+    if (!actions.isDemo) setFollowedLocal(next);
+    actions.follow(authorId, next);
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const [burst, setBurst] = useState(false);
@@ -163,6 +173,15 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           </div>
           {post.location && <div className="text-[11px] text-muted-foreground truncate">{post.location}</div>}
         </div>
+        {authorId !== myId && (
+          <button
+            type="button"
+            onClick={toggleFollow}
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${following ? "border border-border text-foreground" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+          >
+            {following ? "Following" : "Follow"}
+          </button>
+        )}
         <button
           type="button"
           aria-label="More options"
