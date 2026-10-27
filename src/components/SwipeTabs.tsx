@@ -441,7 +441,7 @@ export function SwipeTabs({
         ref={previewRef}
         aria-hidden
         className="fixed top-0 bottom-0 bg-background pointer-events-none"
-        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%", background: pvTab?.key === "reels" ? "#000" : undefined }}
+        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%", zIndex: 15, background: pvTab?.key === "reels" ? "#000" : undefined }}
       >
         {armed && pages.map((pg) => (
           <div
