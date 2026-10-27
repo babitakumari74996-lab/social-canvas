@@ -1,4 +1,3 @@
-import { PostNote } from "./PostNote";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -110,7 +109,7 @@ function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
-export function PostCard({ post, withComments = false, tall = false, note }: { post: UPost; withComments?: boolean; tall?: boolean; note?: string }) {
+export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -149,10 +148,8 @@ export function PostCard({ post, withComments = false, tall = false, note }: { p
 
   return (
     <article className="border-b border-border md:border md:rounded-xl md:bg-card md:overflow-hidden pb-1 md:pb-2">
-      {/* note + header share one container */}
-      <div>
-        {note && <PostNote text={note} />}
-        <header className="flex items-center gap-3 px-3 py-2.5">
+      {/* header */}
+      <header className="flex items-center gap-3 px-3 py-2.5">
         <Link to="/profile/$username" params={{ username: post.profiles.username }}>
           <Avatar path={post.profiles.avatar_url} alt={post.profiles.username} size={36} className="ring-1 ring-border" />
         </Link>
@@ -174,8 +171,7 @@ export function PostCard({ post, withComments = false, tall = false, note }: { p
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
-        </header>
-      </div>
+      </header>
 
       {/* media */}
       {isText ? (
