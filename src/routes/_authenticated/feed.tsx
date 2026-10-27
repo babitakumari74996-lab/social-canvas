@@ -39,7 +39,7 @@ function FeedPage() {
             <PostCard post={p} tall={i === 0} />
             {/* Facebook-style inserts between posts. Never both at the same spot (Reels after post 3, People after post 7). */}
             {i === 2 && reels.length > 0 && <ReelsStrip reels={reels} />}
-            {i === 4 && <ProductsStrip />}
+            {i === Math.min(4, posts.length - 1) && <ProductsStrip />}
             {i === 6 && suggestions.length > 0 && <PeopleYouMayKnow people={suggestions} />}
           </div>
         ))}
