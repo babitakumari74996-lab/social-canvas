@@ -5,6 +5,7 @@ import {
   Home, Search, Compass, Film, Send, Heart, Menu, Grid3x3, Smile, Gamepad2, User as UserIcon,
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
+import { FloatingPanel, type DockPanel } from "@/components/FloatingPanel";
 import { MenuSheet, MenuList } from "@/components/MenuSheet";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
@@ -145,6 +146,12 @@ export function AppShell() {
     else barHide = toHides ? swipeAmt : 0;
   }
   const swiping = !!swipeP && !swipeP.committed;
+  // Floating window opened from a corner icon (desktop). One at a time; clicking the same icon again closes it.
+  const [dock, setDock] = useState<DockPanel | null>(null);
+  const openDock = (id: string, title: string, path: string) =>
+    setDock((d) => (d?.id === id ? null : { id, title, path }));
+  // Switching tabs closes the window.
+  useEffect(() => setDock(null), [pageKey]);
   // Desktop bottom bar colour: black while Reels is shown, and it blends with the swipe as it goes to or from Reels.
   const toR = swipeP?.to === "reels";
   const fromR = swipeP?.from === "reels";
@@ -417,19 +424,20 @@ export function AppShell() {
           opacity: Math.max(0, Math.min(1, (homeAmt - 0.5) * 2)),
         }}
         className="fixed right-4 bottom-3 z-40 hidden md:flex flex-col items-center gap-3">
-        <button type="button" aria-label="Messages" className={FAB}>
+        <button type="button" aria-label="Messages" onClick={() => openDock("messages", "Messages", "/dm?embed=1")} className={FAB}>
           <Send className="h-7 w-7 -rotate-12" />
         </button>
-        <button type="button" aria-label="Notifications" onClick={ui.openNotifications} className={FAB}>
+        <button type="button" aria-label="Notifications" onClick={() => openDock("notifications", "Notifications", "/notifications?embed=1")} className={FAB}>
           <Heart className="h-7 w-7" />
         </button>
         <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")} className={FAB}>
           <Gamepad2 className="h-7 w-7" />
         </button>
-        <Link to="/groups" aria-label="Community" className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
+        <button type="button" aria-label="Community" onClick={() => openDock("community", "Community", "/groups?embed=1")} className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
           <img src="/community.jpg" alt="" width={56} height={56} className="h-full w-full object-cover" />
-        </Link>
+        </button>
       </div>
+      {dock && <FloatingPanel key={dock.id} panel={dock} onClose={() => setDock(null)} />}
 
       {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
       {menuOpen && (
