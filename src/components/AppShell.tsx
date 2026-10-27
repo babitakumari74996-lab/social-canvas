@@ -163,6 +163,15 @@ export function AppShell() {
     if (dock && !dock.locked) setDockLeaving(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey]);
+  // An unlocked window moves with the Home <-> Reels swipe, the same way the Home tab does.
+  const dockSwipeDx =
+    swipeP && !swipeP.committed && dock && !dock.locked
+      ? swipeP.from === "home" && swipeP.to === "reels"
+        ? -Math.abs(swipeP.dx)
+        : swipeP.from === "reels" && swipeP.to === "home"
+          ? Math.abs(swipeP.dx)
+          : 0
+      : 0;
   // Desktop bottom bar colour: black while Reels is shown, and it blends with the swipe as it goes to or from Reels.
   const toR = swipeP?.to === "reels";
   const fromR = swipeP?.from === "reels";
@@ -453,6 +462,8 @@ export function AppShell() {
           key={dock.id}
           panel={dock}
           leaving={dockLeaving}
+          swipeDx={dockSwipeDx}
+          swiping={!!swipeP && !swipeP.committed}
           onClose={() => setDockLeaving(true)}
           onGone={() => {
             setDock(null);

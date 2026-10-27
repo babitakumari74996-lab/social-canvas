@@ -45,12 +45,16 @@ export function FloatingPanel({
   onClose,
   onGone,
   onToggleLock,
+  swipeDx,
+  swiping,
 }: {
   panel: DockPanel;
   leaving: boolean; // true while the window slides out to the right
   onClose: () => void;
   onGone: () => void; // called once the slide-out has finished
   onToggleLock: () => void;
+  swipeDx: number; // unlocked window: moves with a Home <-> Reels swipe
+  swiping: boolean; // a tab swipe is in progress: the window never takes the pointer
 }) {
   const base = { w: panel.w ?? DEFAULT_W, h: panel.h ?? DEFAULT_H };
   const [expanded, setExpanded] = useState(false);
@@ -153,8 +157,10 @@ export function FloatingPanel({
         width: size.w,
         height: size.h,
         visibility: pos ? "visible" : "hidden",
-        transform: outside ? `translate3d(${offX}px,0,0)` : "translate3d(0,0,0)",
-        transition: `transform ${SLIDE_MS}ms cubic-bezier(.2,.8,.2,1)`,
+        transform: `translate3d(${(outside ? offX : 0) + swipeDx}px,0,0)`,
+        // While a swipe is in progress the window follows the finger instead of easing, and lets the pointer through.
+        transition: swiping ? "none" : `transform ${SLIDE_MS}ms cubic-bezier(.2,.8,.2,1)`,
+        pointerEvents: swiping ? "none" : undefined,
       }}
     >
       <div
