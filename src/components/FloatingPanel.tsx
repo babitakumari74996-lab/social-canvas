@@ -15,16 +15,20 @@ export interface DockPanel {
 
 const DEFAULT_W = 380;
 const DEFAULT_H = 560;
-const EXPANDED_W = 900;
-const EXPANDED_H = 820;
 const EDGE = 8;
 const SLIDE_MS = 320;
 
+// Desktop sidebar (menu) width: 330px from xl, 76px on md.
+function sidebarW() {
+  return window.innerWidth >= 1280 ? 330 : 76;
+}
+
+// Expanded: covers the whole screen except the sidebar menu. Normal: the window's own size.
 function sizeFor(expanded: boolean, base: { w: number; h: number }) {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   return expanded
-    ? { w: Math.min(EXPANDED_W, vw - 140), h: Math.min(EXPANDED_H, vh - 48) }
+    ? { w: vw - sidebarW(), h: vh }
     : { w: Math.min(base.w, vw - 140), h: Math.min(base.h, vh - 48) };
 }
 
@@ -55,6 +59,7 @@ export function FloatingPanel({
   const [dragging, setDragging] = useState(false);
   const [entered, setEntered] = useState(false);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const before = useRef<{ pos: { x: number; y: number }; size: { w: number; h: number } } | null>(null);
 
   // Opens beside the corner icons: right edge 16px + icon 56px + 16px gap from the window's right, bottom aligned.
   useLayoutEffect(() => {
@@ -83,10 +88,16 @@ export function FloatingPanel({
     return () => window.clearTimeout(t);
   }, [leaving, onGone]);
 
-  // Keep the window inside the viewport when the browser is resized.
+  // Keep the window inside the viewport when the browser is resized. An expanded window keeps covering the screen.
   useEffect(() => {
     const onResize = () => {
-      const s = sizeFor(expanded, base);
+      if (expanded) {
+        const s = sizeFor(true, base);
+        setSize(s);
+        setPos({ x: sidebarW(), y: 0 });
+        return;
+      }
+      const s = sizeFor(false, base);
       setSize(s);
       setPos((p) => (p ? clampPos(p, s.w, s.h) : p));
     };
@@ -96,15 +107,22 @@ export function FloatingPanel({
   }, [expanded]);
 
   const toggleExpand = () => {
-    const next = !expanded;
-    const s = sizeFor(next, base);
-    setExpanded(next);
+    if (!expanded) {
+      if (pos) before.current = { pos, size };
+      setExpanded(true);
+      setSize(sizeFor(true, base));
+      setPos({ x: sidebarW(), y: 0 });
+      return;
+    }
+    const prev = before.current;
+    setExpanded(false);
+    const s = prev ? prev.size : sizeFor(false, base);
     setSize(s);
-    setPos((p) => clampPos(p ?? { x: EDGE, y: EDGE }, s.w, s.h));
+    setPos(clampPos(prev ? prev.pos : { x: EDGE, y: EDGE }, s.w, s.h));
   };
 
   const onHeaderDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0 || !pos || leaving) return;
+    if (e.button !== 0 || !pos || leaving || expanded) return; // an expanded window does not move
     if ((e.target as HTMLElement).closest("button")) return; // the buttons keep their own clicks
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
@@ -128,7 +146,7 @@ export function FloatingPanel({
     <div
       role="dialog"
       aria-label={panel.title}
-      className="hidden md:flex fixed z-50 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+      className={`hidden md:flex fixed z-50 flex-col overflow-hidden border-border bg-card shadow-2xl ${expanded ? "border-l" : "rounded-2xl border"}`}
       style={{
         left: pos?.x ?? 0,
         top: pos?.y ?? 0,
@@ -175,9 +193,13 @@ export function FloatingPanel({
         </button>
       </div>
       {panel.unavailable ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-          <p className="text-base font-semibold">Not available</p>
-          <p className="text-sm text-muted-foreground">Gaming demo mein abhi available nahi hai.</p>
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          <div className="border-b border-border px-4 pb-4 pt-20">
+            <p className="text-base font-semibold">Demo gaming</p>
+          </div>
+          <div className="px-6 py-10 text-center text-sm text-muted-foreground">
+            Gaming demo mein abhi available nahi hai. Ye feature jald aayega.
+          </div>
         </div>
       ) : (
         /* While dragging, the page inside must not take the pointer, or the drag stops at the frame edge. */

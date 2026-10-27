@@ -441,7 +441,7 @@ export function AppShell() {
         <button type="button" aria-label="Notifications" onClick={() => openDock("notifications", "Notifications", { path: "/notifications?embed=1" })} className={FAB}>
           <Heart className="h-7 w-7" />
         </button>
-        <button type="button" aria-label="Gaming" onClick={() => openDock("gaming", "Gaming", { unavailable: true, w: 320, h: 300 })} className={FAB}>
+        <button type="button" aria-label="Gaming" onClick={() => openDock("gaming", "Gaming", { unavailable: true })} className={FAB}>
           <Gamepad2 className="h-7 w-7" />
         </button>
         <button type="button" aria-label="Community" onClick={() => openDock("community", "Community", { path: "/groups?embed=1" })} className="block h-14 w-14 overflow-hidden rounded-full shadow-md ring-1 ring-border">
