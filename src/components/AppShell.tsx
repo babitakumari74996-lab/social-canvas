@@ -446,9 +446,12 @@ export function AppShell() {
       <nav
         style={{
           transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
-          transition: swiping ? "none" : "transform 220ms ease",
+          transition: "transform 220ms ease", // colour has no transition: a click on Reels turns black at once, a swipe follows the drag
+          backgroundColor: navBg,
+          color: navFg,
+          borderTopColor: `rgb(${mix(229, 40)},${mix(229, 40)},${mix(229, 40)})`,
         }}
-        className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch bg-background border-t border-border"
+        className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch border-t"
       >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
