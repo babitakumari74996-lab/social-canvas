@@ -304,7 +304,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
         )}
 
         {/* bottom gradient + info */}
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-10 md:pb-12 px-3 flex items-end gap-3">
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-3 px-3 flex items-end gap-3">
           <div className="flex-1 min-w-0 text-white">
             <div className="flex items-center gap-2">
               <Link to="/profile/$username" params={{ username: reel.profiles.username }}>
