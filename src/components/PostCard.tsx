@@ -149,9 +149,10 @@ export function PostCard({ post, withComments = false, tall = false, note }: { p
 
   return (
     <article className="border-b border-border md:border md:rounded-xl md:bg-card md:overflow-hidden pb-1 md:pb-2">
-      {note && <PostNote text={note} />}
-      {/* header */}
-      <header className="flex items-center gap-3 px-3 py-2.5">
+      {/* note + header share one container */}
+      <div>
+        {note && <PostNote text={note} />}
+        <header className="flex items-center gap-3 px-3 py-2.5">
         <Link to="/profile/$username" params={{ username: post.profiles.username }}>
           <Avatar path={post.profiles.avatar_url} alt={post.profiles.username} size={36} className="ring-1 ring-border" />
         </Link>
@@ -173,7 +174,8 @@ export function PostCard({ post, withComments = false, tall = false, note }: { p
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
-      </header>
+        </header>
+      </div>
 
       {/* media */}
       {isText ? (
