@@ -259,6 +259,12 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         </button>
         <button
           type="button"
+          className="flex-1 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+        >
+          Buy product
+        </button>
+        <button
+          type="button"
           aria-label="Save"
           onClick={() => {
             const next = !saved;
@@ -269,16 +275,6 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           className="ml-auto active:scale-90 transition-transform"
         >
           {saved ? <Bookmark className="h-6 w-6 fill-current" /> : <Bookmark className="h-6 w-6 hover:opacity-50" />}
-        </button>
-      </div>
-
-      {/* buy product, between the action row and the likes */}
-      <div className="px-3 pt-2">
-        <button
-          type="button"
-          className="w-full rounded-lg bg-sky-500 py-2 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
-        >
-          Buy product
         </button>
       </div>
 
