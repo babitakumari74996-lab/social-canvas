@@ -77,6 +77,17 @@ export function PostNote({ text }: { text: string }) {
     setCut(lo);
   }, [text, open, tick]);
 
+  // Verify against the real rendered line: if the note is still taller than 2 lines (the measuring copy can differ
+  // slightly from the real text, e.g. a font or the button), take a few more characters off until it fits.
+  useLayoutEffect(() => {
+    const p = ref.current;
+    if (!p || open) return;
+    const lh = parseFloat(getComputedStyle(p).lineHeight) || 20;
+    if (p.scrollHeight > lh * 2 + 1) {
+      setCut((c) => (c === null ? text.length - 4 : Math.max(0, c - 4)));
+    }
+  }, [text, open, cut]);
+
   // Re-measure when the note's width changes, and once the web font has loaded (a late font swap changes the wrap).
   useEffect(() => {
     const redo = () => setTick((t) => t + 1);
