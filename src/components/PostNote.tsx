@@ -12,7 +12,7 @@ function NoteIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
       className="inline-block h-[1.25em] w-[1.25em] mr-1.5"
-      style={{ verticalAlign: "-0.2em" }}
+      style={{ verticalAlign: "-0.2em", color: "#D62976" }}
     >
       <path d="M250 435 H205 C160 435 133 405 133 365 V185 C133 155 155 140 185 140 H330 C360 140 378 160 378 190 V245" />
       <path d="M133 210 H378" />
@@ -26,7 +26,7 @@ function NoteIcon() {
 
 // Same width as the icon, used in the measuring copy so the cut is exact.
 function IconSpacer() {
-  return <span className="inline-block h-[1.25em] w-[1.25em] mr-1.5" style={{ verticalAlign: "-0.2em" }} />;
+  return <span className="inline-block h-[1.25em] w-[1.25em] mr-1.5" style={{ verticalAlign: "-0.2em", color: "#D62976" }} />;
 }
 
 // A short note shown above a post on Home. It shows 2 lines. When the text is longer, the text is cut where it
