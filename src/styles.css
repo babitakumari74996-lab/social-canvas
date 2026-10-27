@@ -281,3 +281,7 @@ html[data-swiping="1"] .sv-barpad { transition: none; }
     cursor: pointer;
   }
 }
+
+/* Desktop bottom bar: left edge of the bar on normal tabs (sidebar width + 57px). */
+:root { --bar-home: 133px; }
+@media (min-width: 1280px) { :root { --bar-home: 387px; } }

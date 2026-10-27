@@ -146,7 +146,6 @@ export function AppShell() {
   if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
   const mix = (light: number, dark: number) => Math.round(light + (dark - light) * navBlack);
   // Bar position (not colour): it stays where it was while a swipe is in progress and only moves after the tab changes.
-  const barR = swipeP ? (fromR ? 1 : 0) : pageKey === "reels" ? 1 : 0;
   const navBg = `rgb(${mix(250, 0)},${mix(250, 0)},${mix(250, 0)})`;
   const navFg = `rgb(${mix(38, 255)},${mix(38, 255)},${mix(38, 255)})`;
   useEffect(() => {
@@ -280,18 +279,18 @@ export function AppShell() {
         style={{
           color: navFg,
           // On Reels the bar sits 35px further right; it moves with the swipe, so only the Reels tab shows the shift.
-          paddingLeft: `calc(57px + ${barR} * (50vw - (${REEL_W}) / 2 - 57px))`,
-          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease",
+          paddingLeft: `calc(var(--bar-home) + ${navBlack} * (50vw - (${REEL_W}) / 2 - var(--bar-home)))`,
+          transition: swiping ? "none" : "color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
-        className={`hidden md:flex fixed bottom-0 right-0 h-14 z-[60] items-stretch ${barR === 1 ? "left-0" : "left-[76px] xl:left-[330px]"}`}
+        className="hidden md:flex fixed bottom-0 left-0 right-0 h-14 z-[60] items-stretch pointer-events-none"
       >
         <div
           style={{
             backgroundColor: navBg,
             transition: swiping ? "none" : "background-color 260ms ease",
-            width: `calc(517px + ${barR} * ((${REEL_W}) - 517px))`,
+            width: `calc(517px + ${navBlack} * ((${REEL_W}) - 517px))`,
           }}
-          className="relative flex max-w-full h-full items-stretch"
+          className="pointer-events-auto relative flex max-w-full h-full items-stretch"
         >
         <NavIndicator activeKey={activeKey} />
         <Link to="/feed" aria-label="Home" className={cell(navIndex === 0)} onClick={() => ui.closeAll()}>
