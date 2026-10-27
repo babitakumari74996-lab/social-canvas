@@ -147,25 +147,35 @@ export function AppShell() {
   }
   const swiping = !!swipeP && !swipeP.committed;
   // Floating window opened from a corner icon (desktop). One at a time; clicking the same icon again closes it.
-  const [dock, setDock] = useState<DockPanel | null>(null);
-  const [dockLeaving, setDockLeaving] = useState(false);
-  // Same icon again closes it; another icon replaces it.
+  // Floating windows (desktop corner icons). Several can be open at once; each remembers its place.
+  const [docks, setDocks] = useState<DockPanel[]>([]);
+  // Same icon again closes it; another icon opens its own window.
   const openDock = (id: string, title: string, extra: Partial<DockPanel> = {}) => {
-    if (dock?.id === id && !dockLeaving) {
-      setDockLeaving(true);
+    const cur = docks.find((d) => d.id === id);
+    if (cur && !cur.leaving) {
+      setDocks((ds) => ds.map((d) => (d.id === id ? { ...d, leaving: true } : d)));
       return;
     }
-    setDock({ id, title, locked: false, ...extra });
-    setDockLeaving(false);
+    const z = Math.max(0, ...docks.map((d) => d.z ?? 0)) + 1;
+    const entry: DockPanel = { id, title, seq: Date.now(), locked: false, leaving: false, z, ...extra };
+    // Replace in place (keeps the list order, so the other windows' iframes are not moved in the DOM).
+    setDocks((ds) => (ds.some((d) => d.id === id) ? ds.map((d) => (d.id === id ? entry : d)) : [...ds, entry]));
   };
-  // Switching tabs: an unlocked window slides out to the right; a locked one stays open.
+  // Switching tabs: unlocked windows slide out to the right; locked ones stay.
   useEffect(() => {
-    if (dock && !dock.locked) setDockLeaving(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setDocks((ds) => ds.map((d) => (d.locked || d.leaving ? d : { ...d, leaving: true })));
   }, [pageKey]);
+  // Bring a window to the front (stacking only; the list order never changes).
+  const focusDock = (id: string) =>
+    setDocks((ds) => {
+      const top = Math.max(0, ...ds.map((d) => d.z ?? 0));
+      const cur = ds.find((d) => d.id === id);
+      if (!cur || (cur.z ?? 0) === top) return ds;
+      return ds.map((d) => (d.id === id ? { ...d, z: top + 1 } : d));
+    });
   // An unlocked window moves with the Home <-> Reels swipe, the same way the Home tab does.
-  const dockSwipeDx =
-    swipeP && !swipeP.committed && dock && !dock.locked
+  const swipeMove =
+    swipeP && !swipeP.committed
       ? swipeP.from === "home" && swipeP.to === "reels"
         ? -Math.abs(swipeP.dx)
         : swipeP.from === "reels" && swipeP.to === "home"
@@ -457,21 +467,19 @@ export function AppShell() {
           <img src="/community.jpg" alt="" width={56} height={56} className="h-full w-full object-cover" />
         </button>
       </div>
-      {dock && (
+      {docks.map((d, i) => (
         <FloatingPanel
-          key={dock.id}
-          panel={dock}
-          leaving={dockLeaving}
-          swipeDx={dockSwipeDx}
+          key={`${d.id}-${d.seq}`}
+          panel={d}
+          index={i}
+          onClose={() => setDocks((ds) => ds.map((x) => (x.id === d.id ? { ...x, leaving: true } : x)))}
+          onGone={() => setDocks((ds) => ds.filter((x) => !(x.id === d.id && x.leaving)))}
+          onToggleLock={() => setDocks((ds) => ds.map((x) => (x.id === d.id ? { ...x, locked: !x.locked } : x)))}
+          onFocus={() => focusDock(d.id)}
+          swipeDx={d.locked ? 0 : swipeMove}
           swiping={!!swipeP && !swipeP.committed}
-          onClose={() => setDockLeaving(true)}
-          onGone={() => {
-            setDock(null);
-            setDockLeaving(false);
-          }}
-          onToggleLock={() => setDock((d) => (d ? { ...d, locked: !d.locked } : d))}
         />
-      )}
+      ))}
 
       {/* ------- menu (mobile: from the grid button; desktop: More) ------- */}
       {menuOpen && (
