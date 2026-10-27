@@ -242,20 +242,20 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
       <div className="flex items-center gap-4 px-3 pt-2.5">
         <button type="button" aria-label="Like" onClick={() => like(!liked)} className="active:scale-90 transition-transform">
           {liked
-            ? <Heart className="h-7 w-7 text-red-500 fill-red-500" />
-            : <Heart className="h-7 w-7 hover:opacity-50" />}
+            ? <Heart className="h-6 w-6 text-red-500 fill-red-500" />
+            : <Heart className="h-6 w-6 hover:opacity-50" />}
         </button>
         {withComments ? (
           <button type="button" aria-label="Comment" className="active:scale-90 transition-transform">
-            <MessageCircle className="h-7 w-7 -scale-x-100 hover:opacity-50" />
+            <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
           </button>
         ) : (
           <Link to="/post/$id" params={{ id: post.id }} aria-label="Comment" className="active:scale-90 transition-transform">
-            <MessageCircle className="h-7 w-7 -scale-x-100 hover:opacity-50" />
+            <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
           </Link>
         )}
         <button type="button" aria-label="Share" onClick={() => ui.openShare(post, "post")} className="active:scale-90 transition-transform">
-          <Send className="h-7 w-7 hover:opacity-50" />
+          <Send className="h-6 w-6 hover:opacity-50" />
         </button>
         <button
           type="button"
@@ -274,7 +274,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           }}
           className="ml-auto active:scale-90 transition-transform"
         >
-          {saved ? <Bookmark className="h-7 w-7 fill-current" /> : <Bookmark className="h-7 w-7 hover:opacity-50" />}
+          {saved ? <Bookmark className="h-6 w-6 fill-current" /> : <Bookmark className="h-6 w-6 hover:opacity-50" />}
         </button>
       </div>
 
