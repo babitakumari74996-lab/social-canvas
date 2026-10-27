@@ -161,7 +161,8 @@ export function AppShell() {
     // Desktop sidebar slides away with the swipe (transform only, so the page layout never moves).
     // Swiping to Reels fades the leaving page, so no Home content shows beside the Reels page.
     const toReels = !!swipeP && swipeP.to === "reels";
-    document.documentElement.style.setProperty("--feed-opacity", String(toReels ? 1 - Math.min(1, swipeAmt * 2.5) : 1));
+    // No fade: the Home page slides out beside the Reels layer instead of ghosting over it.
+    document.documentElement.style.setProperty("--feed-opacity", "1");
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
   }, [barHide, swiping, swipeP, swipeAmt]);
   const barStyle = {
