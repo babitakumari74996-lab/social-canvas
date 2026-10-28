@@ -124,6 +124,16 @@ export function usePost(id: string): UPost | undefined {
   return demoState.posts.find((p) => p.id === id);
 }
 
+// Same lookup as usePost, plus whether the post list is still loading. A post page must not say "not found"
+// while the list is on its way (that showed as a flash of text before the post appeared).
+export function usePostState(id: string): { post: UPost | undefined; loading: boolean } {
+  const demoState = useDemo();
+  const { userId } = useSession();
+  const real = useSupabasePosts();
+  if (userId) return { post: real?.find((p) => p.id === id), loading: real === undefined };
+  return { post: demoState.posts.find((p) => p.id === id), loading: false };
+}
+
 // ---- comments ----------------------------------------------------------------
 
 export function useComments(postId: string): { comments: UComment[]; loading: boolean } {

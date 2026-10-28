@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
-import { usePost } from "@/lib/data";
+import { usePostState } from "@/lib/data";
 
 export const Route = createFileRoute("/_authenticated/post/$id")({
   component: PostDetail,
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/post/$id")({
 
 function PostDetail() {
   const { id } = Route.useParams();
-  const post = usePost(id);
+  const { post, loading } = usePostState(id);
 
   return (
     <div className="max-w-[470px] mx-auto px-0 md:px-4 py-0 md:py-6">
@@ -18,6 +18,8 @@ function PostDetail() {
       </Link>
       {post ? (
         <PostCard post={post} withComments />
+      ) : loading ? (
+        <div className="min-h-[60vh]" aria-hidden />
       ) : (
         <div className="p-10 text-center text-sm text-muted-foreground">Post not found.</div>
       )}
