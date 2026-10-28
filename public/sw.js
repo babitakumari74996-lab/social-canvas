@@ -4,8 +4,8 @@
 //    within 1s (slow or offline), the cached HTML is shown and the network answer still refreshes the cache.
 //  - Hashed build assets (/assets/*) and the splash logo: cache-first. The cached HTML and its assets always
 //    come from the same build, so an old cached page never points at deleted files.
-const CACHE = "sv-shell-v7";
-const ASSET_PATHS = ["/splash-logo.png"];
+const CACHE = "sv-shell-v8";
+const ASSET_PATHS = ["/splash-logo-v2.png"];
 
 self.addEventListener("install", () => {
   self.skipWaiting();

@@ -109,7 +109,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       // Splash logo is preloaded so it paints with the first frame.
-      { rel: "preload", href: "/splash-logo.png", as: "image", type: "image/png" },
+      { rel: "preload", href: "/splash-logo-v2.png", as: "image", type: "image/png" },
       // Not render-blocking: a print-media stylesheet does not hold back the first paint.
       // The body script switches it to "all" as soon as it has loaded.
       {
@@ -118,9 +118,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         media: "print",
         id: "sv-app-css",
       },
-      { rel: "icon", href: "/favicon-v2.ico", type: "image/x-icon" },
-      { rel: "icon", href: "/icon-192-v2.png", type: "image/png", sizes: "192x192" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon-v2.png" },
+      { rel: "icon", href: "/favicon-v3.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/icon-192-v3.png", type: "image/png", sizes: "192x192" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon-v3.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
@@ -146,7 +146,7 @@ function Splash() {
   return (
     <div id="sv-splash" aria-hidden="true">
       <style>{SPLASH_CSS}</style>
-      <img src="/splash-logo.png" width={312} height={222} alt="" fetchPriority="high" style={{ width: 312, maxWidth: "80vw", height: "auto" }} />
+      <img src="/splash-logo-v2.png" width={312} height={222} alt="" fetchPriority="high" style={{ width: 312, maxWidth: "80vw", height: "auto" }} />
     </div>
   );
 }
