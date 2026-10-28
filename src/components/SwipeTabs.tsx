@@ -102,6 +102,9 @@ export function SwipeTabs({
     // A swipe that starts on Reels runs with <main> at margin 0, so the full-window Reels layer keeps its
     // left edge while <main> moves (otherwise it starts at the sidebar's 330px and jumps back on release).
     let fromReels = false;
+    // The top bars never move sideways for a swipe that touches Reels: they only slide up/down
+    // (Reels -> Home they come down from the top, as before).
+    let barsFollow = true;
 
     // The top bars are global (not inside <main>), so they only follow the page while a drag is in progress.
     // `bars` = false: the page moves but the bars keep their own place (used once a swipe commits).
@@ -114,6 +117,7 @@ export function SwipeTabs({
     // Top bars: same offset as the page, written in the same frame as the page.
     const setBars = (x: number, anim: boolean) => {
       const root = document.documentElement;
+      if (!barsFollow) x = 0;
       root.style.transition = anim ? `--swipe-x ${ANIM_MS}ms ${EASE}` : "none";
       root.style.setProperty("--swipe-x", `${x}px`);
     };
@@ -185,6 +189,7 @@ export function SwipeTabs({
 
     const onDown = (e: PointerEvent) => {
       fromReels = window.location.pathname.startsWith("/reels");
+      barsFollow = !fromReels;
       if (busy || tracking || !latest.current.enabled) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (blocked(e.target)) return;
@@ -234,6 +239,7 @@ export function SwipeTabs({
         target = ti;
         dir = d;
         const tgt = latest.current.tabs[ti];
+        barsFollow = !fromReels && tgt.key !== "reels";
         // Reels covers the whole window (its sidebar column too). Other pages render in the main column's box,
         // so their layout matches the page and the sidebar never covers them.
         // Black is set here, in the same frame as the geometry. The layer's React style would apply it one
