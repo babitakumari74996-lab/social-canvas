@@ -105,7 +105,7 @@ export function MoodBox() {
               key={`bar-${tick}`}
               type="button"
               onClick={() => openWith(mood)}
-              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center gap-2 px-4 text-left`}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 cursor-text items-center gap-2 px-4 text-left`}
             >
               <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
                 What's your mood today?
