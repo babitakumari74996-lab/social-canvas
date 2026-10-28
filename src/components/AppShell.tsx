@@ -229,9 +229,7 @@ export function AppShell() {
     let last = window.scrollY;
     let hidden = 0; // px hidden so far (0..96); the nav uses the same value, capped at its own 56px
     let timer = 0;
-    let frame = 0;
     const write = () => {
-      frame = 0;
       // Whole pixels only: fractional offsets make the fixed bars shimmer while they move.
       const px = Math.round(hidden);
       root.style.setProperty("--sh-top", `${pathname === "/feed" ? px : 0}px`);
@@ -245,8 +243,9 @@ export function AppShell() {
       // must not move the bars, and the bars must not jump when the swipe starts.
       if (y <= 8) hidden = 0; // back at the top: always shown, even mid-swipe
       else if (document.documentElement.dataset.swiping !== "1") hidden = Math.min(96, Math.max(0, hidden + d));
-      // One write per animation frame, however many scroll events the finger sends.
-      if (!frame) frame = requestAnimationFrame(write);
+      // Written right here: scroll events already arrive once per frame, before that frame is painted.
+      // Deferring to requestAnimationFrame would show the bars one frame behind the page.
+      write();
       // While the scroll is moving, bars must follow the finger without a transition lag.
       root.dataset.sh = "1";
       window.clearTimeout(timer);
@@ -255,7 +254,6 @@ export function AppShell() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       delete root.dataset.sh;
       reset();
