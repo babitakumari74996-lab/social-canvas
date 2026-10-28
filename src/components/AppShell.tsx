@@ -229,6 +229,14 @@ export function AppShell() {
     let last = window.scrollY;
     let hidden = 0; // px hidden so far (0..96); the nav uses the same value, capped at its own 56px
     let timer = 0;
+    let frame = 0;
+    const write = () => {
+      frame = 0;
+      // Whole pixels only: fractional offsets make the fixed bars shimmer while they move.
+      const px = Math.round(hidden);
+      root.style.setProperty("--sh-top", `${pathname === "/feed" ? px : 0}px`);
+      root.style.setProperty("--sh-bar", `${px}px`);
+    };
     const onScroll = () => {
       const y = window.scrollY;
       const d = y - last;
@@ -237,9 +245,8 @@ export function AppShell() {
       // must not move the bars, and the bars must not jump when the swipe starts.
       if (y <= 8) hidden = 0; // back at the top: always shown, even mid-swipe
       else if (document.documentElement.dataset.swiping !== "1") hidden = Math.min(96, Math.max(0, hidden + d));
-      // The top bars only hide on Home; on Moods just the bottom nav slides away.
-      root.style.setProperty("--sh-top", `${pathname === "/feed" ? hidden : 0}px`);
-      root.style.setProperty("--sh-bar", `${hidden}px`);
+      // One write per animation frame, however many scroll events the finger sends.
+      if (!frame) frame = requestAnimationFrame(write);
       // While the scroll is moving, bars must follow the finger without a transition lag.
       root.dataset.sh = "1";
       window.clearTimeout(timer);
@@ -248,6 +255,7 @@ export function AppShell() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
       window.clearTimeout(timer);
       delete root.dataset.sh;
       reset();
@@ -272,6 +280,7 @@ export function AppShell() {
     translate: "var(--swipe-x, 0px) 0px",
     transform: `translate3d(0, calc(-1 * max(${barHide * 96}px, ${shTop})), 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
+    willChange: "transform",
   } as const;
 
   // Switching section (e.g. bottom-nav Reels/Profile) should dismiss the search/notifications panels.
@@ -434,7 +443,7 @@ export function AppShell() {
       </nav>
 
       {/* ------- mobile top bar ------- */}
-      <header data-bar="" style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
+      <header data-bar="" style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
           {/* logo icon only (no text), to the left of the wordmark */}
           <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
@@ -454,7 +463,7 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div data-bar="" style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
+      <div data-bar="" style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
         <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
           <Search className="h-4 w-4" /> Search
