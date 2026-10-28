@@ -204,14 +204,14 @@ export function AppShell() {
   const navFg = `rgb(${mix(38, 255)},${mix(38, 255)},${mix(38, 255)})`;
   useEffect(() => {
     // Content padding follows the bars (CSS var read by the page, the embed wrapper and the swipe preview).
-    document.documentElement.style.setProperty("--bar-pad", `${(1 - barHide) * 96}px`);
+    document.documentElement.style.setProperty("--bar-pad", onHome ? "0px" : `${(1 - barHide) * 96}px`);
     // Desktop sidebar slides away with the swipe (transform only, so the page layout never moves).
     // Swiping to Reels fades the leaving page, so no Home content shows beside the Reels page.
     const toReels = !!swipeP && swipeP.to === "reels";
     // No fade: the Home page slides out beside the Reels layer instead of ghosting over it.
     document.documentElement.style.setProperty("--feed-opacity", "1");
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
-  }, [barHide, swiping, swipeP, swipeAmt]);
+  }, [barHide, swiping, swipeP, swipeAmt, onHome]);
   // Home: scrolling down hides the top bars and the bottom bar; scrolling back up brings them back.
   // Only the transform changes here (the page padding does not), so the content never jumps.
   // The amount hidden follows the scroll distance 1:1 (scroll down 30px = 30px of bar slides away, scroll up
@@ -325,12 +325,49 @@ export function AppShell() {
   // Embedded inside a swipe preview: render just the page. Read from the router, not `window`,
   // so the server-rendered HTML matches the client.
   if (embedMode) {
-    return (
+  return (
       <div className="min-h-screen pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-0 sv-barpad">
         <Outlet />
       </div>
     );
   }
+
+  // The two top bars, used in the page (Home) or fixed above it (other pages).
+const topBarHeader = (
+      <header data-bar="" style={onHome ? undefined : barStyle} className={`md:hidden ${onHome ? "" : "fixed top-0 inset-x-0 z-40"} h-12 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border`}>
+          <Link to="/feed" className="flex items-center gap-2">
+            {/* logo icon only (no text), to the left of the wordmark */}
+            <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
+            <Wordmark className="text-[22px]" />
+          </Link>
+          <div className="flex items-center gap-5">
+            <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")}>
+              <Gamepad2 className="h-6 w-6" />
+            </button>
+            <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
+              <Heart className="h-6 w-6" />
+            </button>
+            <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center cursor-pointer transition-opacity hover:opacity-60">
+              <Grid3x3 className="h-6 w-6" />
+            </button>
+          </div>
+        </header>
+  );
+const topBarSecond = (
+      <div data-bar="" style={onHome ? undefined : barStyle} className={`md:hidden ${onHome ? "" : "fixed top-12 inset-x-0 z-40"} h-12 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border`}>
+          <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
+            <Search className="h-4 w-4" /> Search
+          </button>
+          <div className="flex items-center gap-5">
+            <Link to="/dm" aria-label="Messages" className="grid h-6 w-6 place-items-center">
+              <Send className="h-6 w-6 -rotate-12" />
+            </Link>
+            <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
+              <img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
+            </Link>
+          </div>
+        </div>
+  );
 
   return (
     <div className="min-h-screen">
@@ -433,49 +470,34 @@ export function AppShell() {
         </div>
       </nav>
 
-      {/* ------- mobile top bar ------- */}
-      <header data-bar="" style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
-        <Link to="/feed" className="flex items-center gap-2">
-          {/* logo icon only (no text), to the left of the wordmark */}
-          <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
-          <Wordmark className="text-[22px]" />
-        </Link>
-        <div className="flex items-center gap-5">
-          <button type="button" aria-label="Gaming" onClick={() => toast("Gaming demo mein abhi available nahi hai")}>
-            <Gamepad2 className="h-6 w-6" />
-          </button>
-          <button type="button" aria-label="Notifications" onClick={ui.openNotifications}>
-            <Heart className="h-6 w-6" />
-          </button>
-          <button type="button" aria-label="Menu" onClick={() => setMenuOpen(true)} className="grid place-items-center cursor-pointer transition-opacity hover:opacity-60">
-            <Grid3x3 className="h-6 w-6" />
-          </button>
-        </div>
-      </header>
-
-      {/* ------- second bar under the top bar: Community tab ------- */}
-      <div data-bar="" style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
-        {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
-        <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
-          <Search className="h-4 w-4" /> Search
-        </button>
-        <div className="flex items-center gap-5">
-          <Link to="/dm" aria-label="Messages" className="grid h-6 w-6 place-items-center">
-            <Send className="h-6 w-6 -rotate-12" />
-          </Link>
-          <Link to="/groups" aria-label="Community" className="grid h-6 w-6 place-items-center">
-            <img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
-          </Link>
-        </div>
-      </div>
+      {/* Top bars: on Home they sit inside the page (see below); on other pages they stay fixed. */}
+      {!onHome && topBarHeader}
+      {!onHome && topBarSecond}
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}
+      {/* Home: the top bars are the first thing on the page. Sticky at -(hidden amount), so they scroll with the
+          page and stay on screen as the page moves; the swipe offset comes from the page itself. */}
       <SwipeTabs
         tabs={swipeTabs}
         activeIndex={activeTabIndex}
         enabled={overlay.overlay === null && !menuOpen}
         className="md:ml-[76px] xl:ml-[330px] md:opacity-[var(--feed-opacity,1)] pt-[var(--bar-pad)] pb-14 md:pt-0 md:pb-14 min-h-screen sv-barpad"
       >
+        {onHome && (
+          <div
+            data-bar=""
+            className="md:hidden sticky top-0 z-40"
+            style={{
+              top: "calc(-1 * var(--sh-top, 0px))",
+              transform: `translate3d(0, ${-barHide * 96}px, 0)`,
+              marginBottom: `${-barHide * 96}px`,
+              transition: "none",
+            }}
+          >
+            {topBarHeader}
+            {topBarSecond}
+          </div>
+        )}
         <Outlet />
       </SwipeTabs>
 
