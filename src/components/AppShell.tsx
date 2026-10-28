@@ -266,6 +266,8 @@ export function AppShell() {
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
     // feed's scroll position never shows with the post off-screen.
+    // Only for a post: other tabs (e.g. Moods -> Home) must slide the bars in, not snap them.
+    if (!pathname.startsWith("/post/")) return;
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-bar]"));
     const saved = els.map((el) => el.style.transition);
     els.forEach((el) => { el.style.transition = "none"; });
