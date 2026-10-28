@@ -233,7 +233,10 @@ export function AppShell() {
       const y = window.scrollY;
       const d = y - last;
       last = y;
-      hidden = y <= 8 ? 0 : Math.min(96, Math.max(0, hidden + d));
+      // During a swipe between tabs the scroll amount is kept as it is: a small vertical wobble of the finger
+      // must not move the bars, and the bars must not jump when the swipe starts.
+      if (y <= 8) hidden = 0; // back at the top: always shown, even mid-swipe
+      else if (document.documentElement.dataset.swiping !== "1") hidden = Math.min(96, Math.max(0, hidden + d));
       // The top bars only hide on Home; on Moods just the bottom nav slides away.
       root.style.setProperty("--sh-top", `${pathname === "/feed" ? hidden : 0}px`);
       root.style.setProperty("--sh-bar", `${hidden}px`);
@@ -250,9 +253,9 @@ export function AppShell() {
       reset();
     };
   }, [pathname]);
-  // A swipe between tabs takes priority: while swiping, the scroll amount is ignored.
-  const shTop = swipeP ? "0px" : "var(--sh-top, 0px)";
-  const shBar = swipeP ? "0px" : "var(--sh-bar, 0px)";
+  // The scroll amount applies during a swipe too, so the bars stay where the scroll left them.
+  const shTop = "var(--sh-top, 0px)";
+  const shBar = "var(--sh-bar, 0px)";
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
     // feed's scroll position never shows with the post off-screen.
