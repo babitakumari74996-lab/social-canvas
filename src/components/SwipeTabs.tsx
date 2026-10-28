@@ -103,11 +103,16 @@ export function SwipeTabs({
     // left edge while <main> moves (otherwise it starts at the sidebar's 330px and jumps back on release).
     let fromReels = false;
 
-    const setMain = (x: number, anim: boolean) => {
+    // The top bars are global (not inside <main>), so they only follow the page while a drag is in progress.
+    // `bars` = false: the page moves but the bars keep their own place (used once a swipe commits).
+    const setMain = (x: number, anim: boolean, bars = true) => {
       main.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       main.style.transform = `translate3d(${x}px,0,0)`;
       main.style.marginLeft = fromReels ? "0px" : "";
-      // The top bars ride along with the page: same offset, written in the same frame as the page.
+      if (bars) setBars(x, anim);
+    };
+    // Top bars: same offset as the page, written in the same frame as the page.
+    const setBars = (x: number, anim: boolean) => {
       const root = document.documentElement;
       root.style.transition = anim ? `--swipe-x ${ANIM_MS}ms ${EASE}` : "none";
       root.style.setProperty("--swipe-x", `${x}px`);
@@ -337,7 +342,10 @@ export function SwipeTabs({
       // Current page slides out on the far side while the neighbour panel covers the area.
       // Leaving Reels: its full-window layer is hidden at once, so it never stays on top of the incoming page.
       if (window.location.pathname.startsWith("/reels")) main.style.visibility = "hidden";
-      setMain(-d * width, true);
+      setMain(-d * width, true, false);
+      // The bars settle in their own place (Home: back to 0) instead of following the page off-screen,
+      // so they never disappear while the destination is loading.
+      setBars(0, true);
       setPv(0, true);
       later(async () => {
         try {
@@ -345,7 +353,7 @@ export function SwipeTabs({
         } finally {
           // The real page mounts off-screen, then appears in place once it has painted. No entering
           // slide: the switch is instant, and the preview is removed in the same frame.
-          setMain(d * width, false);
+          setMain(d * width, false, false);
           void main.offsetWidth;
           await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
           rest();
