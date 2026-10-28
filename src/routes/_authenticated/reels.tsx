@@ -179,19 +179,34 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
     const el = wrapRef.current;
     const vid = videoRef.current;
     if (!el || !vid) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.intersectionRatio >= 0.6) {
-          vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-        } else {
-          vid.pause();
-          setPlaying(false);
-        }
-      },
-      { threshold: [0, 0.6, 1] },
-    );
+    // Swipe-preview copies of this page (embed mode) are only pictures: they never play media, so the
+    // preview does not show a reel that then changes. The real Reels page plays once it is on screen.
+    if (document.documentElement.hasAttribute("data-embed")) return;
+    // How much of this reel is on screen (both directions). Read from the layout, so it is right even when
+    // IntersectionObserver misses a move (the page can be moved by a swipe commit with no new callback).
+    const shown = () => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return 0;
+      const w = Math.max(0, Math.min(r.right, window.innerWidth) - Math.max(r.left, 0));
+      const h = Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0));
+      return (w * h) / (r.width * r.height);
+    };
+    const check = () => {
+      if (shown() >= 0.6) {
+        if (vid.paused) vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+      } else if (!vid.paused) {
+        vid.pause();
+        setPlaying(false);
+      }
+    };
+    const io = new IntersectionObserver(check, { threshold: [0, 0.6, 1] });
     io.observe(el);
-    return () => io.disconnect();
+    // Right after the page is shown (also after a swipe commit), check a few times in case no callback comes.
+    const timers = [0, 120, 300, 600, 1000].map((ms) => window.setTimeout(check, ms));
+    return () => {
+      io.disconnect();
+      timers.forEach((t) => window.clearTimeout(t));
+    };
   }, []);
 
   useEffect(() => {
