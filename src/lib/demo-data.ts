@@ -2,7 +2,7 @@ import type { UMood, UMoodComment, UPost, UProfile, UReel, UStory, UNotif } from
 
 // ---------------------------------------------------------------------------
 // Demo world for Socialverse. Avatars/post images are local files in /public/demo.
-// Reel sample videos are public Google-hosted mp4s.
+// Reel sample videos are local clips in /public/demo/reels.
 // ---------------------------------------------------------------------------
 
 const ago = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
@@ -215,7 +215,14 @@ export interface DemoReelSeed {
   comments: { user_id: string; content: string; mins: number }[];
 }
 
-const V = (name: string) => `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/${name}.mp4`;
+// Local sample clips (public/demo/reels, from MDN shared-assets). The old Google-hosted URLs now return AccessDenied.
+const REEL_CLIPS: Record<string, string> = {
+  ForBiggerBlazes: "/demo/reels/friday.mp4",
+  ForBiggerEscapes: "/demo/reels/flower.mp4",
+  ForBiggerJoyrides: "/demo/reels/sintel-short.webm",
+  SubaruOutbackOnStreetAndDirt: "/demo/reels/flower.webm",
+};
+const V = (name: string) => REEL_CLIPS[name];
 
 export const DEMO_REELS: DemoReelSeed[] = [
   {
