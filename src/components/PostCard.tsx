@@ -278,7 +278,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         </button>
         <button
           type="button"
-          className="flex-1 rounded-lg bg-sky-500 px-3 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+          className="flex-1 rounded-lg sv-gradient-bg px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80"
         >
           Buy product
         </button>

@@ -126,7 +126,7 @@ function MoodCard({ mood }: { mood: UMood }) {
         </button>
         <button
           type="button"
-          className="ml-auto rounded-lg bg-sky-500 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+          className="ml-auto rounded-lg sv-gradient-bg px-4 py-1.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80"
         >
           Buy product
         </button>

@@ -323,7 +323,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             )}
             <button
               type="button"
-              className="mt-3 w-full rounded-lg bg-sky-500 py-2.5 text-sm font-semibold text-white hover:bg-sky-600 active:opacity-80"
+              className="mt-3 w-full rounded-lg sv-gradient-bg py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80"
             >
               Buy product
             </button>

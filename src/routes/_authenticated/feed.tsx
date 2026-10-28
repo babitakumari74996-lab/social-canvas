@@ -218,7 +218,7 @@ function ProductsStrip() {
             <div className="text-xs text-muted-foreground">{pr.price}</div>
             <button
               type="button"
-              className="mt-1.5 w-full rounded-lg bg-sky-500 py-1.5 text-xs font-semibold text-white hover:bg-sky-600 active:opacity-80"
+              className="mt-1.5 w-full rounded-lg sv-gradient-bg py-1.5 text-xs font-semibold text-white hover:opacity-90 active:opacity-80"
             >
               Buy product
             </button>
