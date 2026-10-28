@@ -214,28 +214,45 @@ export function AppShell() {
   }, [barHide, swiping, swipeP, swipeAmt]);
   // Home: scrolling down hides the top bars and the bottom bar; scrolling back up brings them back.
   // Only the transform changes here (the page padding does not), so the content never jumps.
-  const [scrollHide, setScrollHide] = useState(false);
+  // The amount hidden follows the scroll distance 1:1 (scroll down 30px = 30px of bar slides away, scroll up
+  // brings it back by the same amount). Written as CSS variables on <html>, so no re-render per scroll event.
   useEffect(() => {
+    const root = document.documentElement;
+    const reset = () => {
+      root.style.setProperty("--sh-top", "0px");
+      root.style.setProperty("--sh-bar", "0px");
+    };
     if (pathname !== "/feed" && pathname !== "/moods") {
-      setScrollHide(false);
+      reset();
       return;
     }
     let last = window.scrollY;
+    let hidden = 0; // px hidden so far (0..96); the nav uses the same value, capped at its own 56px
+    let timer = 0;
     const onScroll = () => {
       const y = window.scrollY;
       const d = y - last;
       last = y;
-      if (y <= 8) setScrollHide(false);
-      else if (d > 4) setScrollHide(true);
-      else if (d < -4) setScrollHide(false);
+      hidden = y <= 8 ? 0 : Math.min(96, Math.max(0, hidden + d));
+      // The top bars only hide on Home; on Moods just the bottom nav slides away.
+      root.style.setProperty("--sh-top", `${pathname === "/feed" ? hidden : 0}px`);
+      root.style.setProperty("--sh-bar", `${hidden}px`);
+      // While the scroll is moving, bars must follow the finger without a transition lag.
+      root.dataset.sh = "1";
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => { delete root.dataset.sh; }, 120);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.clearTimeout(timer);
+      delete root.dataset.sh;
+      reset();
+    };
   }, [pathname]);
-  // A swipe between tabs takes priority: the bars follow the swipe rules above, not the scroll.
-  const hiddenByScroll = scrollHide && !swipeP && (pathname === "/feed" || pathname === "/moods");
-  // The top bars only hide on Home; on Moods just the bottom nav slides away.
-  const headerHiddenByScroll = hiddenByScroll && pathname === "/feed";
+  // A swipe between tabs takes priority: while swiping, the scroll amount is ignored.
+  const shTop = swipeP ? "0px" : "var(--sh-top, 0px)";
+  const shBar = swipeP ? "0px" : "var(--sh-bar, 0px)";
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
     // feed's scroll position never shows with the post off-screen.
@@ -248,7 +265,7 @@ export function AppShell() {
     return () => cancelAnimationFrame(id);
   }, [pathname]);
   const barStyle = {
-    transform: `translate3d(0, ${-Math.max(barHide, headerHiddenByScroll ? 1 : 0) * 96}px, 0)`,
+    transform: `translate3d(0, calc(-1 * max(${barHide * 96}px, ${shTop})), 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
   } as const;
 
@@ -359,7 +376,7 @@ export function AppShell() {
         className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
         style={{
           backgroundColor: navBg,
-          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transform: `translate3d(0, min(${shBar}, 56px), 0)`,
           transition: swiping ? "none" : "transform 220ms ease, background-color 260ms ease",
         }}
       />
@@ -370,7 +387,7 @@ export function AppShell() {
           color: navFg,
           // On Reels the bar sits 35px further right; it moves with the swipe, so only the Reels tab shows the shift.
           paddingLeft: `calc(var(--bar-home) + ${navBlack} * (50vw - (${REEL_W}) / 2 - var(--bar-home)))`,
-          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transform: `translate3d(0, min(${shBar}, 56px), 0)`,
           transition: swiping ? "none" : "transform 220ms ease, color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
         data-bar=""
@@ -460,7 +477,7 @@ export function AppShell() {
       {/* ------- mobile bottom nav ------- */}
       <nav
         style={{
-          transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
+          transform: `translate3d(0, min(${shBar}, 56px), 0)`,
           transition: "transform 220ms ease", // colour has no transition: a click on Reels turns black at once, a swipe follows the drag
           backgroundColor: navBg,
           color: navFg,

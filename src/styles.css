@@ -285,3 +285,6 @@ html[data-swiping="1"] .sv-barpad { transition: none; }
 /* Desktop bottom bar: left edge of the bar on normal tabs (sidebar width + 57px). */
 :root { --bar-home: 133px; }
 @media (min-width: 1280px) { :root { --bar-home: 387px; } }
+
+/* While the page is scrolling, the bars follow the scroll amount directly: no transition lag. */
+html[data-sh="1"] [data-bar] { transition: none !important; }
