@@ -57,18 +57,25 @@ function MoodsPage() {
 
   return (
     <div data-no-swipe className="max-w-[520px] mx-auto pb-10">
-      <div className="flex gap-6 px-4 pt-4 border-b border-border">
-        {(["Moods", "Twit"] as const).map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => setTab(i as 0 | 1)}
-            className={`relative pb-2 text-lg font-semibold ${tab === i ? "text-foreground" : "text-muted-foreground"}`}
-          >
-            {label}
-            {tab === i && <span className="absolute inset-x-0 -bottom-px h-[3px] rounded-full sv-gradient-bg" />}
-          </button>
-        ))}
+      <div className="px-4 pt-4 pb-3 border-b border-border">
+        {/* Pill switcher: a sliding thumb marks the active side (no underline). */}
+        <div className="relative flex rounded-full bg-muted p-1">
+          <span
+            aria-hidden
+            className="absolute bottom-1 top-1 left-1 rounded-full bg-background shadow-sm transition-transform duration-300 ease-out"
+            style={{ width: "calc(50% - 4px)", transform: `translateX(${tab * 100}%)` }}
+          />
+          {(["Moods", "Twits"] as const).map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setTab(i as 0 | 1)}
+              className={`relative z-10 flex-1 rounded-full py-1.5 text-sm font-semibold transition-colors duration-300 ${tab === i ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       <div
         className="overflow-hidden"
