@@ -444,9 +444,9 @@ export function AppShell() {
       </nav>
 
       {/* ------- mobile top bars (one container: on Home it moves with the page via a scroll-driven animation) ------- */}
-      <div className={`md:hidden fixed top-0 inset-x-0 z-40 ${pathname === "/feed" ? "sv-scroll-bars" : ""}`}>
+      <div className={`md:hidden fixed top-0 inset-x-0 z-40 pointer-events-none ${pathname === "/feed" ? "sv-scroll-bars" : ""}`}>
       {/* ------- mobile top bar ------- */}
-      <header data-bar="" style={barStyle} className="md:hidden h-12 flex items-center justify-between px-4 bg-background border-b border-border">
+      <header data-bar="" style={barStyle} className="pointer-events-auto md:hidden h-12 flex items-center justify-between px-4 bg-background border-b border-border">
         <Link to="/feed" className="flex items-center gap-2 cursor-default">
           {/* logo icon only (no text), to the left of the wordmark */}
           <img src="/header-logo-v3.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
@@ -466,7 +466,7 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div data-bar="" style={barStyle} className="md:hidden h-12 flex items-center justify-end px-4 bg-background border-b border-border">
+      <div data-bar="" style={barStyle} className="pointer-events-auto md:hidden h-12 flex items-center justify-end px-4 bg-background border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
         <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
           <Search className="h-4 w-4" /> Search
