@@ -229,6 +229,12 @@ export function SwipeTabs({
         }
         lock = "h";
         window.getSelection()?.removeAllRanges(); // clear anything the drag already selected
+        // Once it is a real horizontal drag, keep the pointer on the page: a release over an iframe would
+        // otherwise never reach the page, and the swipe would stay stuck half-way. (Not set on a plain
+        // click, so clicks on buttons keep their normal target.)
+        if (!touchGesture) {
+          try { main.setPointerCapture(pid); } catch { /* not supported: the window listeners still work */ }
+        }
       }
       dx = cx;
       const idx = latest.current.activeIndex;
@@ -284,6 +290,11 @@ export function SwipeTabs({
 
     const onMove = (e: PointerEvent) => {
       if (!tracking || busy || e.pointerId !== pid) return;
+      // Watchdog: a mouse move with no button held means the release was missed. End the drag as a release.
+      if (e.pointerType === "mouse" && e.buttons === 0) {
+        onUp(e);
+        return;
+      }
       lastX = e.clientX - sx;
       lastY = e.clientY - sy;
       if (!frame) frame = requestAnimationFrame(() => {
@@ -416,6 +427,11 @@ export function SwipeTabs({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
+    // Leaving the window mid-drag: end the drag so it can never stay half-way.
+    const onBlur = () => {
+      if (tracking && !busy) onCancel({ pointerId: pid } as PointerEvent);
+    };
+    window.addEventListener("blur", onBlur);
     // A mouse drag would otherwise select text and images on the page. While a swipe is tracked, selection is off.
     const onSelectStart = (e: Event) => {
       if (tracking && !busy) e.preventDefault();
@@ -435,6 +451,7 @@ export function SwipeTabs({
       cancelAnimationFrame(frame);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onBlur);
       document.removeEventListener("selectstart", onSelectStart);
       window.removeEventListener("click", onClickCapture, true);
       timers.forEach((t) => window.clearTimeout(t));
