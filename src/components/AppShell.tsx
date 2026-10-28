@@ -21,7 +21,7 @@ const EditProfileModal = lazy(() => import("@/components/EditProfileModal").then
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`font-serif italic font-bold tracking-tight text-[26px] leading-none bg-gradient-to-r from-[#D62976] via-[#962FBF] to-[#4F5BD5] bg-clip-text text-transparent ${className}`}>
+    <span className={`font-serif italic font-bold tracking-tight text-[26px] leading-none bg-gradient-to-r from-[#6366F1] via-[#7C3AED] to-[#4338CA] bg-clip-text text-transparent ${className}`}>
       Socialverse
     </span>
   );
@@ -67,7 +67,7 @@ const NAV_CELLS = 5;
 // Desktop Reels card width (9:16 at the window height, capped at 516px). The bottom bar matches it so it sits under the reel.
 const REEL_W = "min(516px, (100vh - 24px) * 9 / 16)";
 const NAV_POS: Record<string, number> = { home: 0, reels: 1, create: 2, moods: 3, profile: 4 };
-const IG_GRADIENT = "linear-gradient(90deg,#FEDA75,#FA7E1E,#D62976,#962FBF,#4F5BD5)";
+const IG_GRADIENT = "linear-gradient(90deg,#5EEAD4,#2DD4BF,#6366F1,#7C3AED,#4338CA)";
 
 // One Instagram-coloured line, as wide as an icon, under the selected tab. During a swipe it
 // slides from the current icon to the neighbouring one, following the drag.
@@ -108,7 +108,7 @@ function NavIndicator({ activeKey }: { activeKey: string | null }) {
 
 function cell(active: boolean) {
   // Only the icon takes the colour (icons use currentColor); the cell background stays plain.
-  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#D62976]" : ""}`;
+  return `relative flex-1 h-full flex items-center justify-center transition-colors ${active ? "text-[#6366F1]" : ""}`;
 }
 
 export function AppShell() {
@@ -436,7 +436,7 @@ export function AppShell() {
           aria-label="Profile"
           className={cell(navIndex === 4)}
         >
-          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#6366F1]" : "ring-1 ring-border"} />
         </Link>
         </div>
       </nav>
@@ -525,7 +525,7 @@ export function AppShell() {
           aria-label="Profile"
           className={cell(navIndex === 4)}
         >
-          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#D62976]" : "ring-1 ring-border"} />
+          <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#6366F1]" : "ring-1 ring-border"} />
         </Link>
       </nav>
 

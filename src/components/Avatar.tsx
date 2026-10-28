@@ -57,7 +57,7 @@ export function Avatar({
   if (!src) {
     return (
       <div
-        className={`rounded-full bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] flex items-center justify-center text-white font-semibold select-none ${className}`}
+        className={`rounded-full bg-gradient-to-tr from-[#5EEAD4] via-[#6366F1] to-[#4338CA] flex items-center justify-center text-white font-semibold select-none ${className}`}
         style={{ width: size, height: size, fontSize: size * 0.42 }}
         aria-label={alt}
       >
@@ -110,7 +110,7 @@ export function StoryRing({
       style={{
         width: size,
         height: size,
-        background: viewed ? "var(--color-border)" : "linear-gradient(45deg, #FEDA75, #FA7E1E, #D62976, #962FBF, #4F5BD5)",
+        background: viewed ? "var(--color-border)" : "linear-gradient(45deg, #5EEAD4, #2DD4BF, #6366F1, #7C3AED, #4338CA)",
       }}
     >
       <span className="block rounded-full bg-background p-[2px] w-full h-full">{children}</span>

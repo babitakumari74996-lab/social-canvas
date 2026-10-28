@@ -24,9 +24,9 @@ const FILTERS: { name: string; css: string }[] = [
 ];
 
 const TEXT_THEMES = [
-  "linear-gradient(135deg,#4F5BD5,#962FBF)",
-  "linear-gradient(135deg,#D62976,#FA7E1E)",
-  "linear-gradient(135deg,#FEDA75,#D62976)",
+  "linear-gradient(135deg,#4338CA,#7C3AED)",
+  "linear-gradient(135deg,#6366F1,#2DD4BF)",
+  "linear-gradient(135deg,#5EEAD4,#6366F1)",
   "linear-gradient(135deg,#0F9B8E,#1D2671)",
   "linear-gradient(135deg,#ff9966,#ff5e62)",
   "linear-gradient(135deg,#2193b0,#6dd5ed)",

@@ -194,7 +194,7 @@ function PostGrid({ posts, emptyText }: { posts: UPost[]; emptyText: string }) {
       {posts.map((p) => (
         <Link key={p.id} to="/post/$id" params={{ id: p.id }} className="relative group aspect-square overflow-hidden bg-muted">
           {p.media_urls.length === 0 ? (
-            <span className="absolute inset-0 p-2 flex items-center justify-center text-center text-white text-[11px] font-semibold line-clamp-5" style={{ background: "linear-gradient(135deg,#4F5BD5,#962FBF,#D62976)" }}>
+            <span className="absolute inset-0 p-2 flex items-center justify-center text-center text-white text-[11px] font-semibold line-clamp-5" style={{ background: "linear-gradient(135deg,#4338CA,#7C3AED,#6366F1)" }}>
               {p.caption}
             </span>
           ) : (

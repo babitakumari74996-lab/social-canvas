@@ -197,7 +197,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         <div
           onDoubleClick={doubleTap}
           className={`relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"} flex items-center justify-center p-8 text-center select-none`}
-          style={{ background: "linear-gradient(135deg, #4F5BD5 0%, #962FBF 30%, #D62976 60%, #FA7E1E 85%, #FEDA75 100%)" }}
+          style={{ background: "linear-gradient(135deg, #4338CA 0%, #7C3AED 30%, #6366F1 60%, #2DD4BF 85%, #5EEAD4 100%)" }}
         >
           <p className="text-white text-xl md:text-2xl font-semibold leading-snug drop-shadow whitespace-pre-wrap break-words max-w-[85%]">
             {post.caption}

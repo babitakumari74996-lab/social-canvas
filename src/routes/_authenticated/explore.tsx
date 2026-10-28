@@ -48,7 +48,7 @@ function GridItem({ post, tall }: { post: UPost; tall: boolean }) {
       {isText ? (
         <span
           className="absolute inset-0 p-3 flex items-center justify-center text-center text-white text-xs font-semibold line-clamp-6"
-          style={{ background: "linear-gradient(135deg,#4F5BD5,#962FBF,#D62976)" }}
+          style={{ background: "linear-gradient(135deg,#4338CA,#7C3AED,#6366F1)" }}
         >
           {post.caption}
         </span>

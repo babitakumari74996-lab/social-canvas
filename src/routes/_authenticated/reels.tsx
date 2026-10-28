@@ -247,7 +247,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
               icon={<Send className="h-7 w-7" />}
             />
             <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
-            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] animate-[spin_6s_linear_infinite]" />
+            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#5EEAD4] via-[#6366F1] to-[#4338CA] animate-[spin_6s_linear_infinite]" />
           </div>
   );
 
