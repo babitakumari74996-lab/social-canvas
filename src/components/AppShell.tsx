@@ -353,7 +353,7 @@ export function AppShell() {
         {/* logo icon, then the search bar (pill from xl; a full-width icon button on md) */}
         <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 xl:gap-2 pl-3 pr-0 mb-4">
           <Link to="/feed" className="flex items-center shrink-0" aria-label="Socialverse home">
-            <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-10 w-10" />
+            <img src="/header-logo-v2.png" alt="" aria-hidden width={112} height={112} className="h-10 w-10" />
           </Link>
           {/* On Explore (desktop) the search bar is swapped for the Socialverse wordmark; it returns when you leave */}
           {pathname.startsWith("/explore") && (
@@ -447,7 +447,7 @@ export function AppShell() {
       <header data-bar="" style={barStyle} className="md:hidden h-12 flex items-center justify-between px-4 bg-background border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
           {/* logo icon only (no text), to the left of the wordmark */}
-          <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
+          <img src="/header-logo-v2.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
           <Wordmark className="text-[22px]" />
         </Link>
         <div className="flex items-center gap-5">
