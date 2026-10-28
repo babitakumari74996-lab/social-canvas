@@ -239,7 +239,6 @@ export function AppShell() {
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
     // feed's scroll position never shows with the post off-screen.
-    if (pathname.startsWith("/post/")) window.scrollTo(0, 0);
     const els = Array.from(document.querySelectorAll<HTMLElement>("[data-bar]"));
     const saved = els.map((el) => el.style.transition);
     els.forEach((el) => { el.style.transition = "none"; });
