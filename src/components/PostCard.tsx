@@ -177,7 +177,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           <button
             type="button"
             onClick={toggleFollow}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${following ? "border border-border text-foreground" : "bg-sky-500 text-white hover:bg-sky-600"}`}
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${following ? "border border-border text-foreground" : "sv-gradient-bg text-white hover:opacity-90"}`}
           >
             {following ? "Following" : "Follow"}
           </button>

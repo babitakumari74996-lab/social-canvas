@@ -67,7 +67,7 @@ function MoodCard({ mood }: { mood: UMood }) {
           <button
             type="button"
             onClick={() => demoActions.toggleFollow(mood.user_id)}
-            className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground"
+            className="sv-gradient-bg rounded-md px-3 py-1 text-xs font-semibold text-white hover:opacity-90"
           >
             Follow
           </button>

@@ -6,14 +6,22 @@ function NoteIcon() {
     <svg
       viewBox="0 0 540 540"
       fill="none"
-      stroke="currentColor"
+      stroke="url(#sv-note-grad)"
       strokeWidth={40}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
       className="inline-block h-[1.25em] w-[1.25em] mr-1.5"
-      style={{ verticalAlign: "-0.2em", color: "oklch(0.62 0.19 244)" }}
+      style={{ verticalAlign: "-0.2em" }}
     >
+      {/* Socialverse gradient: teal -> indigo -> violet (same as the logo) */}
+      <defs>
+        <linearGradient id="sv-note-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#2DD4BF" />
+          <stop offset="0.5" stopColor="#6366F1" />
+          <stop offset="1" stopColor="#7C3AED" />
+        </linearGradient>
+      </defs>
       <path d="M250 435 H205 C160 435 133 405 133 365 V185 C133 155 155 140 185 140 H330 C360 140 378 160 378 190 V245" />
       <path d="M133 210 H378" />
       <path d="M185 110 V140 M255 110 V140 M325 110 V140" />

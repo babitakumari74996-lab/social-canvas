@@ -307,3 +307,8 @@ html[data-sh="1"] [data-bar] { transition: none !important; }
   animation-timeline: scroll(root block);
   animation-range: 0px 96px;
 }
+
+/* Socialverse gradient (teal -> indigo -> violet), used for the Follow buttons. */
+.sv-gradient-bg {
+  background: linear-gradient(90deg, #2DD4BF, #6366F1, #7C3AED);
+}
