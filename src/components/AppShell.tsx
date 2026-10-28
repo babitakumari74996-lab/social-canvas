@@ -260,7 +260,8 @@ export function AppShell() {
     };
   }, [pathname]);
   // The scroll amount applies during a swipe too, so the bars stay where the scroll left them.
-  const shTop = "var(--sh-top, 0px)";
+  // Home: the scroll offset comes from a CSS scroll-driven animation on the bar container (no JS lag).
+  const shTop = pathname === "/feed" ? "0px" : "var(--sh-top, 0px)";
   const shBar = "var(--sh-bar, 0px)";
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
@@ -440,8 +441,10 @@ export function AppShell() {
         </div>
       </nav>
 
+      {/* ------- mobile top bars (one container: on Home it moves with the page via a scroll-driven animation) ------- */}
+      <div className={`md:hidden fixed top-0 inset-x-0 z-40 ${pathname === "/feed" ? "sv-scroll-bars" : ""}`}>
       {/* ------- mobile top bar ------- */}
-      <header data-bar="" style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background border-b border-border">
+      <header data-bar="" style={barStyle} className="md:hidden h-12 flex items-center justify-between px-4 bg-background border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
           {/* logo icon only (no text), to the left of the wordmark */}
           <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
@@ -461,7 +464,7 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div data-bar="" style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background border-b border-border">
+      <div data-bar="" style={barStyle} className="md:hidden h-12 flex items-center justify-end px-4 bg-background border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
         <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
           <Search className="h-4 w-4" /> Search
@@ -474,6 +477,8 @@ export function AppShell() {
             <img src="/community.jpg" alt="" width={24} height={24} className="h-6 w-6 rounded-full object-cover" />
           </Link>
         </div>
+      </div>
+
       </div>
 
       {/* ------- main (swipeable between Home / Reels / Profile on mobile) ------- */}

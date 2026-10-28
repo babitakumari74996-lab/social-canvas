@@ -295,3 +295,15 @@ html[data-sh="1"] [data-bar] { transition: none !important; }
   inherits: true;
   initial-value: 0px;
 }
+
+/* Home top bars: the bar container follows the page scroll for the first 96px (compositor-driven, no JS lag).
+   Scrolling back up brings it back in step with the page. */
+@keyframes sv-bar-hide {
+  from { translate: 0 0; }
+  to { translate: 0 -96px; }
+}
+.sv-scroll-bars {
+  animation: sv-bar-hide linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0px 96px;
+}
