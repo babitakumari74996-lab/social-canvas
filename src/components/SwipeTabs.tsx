@@ -107,6 +107,10 @@ export function SwipeTabs({
       main.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       main.style.transform = `translate3d(${x}px,0,0)`;
       main.style.marginLeft = fromReels ? "0px" : "";
+      // The top bars ride along with the page: same offset, written in the same frame as the page.
+      const root = document.documentElement;
+      root.style.transition = anim ? `--swipe-x ${ANIM_MS}ms ${EASE}` : "none";
+      root.style.setProperty("--swipe-x", `${x}px`);
     };
     // Back to rest: no inline transform, so fixed-position children of the page behave normally.
     const rest = () => {
@@ -114,6 +118,8 @@ export function SwipeTabs({
       main.style.transform = "";
       main.style.marginLeft = "";
       main.style.visibility = "";
+      document.documentElement.style.setProperty("--swipe-x", "0px");
+      document.documentElement.style.transition = "";
     };
     const setPv = (x: number, anim: boolean) => {
       pv.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";

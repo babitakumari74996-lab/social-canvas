@@ -288,3 +288,10 @@ html[data-swiping="1"] .sv-barpad { transition: none; }
 
 /* While the page is scrolling, the bars follow the scroll amount directly: no transition lag. */
 html[data-sh="1"] [data-bar] { transition: none !important; }
+
+/* Horizontal swipe offset shared by the page and the top bars. Registered so it can animate in step with the page. */
+@property --swipe-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}

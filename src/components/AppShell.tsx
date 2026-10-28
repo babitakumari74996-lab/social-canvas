@@ -268,6 +268,8 @@ export function AppShell() {
     return () => cancelAnimationFrame(id);
   }, [pathname]);
   const barStyle = {
+    // Horizontal swipe offset goes in the separate `translate` property (no transition), so it follows the page exactly.
+    translate: "var(--swipe-x, 0px) 0px",
     transform: `translate3d(0, calc(-1 * max(${barHide * 96}px, ${shTop})), 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
   } as const;
