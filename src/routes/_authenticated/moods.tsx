@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Heart, MessageCircle } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MediaImg } from "@/components/PostCard";
@@ -21,42 +21,8 @@ function MoodsPage() {
   const { posts } = useFeed();
   const twit = posts.filter((p) => p.media_urls.length > 0 && (p.caption ?? "").trim().length > 0);
   const [tab, setTab] = useState<0 | 1>(0);
-  const [drag, setDrag] = useState<number | null>(null);
-  const gesture = useRef<{ x: number; id: number; lock: "h" | "v" | null } | null>(null);
-  const swiped = useRef(false);
-
-  // Horizontal drag between the two sub-tabs. The page is marked data-no-swipe, so the app-wide tab swipe
-  // does not also fire here.
-  const onDown = (e: React.PointerEvent) => {
-    gesture.current = { x: e.clientX, id: e.pointerId, lock: null };
-    swiped.current = false;
-  };
-  const onMove = (e: React.PointerEvent) => {
-    const g = gesture.current;
-    if (!g || g.id !== e.pointerId) return;
-    const dx = e.clientX - g.x;
-    if (!g.lock) {
-      if (Math.abs(dx) < 8) return;
-      g.lock = "h";
-      swiped.current = true;
-      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    }
-    if (g.lock === "h") setDrag(dx);
-  };
-  const onUp = (e: React.PointerEvent) => {
-    const g = gesture.current;
-    if (!g || g.id !== e.pointerId) return;
-    gesture.current = null;
-    if (g.lock === "h") {
-      const dx = e.clientX - g.x;
-      if (dx < -60 && tab === 0) setTab(1);
-      else if (dx > 60 && tab === 1) setTab(0);
-    }
-    setDrag(null);
-  };
-
   return (
-    <div data-no-swipe className="max-w-[520px] mx-auto pb-10">
+    <div className="max-w-[520px] mx-auto pb-10">
       <div className="px-4 pt-4 pb-3 border-b border-border">
         {/* Pill switcher: a sliding thumb marks the active side (no underline). */}
         <div className="relative flex rounded-full bg-muted p-1">
@@ -77,26 +43,12 @@ function MoodsPage() {
           ))}
         </div>
       </div>
-      <div
-        className="overflow-hidden"
-        style={{ touchAction: "pan-y" }}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
-        onClickCapture={(e) => {
-          if (swiped.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            swiped.current = false;
-          }
-        }}
-      >
+      <div className="overflow-hidden">
         <div
           className="flex w-[200%]"
           style={{
-            transform: `translate3d(calc(${tab * -50}% + ${drag ?? 0}px), 0, 0)`,
-            transition: drag === null ? "transform 260ms cubic-bezier(.2,.8,.2,1)" : "none",
+            transform: `translate3d(${tab * -50}%, 0, 0)`,
+            transition: "transform 260ms cubic-bezier(.2,.8,.2,1)",
           }}
         >
           <div className="w-1/2 min-w-0">
