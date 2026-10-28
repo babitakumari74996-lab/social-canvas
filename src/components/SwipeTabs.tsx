@@ -17,6 +17,8 @@ export type SwipeTab = {
 const ANIM_MS = 260;
 // Share of the screen width the finger must cover before a swipe commits (and the indicator arrives).
 const SWIPE_COMMIT = 0.2;
+// A drag that is held still past the commit distance for this long finishes as a swipe to the next tab.
+const HOLD_COMMIT_MS = 400;
 const EASE = "cubic-bezier(.2,.8,.2,1)";
 
 // URL of a tab's page in embed mode (no header, nav or swipe chrome).
@@ -288,6 +290,14 @@ export function SwipeTabs({
       }
     };
 
+    // Hold-to-commit: a drag that stays still past the commit distance completes the swipe after a short wait.
+    let holdTimer = 0;
+    let holdArmed = false;
+    let holdAnchor = 0;
+    const clearHold = () => {
+      window.clearTimeout(holdTimer);
+      holdArmed = false;
+    };
     const onMove = (e: PointerEvent) => {
       if (!tracking || busy || e.pointerId !== pid) return;
       // Watchdog: a mouse move with no button held means the release was missed. End the drag as a release.
@@ -297,6 +307,20 @@ export function SwipeTabs({
       }
       lastX = e.clientX - sx;
       lastY = e.clientY - sy;
+      if (lock === "h" && target !== null && Math.abs(lastX) > width * SWIPE_COMMIT) {
+        // Still moving: re-arm. Only a hold (no movement of more than 4px) completes the swipe.
+        if (!holdArmed || Math.abs(lastX - holdAnchor) > 4) {
+          holdArmed = true;
+          holdAnchor = lastX;
+          window.clearTimeout(holdTimer);
+          holdTimer = window.setTimeout(() => {
+            holdArmed = false;
+            if (tracking && !busy && lock === "h") onUp({ pointerId: pid } as PointerEvent);
+          }, HOLD_COMMIT_MS);
+        }
+      } else {
+        clearHold();
+      }
       if (!frame) frame = requestAnimationFrame(() => {
         frame = 0;
         if (tracking && !busy) applyMove(lastX, lastY);
@@ -305,6 +329,7 @@ export function SwipeTabs({
 
     const onUp = (e: PointerEvent) => {
       if (!tracking || e.pointerId !== pid) return;
+      clearHold();
       if (frame) {
         cancelAnimationFrame(frame);
         frame = 0;
@@ -383,6 +408,7 @@ export function SwipeTabs({
 
     const onCancel = (e: PointerEvent) => {
       if (!tracking || e.pointerId !== pid) return;
+      clearHold();
       tracking = false;
       setSwipeProgress(null);
       if (lock === "h" && target !== null) snapBack();
@@ -455,6 +481,7 @@ export function SwipeTabs({
       document.removeEventListener("selectstart", onSelectStart);
       window.removeEventListener("click", onClickCapture, true);
       timers.forEach((t) => window.clearTimeout(t));
+      clearHold();
     };
   }, []);
 
