@@ -108,8 +108,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-title", content: "Socialverse" },
     ],
     links: [
-      // Splash logo is preloaded so it paints with the first frame.
-      { rel: "preload", href: "/splash-logo-v2.png", as: "image", type: "image/png" },
+      // Splash icon is preloaded so it paints with the first frame.
+      { rel: "preload", href: "/header-logo-v3.png", as: "image", type: "image/png" },
       // Not render-blocking: a print-media stylesheet does not hold back the first paint.
       // The body script switches it to "all" as soon as it has loaded.
       {
@@ -146,7 +146,9 @@ function Splash() {
   return (
     <div id="sv-splash" aria-hidden="true">
       <style>{SPLASH_CSS}</style>
-      <img src="/splash-logo-v2.png" width={312} height={222} alt="" fetchPriority="high" style={{ width: 312, maxWidth: "80vw", height: "auto" }} />
+      {/* Same icon and wordmark as the app header. Inline styles: this paints before the page CSS arrives. */}
+      <img src="/header-logo-v3.png" width={96} height={96} alt="" fetchPriority="high" style={{ width: 96, height: 96 }} />
+      <span style={{ fontFamily: "Georgia, 'DejaVu Serif', serif", fontStyle: "italic", fontWeight: 700, fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em", background: "linear-gradient(90deg,#6366F1,#7C3AED,#4338CA)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Socialverse</span>
     </div>
   );
 }
