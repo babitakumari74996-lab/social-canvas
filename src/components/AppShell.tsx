@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { X as CloseIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -233,9 +233,21 @@ export function AppShell() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [pathname]);
   // A swipe between tabs takes priority: the bars follow the swipe rules above, not the scroll.
-  const hiddenByScroll = scrollHide && !swipeP;
+  const hiddenByScroll = scrollHide && !swipeP && (pathname === "/feed" || pathname === "/moods");
   // The top bars only hide on Home; on Moods just the bottom nav slides away.
   const headerHiddenByScroll = hiddenByScroll && pathname === "/feed";
+  useLayoutEffect(() => {
+    // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
+    // feed's scroll position never shows with the post off-screen.
+    if (pathname.startsWith("/post/")) window.scrollTo(0, 0);
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-bar]"));
+    const saved = els.map((el) => el.style.transition);
+    els.forEach((el) => { el.style.transition = "none"; });
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => {
+      els.forEach((el, i) => { el.style.transition = saved[i]; });
+    }));
+    return () => cancelAnimationFrame(id);
+  }, [pathname]);
   const barStyle = {
     transform: `translate3d(0, ${-Math.max(barHide, headerHiddenByScroll ? 1 : 0) * 96}px, 0)`,
     transition: swiping ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)",
@@ -344,6 +356,7 @@ export function AppShell() {
       {/* Full-width bar background: same colours as the bar (light, or black on Reels). The bar itself keeps its width. */}
       <div
         aria-hidden
+        data-bar=""
         className="hidden md:block fixed bottom-0 left-0 right-0 h-14 z-30 pointer-events-none"
         style={{
           backgroundColor: navBg,
@@ -361,6 +374,7 @@ export function AppShell() {
           transform: `translate3d(0, ${hiddenByScroll ? 56 : 0}px, 0)`,
           transition: swiping ? "none" : "transform 220ms ease, color 260ms ease, background-color 260ms ease, padding-left 260ms ease",
         }}
+        data-bar=""
         className="hidden md:flex fixed bottom-0 left-0 right-0 h-14 z-[60] items-stretch pointer-events-none"
       >
         <div
@@ -399,7 +413,7 @@ export function AppShell() {
       </nav>
 
       {/* ------- mobile top bar ------- */}
-      <header style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
+      <header data-bar="" style={barStyle} className="md:hidden fixed top-0 inset-x-0 h-12 z-40 flex items-center justify-between px-4 bg-background/95 backdrop-blur border-b border-border">
         <Link to="/feed" className="flex items-center gap-2">
           {/* logo icon only (no text), to the left of the wordmark */}
           <img src="/header-logo.png" alt="" aria-hidden width={112} height={112} className="h-7 w-7" />
@@ -419,7 +433,7 @@ export function AppShell() {
       </header>
 
       {/* ------- second bar under the top bar: Community tab ------- */}
-      <div style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
+      <div data-bar="" style={barStyle} className="md:hidden fixed top-12 inset-x-0 h-12 z-40 flex items-center justify-end px-4 bg-background/95 backdrop-blur border-b border-border">
         {/* under the Menu button: search bar, then Messages and Community icons (right edge aligned) */}
         <button type="button" onClick={ui.openSearch} aria-label="Search" className="flex flex-1 min-w-0 cursor-text items-center gap-2 mr-4 rounded-full bg-muted px-3 py-1.5 text-sm text-muted-foreground ring-1 ring-border shadow-[0_0_8px_rgba(214,41,118,0.18)]">
           <Search className="h-4 w-4" /> Search
@@ -453,6 +467,7 @@ export function AppShell() {
           color: navFg,
           borderTopColor: `rgb(${mix(229, 40)},${mix(229, 40)},${mix(229, 40)})`,
         }}
+        data-bar=""
         className="md:hidden fixed bottom-0 inset-x-0 h-14 z-40 flex items-stretch border-t"
       >
         <NavIndicator activeKey={activeKey} />

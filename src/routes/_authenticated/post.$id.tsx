@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { PostCard } from "@/components/PostCard";
@@ -10,6 +11,11 @@ export const Route = createFileRoute("/_authenticated/post/$id")({
 function PostDetail() {
   const { id } = Route.useParams();
   const { post, loading } = usePostState(id);
+  // Start at the top before the first paint: otherwise the page keeps the feed's scroll position for one frame
+  // (the post sits off-screen) and then jumps.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
 
   return (
     <div className="max-w-[470px] mx-auto px-0 md:px-4 py-0 md:py-6">
