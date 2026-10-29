@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -336,6 +336,21 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
+  const previewVideo = useRef<HTMLVideoElement>(null);
+  // Preview plays the clip's own sound. If the browser blocks sound, fall back to muted playback.
+  useEffect(() => {
+    if (step !== "preview" || !draft.previews[0]) return;
+    const v = previewVideo.current;
+    if (!v) return;
+    v.muted = false;
+    setPreviewMuted(false);
+    v.play().catch(() => {
+      v.muted = true;
+      setPreviewMuted(true);
+      v.play().catch(() => {});
+    });
+  }, [step, draft.previews[0]]);
   const [coverIdx, setCoverIdx] = useState(0);
   const [frames, setFrames] = useState<string[]>([]);
   const [trimStart, setTrimStart] = useState(0);
@@ -519,27 +534,51 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               </button>
             </div>
             <div className="relative flex-1 min-h-0">
-              <video key={draft.previews[0]} src={draft.previews[0]} className="absolute inset-0 h-full w-full object-contain" autoPlay muted loop playsInline />
+              <video
+                ref={previewVideo}
+                key={draft.previews[0]}
+                src={draft.previews[0]}
+                className="absolute inset-0 h-full w-full object-contain"
+                loop
+                playsInline
+              />
+              <button
+                type="button"
+                aria-label={previewMuted ? "Sound on" : "Sound off"}
+                onClick={() => {
+                  const v = previewVideo.current;
+                  if (!v) return;
+                  v.muted = !v.muted;
+                  setPreviewMuted(v.muted);
+                }}
+                className="absolute right-3 bottom-3 grid place-items-center h-10 w-10 rounded-full bg-black/60"
+              >
+                {previewMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
             </div>
             <div className="h-0.5 bg-white/20">
               <div className="h-full w-1/12 bg-white" />
             </div>
-            <div className="flex items-start justify-around px-2 py-4">
-              {[
-                { label: "Audio", icon: Music2, action: () => toast("Audio coming soon") },
-                { label: "Edit", icon: Scissors, action: () => setStep("edit") },
-                { label: "Effects", icon: Sparkles, action: () => setStep("edit") },
-                { label: "Text", icon: TypeIcon, action: () => toast("Text coming soon") },
-                { label: "Stickers", icon: Smile, action: () => toast("Stickers coming soon") },
-              ].map((t) => (
-                <button key={t.label} type="button" onClick={t.action} className="flex w-14 flex-col items-center gap-1.5">
-                  <span className="grid place-items-center h-14 w-14 rounded-full bg-white/15">
-                    <t.icon className="h-6 w-6" />
-                  </span>
-                  <span className="text-[11px] font-medium">{t.label}</span>
-                </button>
-              ))}
-              <button type="button" aria-label="Next" onClick={() => setStep("caption")} className="flex w-14 flex-col items-center gap-1.5">
+            <div className="flex items-center px-2 py-4">
+              <div className="min-w-0 flex-1 overflow-x-auto touch-pan-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex w-max min-w-full justify-between gap-6 px-2">
+                  {[
+                    { label: "Audio", icon: Music2, action: () => toast("Audio coming soon") },
+                    { label: "Edit", icon: Scissors, action: () => setStep("edit") },
+                    { label: "Effects", icon: Sparkles, action: () => setStep("edit") },
+                    { label: "Text", icon: TypeIcon, action: () => toast("Text coming soon") },
+                    { label: "Stickers", icon: Smile, action: () => toast("Stickers coming soon") },
+                  ].map((t) => (
+                    <button key={t.label} type="button" onClick={t.action} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
+                      <span className="grid place-items-center h-14 w-14 rounded-full bg-white/15">
+                        <t.icon className="h-6 w-6" />
+                      </span>
+                      <span className="text-[11px] font-medium">{t.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button type="button" aria-label="Next" onClick={() => setStep("caption")} className="ml-2 flex shrink-0 flex-col items-center gap-1.5">
                 <span className="grid place-items-center h-14 w-14 rounded-full sv-gradient-bg">
                   <ArrowRight className="h-6 w-6 text-white" />
                 </span>
