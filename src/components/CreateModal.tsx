@@ -235,6 +235,15 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 text-center">
                 <p className="text-sm">{error}</p>
                 <button type="button" onClick={() => setStarted(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black">Try again</button>
+                {typeof window !== "undefined" && window.self !== window.top && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(window.location.href, "_blank", "noopener")}
+                    className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Naye tab mein kholein
+                  </button>
+                )}
               </div>
             )}
             <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4">
