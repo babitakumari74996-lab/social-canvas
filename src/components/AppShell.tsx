@@ -193,6 +193,8 @@ export function AppShell() {
   // Only the Reels page itself (not Create / Moods / Profile) turns the bar black and hides the sidebar.
   let navBlack = pageKey === "reels" ? 1 : 0;
   if (swipeP) navBlack = toR && !fromR ? swipeAmt : fromR && !toR ? 1 - swipeAmt : toR ? 1 : 0;
+  // Create opened from Reels keeps the URL on /reels, so the nav would stay black: the Create tab is light.
+  if (overlay.overlay === "create") navBlack = 0;
   // Sidebar travels with the Home tab during a Home <-> Reels drag: its left edge is the Home page's left edge minus the sidebar width.
   const sideW = typeof window !== "undefined" && window.innerWidth >= 1280 ? 330 : 76;
   const dragPx = swipeP ? Math.abs(swipeP.dx) : 0;
