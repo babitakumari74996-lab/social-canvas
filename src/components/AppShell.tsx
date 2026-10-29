@@ -297,7 +297,7 @@ export function AppShell() {
   const swipeTabs: SwipeTab[] = [
     { key: "home", label: "Home", to: "/feed", icon: Home },
     { key: "reels", label: "Reels", to: "/reels", icon: Film },
-    { key: "create", label: "Create", to: "/create", icon: PlusIcon },
+    { key: "create", label: "Create", to: "/create", icon: PlusIcon, skipInSwipe: true },
     { key: "moods", label: "Moods", to: "/moods", icon: Smile },
     {
       key: "profile",

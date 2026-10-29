@@ -11,6 +11,8 @@ export type SwipeTab = {
   params?: Record<string, string>;
   /** Overlay tabs (Create, Explore) open a panel instead of a page. */
   overlay?: "create" | "search";
+  /** Left out of swipe steps from the neighbouring tabs (still reachable from the nav and when it is the current tab). */
+  skipInSwipe?: boolean;
   icon: ComponentType<{ className?: string }>;
 };
 
@@ -239,7 +241,10 @@ export function SwipeTabs({
       dx = cx;
       const idx = latest.current.activeIndex;
       const d: 1 | -1 = dx < 0 ? 1 : -1; // swipe left -> next tab, swipe right -> previous tab
-      const ti = idx + d;
+      let ti = idx + d;
+      // Skip tabs marked skipInSwipe (e.g. Create) unless the current tab is that tab itself.
+      const skips = (i: number) => !!latest.current.tabs[i]?.skipInSwipe && !latest.current.tabs[idx]?.skipInSwipe;
+      while (ti >= 0 && ti < latest.current.tabs.length && skips(ti)) ti += d;
       const valid = idx >= 0 && ti >= 0 && ti < latest.current.tabs.length;
       if (valid) {
         target = ti;
