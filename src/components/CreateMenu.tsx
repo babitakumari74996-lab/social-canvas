@@ -5,7 +5,7 @@ import { ui } from "@/lib/demo-store";
 
 type Option = {
   label: string;
-  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties; strokeWidth?: number }>;
   /** Opens the create modal in this mode; omitted = not available yet. */
   mode?: "photo" | "video" | "text";
 };
