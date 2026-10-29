@@ -188,13 +188,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     const f = files[0];
     setDraft({ files: [f], gallery: [], previews: [URL.createObjectURL(f)], filter: "none", zoom: 1 });
     setCover(null);
-    setStep("edit");
   };
 
   const pickGalleryVideo = (v: { url: string; poster: string }) => {
     setDraft({ files: [], gallery: [v.url], previews: [v.url], filter: "none", zoom: 1 });
     setCover(null);
-    setStep("edit");
   };
 
   const share = async () => {
@@ -252,7 +250,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
   const title =
     mode === null ? "Create new post"
-    : step === "pick" ? (mode === "photo" ? "Create new photo post" : mode === "video" ? "Create new reel" : "New Twit")
+    : step === "pick" ? (mode === "photo" ? "Create new photo post" : mode === "video" ? "Create reel" : "New Twit")
     : step === "filter" ? "Edit media"
     : step === "edit" ? "Edit reel"
     : step === "caption" ? (mode === "video" ? "New reel" : "Create new post")
@@ -292,7 +290,75 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         </header>
 
         {/* body */}
-        {step === "pick" && (
+        {step === "pick" && mode === "video" && (
+          <div
+            className="flex-1 flex flex-col md:flex-row overflow-hidden"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              pickVideo(e.dataTransfer.files);
+            }}
+          >
+            {/* left: add a video, sample clips, Upload */}
+            <div className="md:w-[320px] shrink-0 flex flex-col min-h-0 border-b md:border-b-0 md:border-r border-border">
+              <div className="p-4 flex-1 overflow-y-auto space-y-4">
+                <button
+                  type="button"
+                  onClick={() => videoInput.current?.click()}
+                  className="w-full h-44 rounded-xl border border-border flex flex-col items-center justify-center gap-2 hover:bg-muted/50"
+                >
+                  <span className="grid place-items-center h-12 w-12 rounded-full bg-muted">
+                    <ListVideo className="h-6 w-6" />
+                  </span>
+                  <span className="font-semibold text-sm">Add video</span>
+                  <span className="text-xs text-muted-foreground">or drag and drop</span>
+                </button>
+                <input ref={videoInput} type="file" accept="video/*" hidden onChange={(e) => pickVideo(e.target.files)} />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Or pick a sample clip</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {DEMO_VIDEO_GALLERY.map((v) => (
+                    <button
+                      key={v.url}
+                      type="button"
+                      onClick={() => pickGalleryVideo(v)}
+                      className={`relative aspect-[9/14] overflow-hidden rounded-md ring-2 ${draft.gallery[0] === v.url ? "ring-primary" : "ring-transparent"}`}
+                    >
+                      <MediaImg src={v.poster} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 border-t border-border">
+                <button
+                  type="button"
+                  disabled={!draft.previews.length}
+                  onClick={() => setStep("edit")}
+                  className="w-full rounded-lg sv-gradient-bg py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                >
+                  Upload
+                </button>
+              </div>
+            </div>
+            {/* right: preview card on a dark background */}
+            <div className="flex-1 min-h-[320px] bg-[#333] flex items-center justify-center p-6">
+              <div className="w-full max-w-[340px] rounded-xl bg-white p-4 shadow-xl">
+                <p className="text-sm font-semibold mb-3">Preview</p>
+                <div className="aspect-[9/16] w-full rounded-lg bg-[#f2f3f6] overflow-hidden grid place-items-center text-center">
+                  {draft.previews[0] ? (
+                    <video key={draft.previews[0]} src={draft.previews[0]} className="h-full w-full object-contain" autoPlay muted loop playsInline />
+                  ) : (
+                    <div className="px-6">
+                      <p className="font-semibold text-muted-foreground">Your video preview</p>
+                      <p className="text-sm text-muted-foreground mt-1">Upload your video in order to see a preview here.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === "pick" && mode !== "video" && (
           <div className="flex-1 overflow-y-auto">
             {mode === null && (
               <div className="grid md:grid-cols-3 gap-px bg-border">
@@ -362,29 +428,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               </div>
             )}
 
-            {mode === "video" && (
-              <div className="p-4 space-y-4">
-                <button
-                  type="button"
-                  onClick={() => videoInput.current?.click()}
-                  className="w-full rounded-xl border-2 border-dashed border-border py-10 flex flex-col items-center gap-2 hover:border-primary/60 hover:bg-muted/40"
-                >
-                  <ListVideo className="h-8 w-8 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Select a video from device</span>
-                  <span className="text-xs text-muted-foreground">MP4/WebM · shared as a reel</span>
-                </button>
-                <input ref={videoInput} type="file" accept="video/*" hidden onChange={(e) => pickVideo(e.target.files)} />
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Or pick a sample clip</p>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                  {DEMO_VIDEO_GALLERY.map((v) => (
-                    <button key={v.url} type="button" onClick={() => pickGalleryVideo(v)} className="relative aspect-[9/14] overflow-hidden rounded-md hover:opacity-80">
-                      <MediaImg src={v.poster} className="w-full h-full object-cover" />
-                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white rounded px-1">clip</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
