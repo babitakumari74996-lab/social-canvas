@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, Images } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -299,7 +299,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <Settings className="h-6 w-6" />
               </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex justify-between gap-1 px-3 pb-3 pt-1">
               {[
                 { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
@@ -307,13 +307,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
                 { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
-                { label: "Upload", icon: Images, action: () => videoInput.current?.click() },
               ].map((t) => (
-                <button key={t.label} type="button" onClick={t.action} className="flex shrink-0 flex-col items-center gap-1.5 w-20">
+                <button key={t.label} type="button" onClick={t.action} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
                   <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
                     <t.icon className="h-6 w-6" />
                   </span>
-                  <span className="text-xs font-medium text-center leading-tight">{t.label}</span>
+                  <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
                 </button>
               ))}
             </div>
