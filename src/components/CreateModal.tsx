@@ -119,7 +119,14 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
   const chunksRef = useRef<Blob[]>([]);
   const discardRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [started, setStarted] = useState(false);
+  const CAM_KEY = "sv-camera-granted";
+  const [started, setStarted] = useState(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem(CAM_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,6 +157,11 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           return;
         }
         streamRef.current = s;
+        try {
+          localStorage.setItem(CAM_KEY, "1");
+        } catch {
+          /* ignore */
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = s;
           await videoRef.current.play().catch(() => {});
@@ -222,7 +234,6 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
         ref={fileRef}
         type="file"
         accept="video/*"
-        capture="environment"
         hidden
         onChange={(e) => {
           const f = e.target.files?.[0];
@@ -253,7 +264,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
                   onClick={() => fileRef.current?.click()}
                   className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
                 >
-                  Phone camera se record karein
+                  Video chunein
                 </button>
 
               </div>
