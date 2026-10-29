@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -291,8 +291,68 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
         {/* body */}
         {step === "pick" && mode === "video" && (
+          <div className="md:hidden flex-1 flex flex-col min-h-0 bg-background">
+            <div className="flex items-start justify-around px-3 pt-4 pb-3">
+              <button type="button" onClick={() => videoInput.current?.click()} className="flex flex-col items-center gap-1.5 w-20">
+                <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
+                  <Camera className="h-6 w-6" />
+                </span>
+                <span className="text-xs font-medium">Camera</span>
+              </button>
+              <button type="button" onClick={() => videoInput.current?.click()} className="flex flex-col items-center gap-1.5 w-20">
+                <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
+                  <ListVideo className="h-6 w-6" />
+                </span>
+                <span className="text-xs font-medium">Upload</span>
+              </button>
+            </div>
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="inline-flex items-center gap-1 text-sm font-semibold">
+                Gallery <ChevronDown className="h-4 w-4" />
+              </span>
+              <span className="text-xs text-muted-foreground">Sample clips</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-px">
+                {DEMO_VIDEO_GALLERY.map((v) => {
+                  const selected = draft.gallery[0] === v.url;
+                  return (
+                    <button
+                      key={v.url}
+                      type="button"
+                      onClick={() => pickGalleryVideo(v)}
+                      className="relative aspect-square overflow-hidden bg-muted"
+                    >
+                      <MediaImg src={v.poster} className="w-full h-full object-cover" />
+                      {selected && (
+                        <>
+                          <span className="absolute inset-0 bg-black/30" />
+                          <span className="absolute top-1.5 right-1.5 grid place-items-center h-5 w-5 rounded-full bg-primary text-primary-foreground">
+                            <Check className="h-3.5 w-3.5" />
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="p-4 border-t border-border">
+              <button
+                type="button"
+                disabled={!draft.previews.length}
+                onClick={() => setStep("edit")}
+                className="w-full rounded-lg sv-gradient-bg py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "pick" && mode === "video" && (
           <div
-            className="flex-1 overflow-y-auto md:flex md:flex-row md:overflow-hidden"
+            className="hidden md:flex flex-1 md:flex-row md:overflow-hidden"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
