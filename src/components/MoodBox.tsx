@@ -3,6 +3,7 @@ import { ImagePlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
+import { addMoodWithFiles } from "@/lib/demo-store";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const MOODS = [
+export const MOODS = [
   { id: "happy", emoji: "😊", label: "Happy" },
   { id: "calm", emoji: "😌", label: "Calm" },
   { id: "tired", emoji: "🥱", label: "Tired" },
@@ -79,8 +80,10 @@ export function MoodBox() {
   };
 
   const share = () => {
-    if (!canSubmit) return;
+    if (!canSubmit || !mood) return;
     toast(`Mood shared: ${picked?.emoji ?? ""} ${picked?.label ?? ""}`);
+    // Saved to the demo store so it shows on the Moods page.
+    void addMoodWithFiles({ mood, note: note.trim(), files: files.map((f) => f.file) });
     files.forEach((f) => URL.revokeObjectURL(f.url));
     setFiles([]);
     setNote("");
@@ -102,7 +105,7 @@ export function MoodBox() {
               key={`bar-${tick}`}
               type="button"
               onClick={() => openWith(mood)}
-              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center gap-2 px-4 text-left`}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 cursor-text items-center gap-2 px-4 text-left`}
             >
               <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
                 What's your mood today?

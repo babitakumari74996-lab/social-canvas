@@ -249,3 +249,81 @@ img[data-fade][data-loaded] {
   background-size: 200% 100%;
   animation: media-shimmer 1.2s linear infinite;
 }
+
+/* Color inversion (menu). Photos and videos are inverted back so they keep their real colours. */
+html.sv-invert {
+  filter: invert(1) hue-rotate(180deg);
+}
+html.sv-invert img,
+html.sv-invert video {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* Top bars and page padding: no animation while a finger is dragging, so they follow the swipe exactly. */
+:root { --bar-pad: 96px; }
+.sv-barpad { transition: padding-top 260ms cubic-bezier(.2,.8,.2,1); }
+html[data-swiping="1"] .sv-barpad { transition: none; }
+
+/* Hand cursor on everything clickable. Lives in the base layer, so utility classes such as
+   cursor-text (search bar) or cursor-grab (carousels) still win where they are set. */
+@layer base {
+  button:not(:disabled),
+    [role="button"],
+    [role="switch"],
+    a[href],
+    label[for],
+    select:not(:disabled),
+    summary,
+    input[type="button"]:not(:disabled),
+    input[type="submit"]:not(:disabled),
+    input[type="checkbox"]:not(:disabled),
+    input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Desktop bottom bar: left edge of the bar on normal tabs (sidebar width + 57px). */
+:root { --bar-home: 133px; }
+@media (min-width: 1280px) { :root { --bar-home: 387px; } }
+
+/* While the page is scrolling, the bars follow the scroll amount directly: no transition lag. */
+html[data-sh="1"] [data-bar] { transition: none !important; }
+
+/* Horizontal swipe offset shared by the page and the top bars. Registered so it can animate in step with the page. */
+@property --swipe-x {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* Home top bars: the bar container follows the page scroll for the first 96px (compositor-driven, no JS lag).
+   Scrolling back up brings it back in step with the page. */
+@keyframes sv-bar-hide {
+  from { translate: 0 0; }
+  to { translate: 0 -96px; }
+}
+.sv-scroll-bars {
+  animation: sv-bar-hide linear both;
+  animation-timeline: scroll(root block);
+  animation-range: 0px 96px;
+}
+
+/* Socialverse gradient (teal -> indigo -> violet), used for the Follow buttons. */
+.sv-gradient-bg {
+  background: linear-gradient(90deg, #2DD4BF, #6366F1, #7C3AED);
+}
+
+/* Create menu: options slide up from below on open and back down on close, staggered by index. */
+@keyframes sv-menu-up {
+  from { opacity: 0; transform: translate3d(0, 28px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes sv-menu-down {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(0, 28px, 0); }
+}
+.sv-menu-anim {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(.2,.8,.2,1);
+  animation-fill-mode: both;
+}

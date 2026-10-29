@@ -23,6 +23,7 @@ import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedGroupsRouteImport } from './routes/_authenticated/groups'
 import { Route as AuthenticatedHistoryRouteImport } from './routes/_authenticated/history'
 import { Route as AuthenticatedMemoriesRouteImport } from './routes/_authenticated/memories'
+import { Route as AuthenticatedMoodsRouteImport } from './routes/_authenticated/moods'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedPagesRouteImport } from './routes/_authenticated/pages'
 import { Route as AuthenticatedReelsRouteImport } from './routes/_authenticated/reels'
@@ -100,6 +101,11 @@ const AuthenticatedMemoriesRoute = AuthenticatedMemoriesRouteImport.update({
   path: '/memories',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMoodsRoute = AuthenticatedMoodsRouteImport.update({
+  id: '/moods',
+  path: '/moods',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedNotificationsRoute =
   AuthenticatedNotificationsRouteImport.update({
     id: '/notifications',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/groups': typeof AuthenticatedGroupsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/memories': typeof AuthenticatedMemoriesRoute
+  '/moods': typeof AuthenticatedMoodsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/pages': typeof AuthenticatedPagesRoute
   '/reels': typeof AuthenticatedReelsRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/groups': typeof AuthenticatedGroupsRoute
   '/history': typeof AuthenticatedHistoryRoute
   '/memories': typeof AuthenticatedMemoriesRoute
+  '/moods': typeof AuthenticatedMoodsRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/pages': typeof AuthenticatedPagesRoute
   '/reels': typeof AuthenticatedReelsRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/_authenticated/groups': typeof AuthenticatedGroupsRoute
   '/_authenticated/history': typeof AuthenticatedHistoryRoute
   '/_authenticated/memories': typeof AuthenticatedMemoriesRoute
+  '/_authenticated/moods': typeof AuthenticatedMoodsRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/pages': typeof AuthenticatedPagesRoute
   '/_authenticated/reels': typeof AuthenticatedReelsRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/history'
     | '/memories'
+    | '/moods'
     | '/notifications'
     | '/pages'
     | '/reels'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/groups'
     | '/history'
     | '/memories'
+    | '/moods'
     | '/notifications'
     | '/pages'
     | '/reels'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/_authenticated/groups'
     | '/_authenticated/history'
     | '/_authenticated/memories'
+    | '/_authenticated/moods'
     | '/_authenticated/notifications'
     | '/_authenticated/pages'
     | '/_authenticated/reels'
@@ -382,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMemoriesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/moods': {
+      id: '/_authenticated/moods'
+      path: '/moods'
+      fullPath: '/moods'
+      preLoaderRoute: typeof AuthenticatedMoodsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/notifications': {
       id: '/_authenticated/notifications'
       path: '/notifications'
@@ -458,6 +477,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedGroupsRoute: typeof AuthenticatedGroupsRoute
   AuthenticatedHistoryRoute: typeof AuthenticatedHistoryRoute
   AuthenticatedMemoriesRoute: typeof AuthenticatedMemoriesRoute
+  AuthenticatedMoodsRoute: typeof AuthenticatedMoodsRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedPagesRoute: typeof AuthenticatedPagesRoute
   AuthenticatedReelsRoute: typeof AuthenticatedReelsRoute
@@ -478,6 +498,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedGroupsRoute: AuthenticatedGroupsRoute,
   AuthenticatedHistoryRoute: AuthenticatedHistoryRoute,
   AuthenticatedMemoriesRoute: AuthenticatedMemoriesRoute,
+  AuthenticatedMoodsRoute: AuthenticatedMoodsRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedPagesRoute: AuthenticatedPagesRoute,
   AuthenticatedReelsRoute: AuthenticatedReelsRoute,

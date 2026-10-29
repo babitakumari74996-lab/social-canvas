@@ -60,7 +60,8 @@ export function makePoster(file: File, width = 360): Promise<string | null> {
     const timer = window.setTimeout(() => finish(null), 5000);
     video.onerror = () => finish(null);
     video.onloadedmetadata = () => {
-      video.currentTime = Math.min(0.1, video.duration || 0.1);
+      // Not the very first frame: uploaded clips often start black, and that black would become the poster.
+      video.currentTime = Math.min(1, (video.duration || 0) / 2 || 0.1);
     };
     video.onseeked = () => {
       try {

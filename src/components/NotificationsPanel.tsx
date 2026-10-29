@@ -74,7 +74,7 @@ export function NotificationsPanel({ force = false }: { force?: boolean }) {
   let lastBucket = "";
 
   return (
-    <div className="fixed inset-0 z-50 md:inset-y-0 md:left-[76px] xl:left-[245px] md:w-[400px] md:border-r md:border-border bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
+    <div className="fixed inset-0 z-50 md:top-0 md:bottom-14 md:left-[76px] xl:left-[330px] md:w-[400px] md:border-r md:border-border bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
       <div className="px-4 pt-5 pb-3 md:pt-6">
         <h2 className="font-semibold">Notifications</h2>
       </div>

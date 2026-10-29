@@ -44,7 +44,7 @@ function ProfilePage() {
   return (
     <div className="max-w-[935px] mx-auto pb-12">
       {/* mobile top bar */}
-      <div className="md:hidden sticky top-12 z-20 bg-background/95 backdrop-blur flex items-center gap-4 px-4 h-12 border-b border-border">
+      <div className="md:hidden sticky top-[var(--bar-pad)] z-20 bg-background/95 backdrop-blur flex items-center gap-4 px-4 h-12 border-b border-border">
         <Link to="/feed"><ChevronLeft className="h-6 w-6" /></Link>
         <span className="font-semibold flex items-center gap-1">
           {profile.username} {profile.is_verified && <BadgeCheck className="h-4 w-4 text-sky-500" />}
@@ -194,7 +194,7 @@ function PostGrid({ posts, emptyText }: { posts: UPost[]; emptyText: string }) {
       {posts.map((p) => (
         <Link key={p.id} to="/post/$id" params={{ id: p.id }} className="relative group aspect-square overflow-hidden bg-muted">
           {p.media_urls.length === 0 ? (
-            <span className="absolute inset-0 p-2 flex items-center justify-center text-center text-white text-[11px] font-semibold line-clamp-5" style={{ background: "linear-gradient(135deg,#4F5BD5,#962FBF,#D62976)" }}>
+            <span className="absolute inset-0 p-2 flex items-center justify-center text-center text-white text-[11px] font-semibold line-clamp-5" style={{ background: "linear-gradient(135deg,#4338CA,#7C3AED,#6366F1)" }}>
               {p.caption}
             </span>
           ) : (

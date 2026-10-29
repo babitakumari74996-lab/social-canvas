@@ -1,8 +1,8 @@
-import type { UPost, UProfile, UReel, UStory, UNotif } from "@/lib/types";
+import type { UMood, UMoodComment, UPost, UProfile, UReel, UStory, UNotif } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Demo world for Socialverse. Avatars/post images are local files in /public/demo.
-// Reel sample videos are public Google-hosted mp4s.
+// Reel sample videos are local clips in /public/demo/reels.
 // ---------------------------------------------------------------------------
 
 const ago = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
@@ -215,11 +215,18 @@ export interface DemoReelSeed {
   comments: { user_id: string; content: string; mins: number }[];
 }
 
-const V = (name: string) => `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/${name}.mp4`;
+// Local sample clips (public/demo/reels, from MDN shared-assets). The old Google-hosted URLs now return AccessDenied.
+const REEL_CLIPS: Record<string, string> = {
+  ForBiggerBlazes: "/demo/reels/friday.mp4",
+  ForBiggerEscapes: "/demo/reels/flower.mp4",
+  ForBiggerJoyrides: "/demo/reels/sintel-short.webm",
+  SubaruOutbackOnStreetAndDirt: "/demo/reels/flower.webm",
+};
+const V = (name: string) => REEL_CLIPS[name];
 
 export const DEMO_REELS: DemoReelSeed[] = [
   {
-    id: "r-u5-1", user_id: "u5", video_url: V("ForBiggerBlazes"), poster: IMG.p4,
+    id: "r-u5-1", user_id: "u5", video_url: V("ForBiggerBlazes"), poster: "/demo/reels/poster-friday.jpg",
     caption: "5 moves for stronger legs 🦵 SAVE this for gym day! #fitness #legday",
     music: "Motivation Mode · DJ Aryan", mins: 500, likes: 8712,
     comments: [
@@ -227,7 +234,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-u2-1", user_id: "u2", video_url: V("ForBiggerEscapes"), poster: IMG.p7,
+    id: "r-u2-1", user_id: "u2", video_url: V("ForBiggerEscapes"), poster: "/demo/reels/poster-flower-mp4.jpg",
     caption: "Sunrise trek vlog ⛰️ Part 1 — the climb #travelreels #himalayas",
     music: "Wanderlust · Ritika", mins: 900, likes: 15600,
     comments: [
@@ -236,7 +243,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-u6-1", user_id: "u6", video_url: V("ForBiggerJoyrides"), poster: IMG.p5,
+    id: "r-u6-1", user_id: "u6", video_url: V("ForBiggerJoyrides"), poster: "/demo/reels/poster-sintel.jpg",
     caption: "Night drive through Marine Drive 🌊 #mumbai #nightdrive",
     music: "Lo-fi Bombay · SLOWED", mins: 1500, likes: 9821,
     comments: [
@@ -244,7 +251,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-me-1", user_id: DEMO_ME_ID, video_url: V("SubaruOutbackOnStreetAndDirt"), poster: IMG.p8,
+    id: "r-me-1", user_id: DEMO_ME_ID, video_url: V("SubaruOutbackOnStreetAndDirt"), poster: "/demo/reels/poster-flower-webm.jpg",
     caption: "Weekend drive dump 🚗💨 #roadtrip",
     music: "Highway Beats · Anon", mins: 2600, likes: 642,
     comments: [
@@ -270,6 +277,45 @@ export const DEMO_NOTIF_SEEDS: DemoNotifSeed[] = [
 
 // Users I already follow in the demo world (rest are suggestions).
 export const DEMO_FOLLOWING = ["u4", "u6", "u8"];
+
+// Demo friend requests: people who want to follow me and whom I do not follow back yet.
+export const DEMO_REQUESTS = ["u5", "u7"];
+
+// Moods posted by demo people. `media` is an index into DEMO_GALLERY (images only, so they always load).
+export interface DemoMoodSeed {
+  id: string; user_id: string; mood: string; note: string; media: number; mins: number; likes: number;
+  comments: { user_id: string; content: string; mins: number }[];
+}
+
+export const DEMO_MOOD_SEEDS: DemoMoodSeed[] = [
+  { id: "mo-u5-1", user_id: "u5", mood: "hyped", note: "Leg day done. Feeling unstoppable 💪", media: 3, mins: 240, likes: 311,
+    comments: [{ user_id: "u6", content: "beast mode 🔥", mins: 200 }] },
+  { id: "mo-u4-1", user_id: "u4", mood: "calm", note: "Deep work, chai, no notifications.", media: 1, mins: 90, likes: 64, comments: [] },
+  { id: "mo-u2-1", user_id: "u2", mood: "happy", note: "Sunrise over the ghats, best way to start a Monday ☀️", media: 0, mins: 30, likes: 128,
+    comments: [{ user_id: "u4", content: "goals 😍", mins: 20 }] },
+  { id: "mo-u6-1", user_id: "u6", mood: "tired", note: "Long night of street photos, worth it.", media: 5, mins: 600, likes: 42, comments: [] },
+  { id: "mo-u7-1", user_id: "u7", mood: "calm", note: "Riverside walk and no plans for the evening.", media: 2, mins: 900, likes: 77,
+    comments: [{ user_id: "u2", content: "so peaceful 🙌", mins: 800 }] },
+  { id: "mo-u8-1", user_id: "u8", mood: "happy", note: "New city, new food, new friends!", media: 4, mins: 1500, likes: 150, comments: [] },
+];
+
+export function buildDemoMoods(): UMood[] {
+  return DEMO_MOOD_SEEDS.map((m) => ({
+    id: m.id, user_id: m.user_id, mood: m.mood, note: m.note,
+    media: [{ url: DEMO_GALLERY[m.media % DEMO_GALLERY.length], kind: "image" as const }],
+    created_at: ago(m.mins), likes: m.likes, commentsCount: m.comments.length,
+    profiles: DEMO_USERS.find((u) => u.id === m.user_id),
+  }));
+}
+
+export function buildDemoMoodComments(): UMoodComment[] {
+  return DEMO_MOOD_SEEDS.flatMap((m) =>
+    m.comments.map((c, i) => ({
+      id: `${m.id}-c${i}`, mood_id: m.id, user_id: c.user_id, content: c.content,
+      created_at: ago(c.mins), profiles: DEMO_USERS.find((u) => u.id === c.user_id),
+    })),
+  );
+}
 
 export const DEMO_SUGGESTION_REASONS: Record<string, string> = {
   u2: "Followed by ananya.codes + 2 more",
@@ -320,3 +366,18 @@ export function demoBaseLikes(postId: string): number {
   if (postId.startsWith("r-")) return DEMO_REELS.find((r) => r.id === postId)?.likes ?? 0;
   return DEMO_POSTS.find((p) => p.id === postId)?.likes ?? 0;
 }
+
+// Short note shown above each demo post on Home (2 lines; "more" reveals the rest).
+export const DEMO_NOTES: Record<string, string> = {
+  "p-u2-1": "Sunrise at the Taj: we got there before the crowd, and the mist was still lifting off the water when the first light hit the marble. Worth the 4am alarm.",
+  "p-me-text-1": "Shipped the first version of the new feature today.",
+  "p-u4-1": "Deep work, chai, no notifications.",
+  "p-me-1": "Monday reset: back in the gym after a week off. Lighter weights, same focus.",
+  "p-u5-1": "Leg day done. Feeling unstoppable.",
+  "p-u6-1": "Long night of street photos, worth it. Trying a new lens on the wet roads and the reflections came out better than I expected.",
+  "p-u7-1": "Riverside walk and no plans for the evening.",
+  "p-u6-2": "Found an old studio with the best light.",
+  "p-u8-1": "New city, new food, new friends! Already planning the next stop on the list, and I have a long list.",
+  "p-u4-text-1": "Hot take: chai beats coffee on rainy days.",
+  "p-u5-2": "Three weeks of consistency. The results are finally showing up in the mirror.",
+};

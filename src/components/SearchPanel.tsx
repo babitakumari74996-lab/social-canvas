@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, X, Clock } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Avatar } from "@/components/Avatar";
-import { useUserSearch } from "@/lib/data";
+import { useReels, useUserSearch } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 
 const RECENT_KEY = "sv-recent-searches";
@@ -21,6 +22,7 @@ export function SearchPanel() {
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
   const results = useUserSearch(q);
+  const { reels } = useReels();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function SearchPanel() {
   };
 
   return (
-    <div data-overlay-swipe="" className="fixed inset-x-0 top-0 bottom-14 z-50 md:inset-y-0 md:left-[76px] xl:left-[245px] md:w-[395px] md:border-r md:border-border bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
+    <div data-overlay-swipe="" className="fixed inset-x-0 top-0 bottom-14 z-50 md:top-0 md:bottom-14 md:left-[76px] xl:left-[330px] md:right-0 bg-card flex flex-col animate-in-fade" role="dialog" aria-modal>
       <div className="p-4 md:pt-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -80,6 +82,16 @@ export function SearchPanel() {
               <RecentRow key={r} username={r} onPick={go} />
             ))}
           </>
+        )}
+        {!q && reels.length > 0 && (
+          // Instagram-style reels grid under the recent searches
+          <div className="grid grid-cols-3 gap-0.5 pt-1">
+            {reels.map((r) => (
+              <Link key={r.id} to="/reels" onClick={() => ui.closeAll()} className="relative aspect-[9/16] bg-muted overflow-hidden">
+                {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
+              </Link>
+            ))}
+          </div>
         )}
         {q && results.map((u) => (
           <button

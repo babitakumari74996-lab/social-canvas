@@ -1,6 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck, ChevronUp, ChevronDown, Star, Users, CircleUser } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
 import { useActions, useMe, useReels } from "@/lib/data";
@@ -15,25 +15,46 @@ export const Route = createFileRoute("/_authenticated/reels")({
   component: ReelsPage,
 });
 
+const MUTED_KEY = "sv-reels-muted";
+
 function ReelsPage() {
   const { reels, loading } = useReels();
-  const [muted, setMuted] = useState(true);
+  const me = useMe();
+  // The sound choice is remembered: unmuted once, the next Reels visit starts with sound (if the browser allows it).
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem(MUTED_KEY) !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(MUTED_KEY, muted ? "1" : "0"); } catch { /* storage unavailable: keep in memory only */ }
+  }, [muted]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
+  // The first render can settle after the list is laid out (the browser may keep the second reel), so
+  // the start position is set again after the first paint and once the reels arrive.
   useLayoutEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, []);
+  const hasReels = reels.length > 0;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [hasReels]);
 
   return (
-    <div className="fixed md:relative inset-0 md:inset-auto md:h-screen z-30 bg-black">
+    <div className="fixed inset-0 md:bottom-14 z-30 md:z-50 bg-black">
       {/* header */}
       <div className="absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 h-12 bg-gradient-to-b from-black/60 to-transparent">
-        <span className="text-white font-bold text-lg">Reels</span>
+        <span className="text-white font-bold text-lg md:hidden">Reels</span>
         <button
           type="button"
           onClick={() => ui.openCreate("video")}
-          className="flex items-center gap-1.5 text-white text-sm font-semibold bg-white/15 backdrop-blur rounded-full px-3 py-1.5"
+          className="flex items-center gap-1.5 text-white text-sm font-semibold bg-white/15 backdrop-blur rounded-full px-3 py-1.5 md:ml-auto"
         >
           <Plus className="h-4 w-4" /> Create reel
         </button>
@@ -47,7 +68,45 @@ function ReelsPage() {
         {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
       </button>
 
-      <div ref={scrollRef} className="h-[calc(100dvh-6.5rem)] md:h-screen overflow-y-scroll snap-y snap-mandatory no-scrollbar">
+      {/* desktop: left panel with the Reels sections */}
+      <aside className="hidden md:flex absolute left-0 top-0 bottom-0 w-[220px] flex-col px-3 pt-3 z-40 text-white">
+        <span className="px-3 mb-3 text-lg font-bold">Reels</span>
+        <Link to="/reels" className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2.5 text-sm font-semibold">
+          <Star className="h-5 w-5" /> For you
+        </Link>
+        <Link to="/feed" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5">
+          <Users className="h-5 w-5" /> Following
+        </Link>
+        <Link
+          to="/profile/$username"
+          params={{ username: me?.username ?? "" }}
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-white/80 hover:bg-white/5"
+        >
+          <CircleUser className="h-5 w-5" /> Profile
+        </Link>
+      </aside>
+
+      {/* desktop: up / down buttons to move between reels */}
+      <div className="hidden md:flex flex-col gap-3 absolute right-6 top-1/2 -translate-y-1/2 z-30">
+        <button
+          type="button"
+          aria-label="Previous reel"
+          onClick={() => scrollRef.current?.scrollBy({ top: -scrollRef.current.clientHeight, behavior: "smooth" })}
+          className="grid place-items-center h-10 w-10 rounded-full border border-white/50 text-white hover:bg-white/10"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next reel"
+          onClick={() => scrollRef.current?.scrollBy({ top: scrollRef.current.clientHeight, behavior: "smooth" })}
+          className="grid place-items-center h-10 w-10 rounded-full border border-white/50 text-white hover:bg-white/10"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div ref={scrollRef} className="h-[calc(100dvh-3.5rem)] md:h-[100dvh] overflow-y-scroll snap-y snap-mandatory no-scrollbar">
         {loading && (
           <div className="h-full snap-start grid place-items-center">
             <div className="text-white/60 text-sm animate-pulse">Loading reels…</div>
@@ -89,31 +148,116 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
   // frame and there is no visible swap ("blink") when the real video starts.
   const [frameReady, setFrameReady] = useState(false);
 
+  // Reveal the video only when its picture is actually bright. Uploaded clips often open with a black
+  // intro; a time-based reveal would show that black. While the reel plays, a tiny copy of the current
+  // frame is checked; the video appears once it is not black (with a time limit, so it never stays hidden).
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!playing || !reel.poster || frameReady || !vid) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 16;
+    canvas.height = 16;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const started = performance.now();
+    const id = window.setInterval(() => {
+      const timedOut = performance.now() - started > 4000;
+      let bright = false;
+      if (ctx && vid.readyState >= 2) {
+        try {
+          ctx.drawImage(vid, 0, 0, 16, 16);
+          const d = ctx.getImageData(0, 0, 16, 16).data;
+          let sum = 0;
+          for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+          bright = sum / (16 * 16 * 3) > 16;
+        } catch {
+          bright = true; // cannot read the frame (e.g. cross-origin): do not keep the poster forever
+        }
+      }
+      if (bright || timedOut) {
+        window.clearInterval(id);
+        setFrameReady(true);
+      }
+    }, 80);
+    return () => window.clearInterval(id);
+  }, [playing, reel.poster, frameReady]);
+
   useEffect(() => setLiked(reel.likedByMe), [reel.likedByMe]);
 
   useEffect(() => {
     const el = wrapRef.current;
     const vid = videoRef.current;
     if (!el || !vid) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.intersectionRatio >= 0.6) {
-          vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-        } else {
-          vid.pause();
-          setPlaying(false);
-        }
-      },
-      { threshold: [0, 0.6, 1] },
-    );
+    // Swipe-preview copies of this page (embed mode) are only pictures: they never play media, so the
+    // preview does not show a reel that then changes. The real Reels page plays once it is on screen.
+    if (document.documentElement.hasAttribute("data-embed")) return;
+    // How much of this reel is on screen (both directions). Read from the layout, so it is right even when
+    // IntersectionObserver misses a move (the page can be moved by a swipe commit with no new callback).
+    const shown = () => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return 0;
+      const w = Math.max(0, Math.min(r.right, window.innerWidth) - Math.max(r.left, 0));
+      const h = Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0));
+      return (w * h) / (r.width * r.height);
+    };
+    const playWithSound = () => {
+      vid.play().then(() => setPlaying(true)).catch(() => {
+        // Autoplay with sound was blocked: play silently now, and restore the user's sound choice on the next tap.
+        vid.muted = true;
+        vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        const unlock = () => {
+          vid.muted = mutedRef.current;
+          document.removeEventListener("pointerdown", unlock);
+        };
+        document.addEventListener("pointerdown", unlock);
+      });
+    };
+    const check = () => {
+      if (shown() >= 0.6) {
+        if (vid.paused) playWithSound();
+      } else if (!vid.paused) {
+        vid.pause();
+        setPlaying(false);
+      }
+    };
+    const io = new IntersectionObserver(check, { threshold: [0, 0.6, 1] });
     io.observe(el);
-    return () => io.disconnect();
+    // Right after the page is shown (also after a swipe commit), check a few times in case no callback comes.
+    const timers = [0, 120, 300, 600, 1000].map((ms) => window.setTimeout(check, ms));
+    return () => {
+      io.disconnect();
+      timers.forEach((t) => window.clearTimeout(t));
+    };
   }, []);
 
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
   useEffect(() => {
     const vid = videoRef.current;
     if (vid) vid.muted = muted;
   }, [muted]);
+
+  // A tap anywhere on the reel pauses or plays it. Buttons, links and the comments sheet keep their own clicks.
+  // The pause/play waits briefly so that a double-tap (like) does not also pause.
+  const tapTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+  }, []);
+  const onReelTap = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-no-tap]")) return;
+    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+    tapTimer.current = window.setTimeout(() => {
+      tapTimer.current = null;
+      togglePlay();
+    }, 220);
+  };
+  const onReelDoubleTap = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-no-tap]")) return;
+    if (tapTimer.current !== null) {
+      window.clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+    }
+    doubleLike();
+  };
 
   const togglePlay = () => {
     const vid = videoRef.current;
@@ -145,15 +289,41 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
     });
   };
 
+  const rail = (cls: string) => (
+            <div className={`flex flex-col items-center gap-4 text-white pb-1 ${cls}`}>
+            <RailBtn
+              onClick={likeNow}
+              label={formatCount(reel.likes + (liked && !reel.likedByMe ? 1 : !liked && reel.likedByMe ? -1 : 0))}
+              icon={<Heart className={`h-7 w-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />}
+            />
+            <RailBtn onClick={() => setCommentsOpen(true)} label={formatCount(reel.commentsCount)} icon={<MessageCircle className="h-7 w-7 -scale-x-100" />} />
+            <RailBtn
+              onClick={() => ui.openShare({
+                id: reel.id, user_id: reel.user_id, media_urls: reel.poster ? [reel.poster] : [],
+                caption: reel.caption, created_at: reel.created_at, profiles: reel.profiles,
+                likes: reel.likes, likedByMe: liked, savedByMe: false, commentsCount: reel.commentsCount,
+              }, "reel")}
+              label="Share"
+              icon={<Send className="h-7 w-7" />}
+            />
+            <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
+            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#5EEAD4] via-[#6366F1] to-[#4338CA] animate-[spin_6s_linear_infinite]" />
+          </div>
+  );
+
   return (
-    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-4">
-      <div className="relative h-full w-full md:h-full md:aspect-[9/16] md:rounded-xl overflow-hidden bg-zinc-900">
+    <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-3 md:relative">
+      <div
+        onClick={onReelTap}
+        onDoubleClick={onReelDoubleTap}
+        className="relative h-full w-full md:h-full md:w-auto md:aspect-[9/16] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900"
+      >
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
           <img
             src={reel.poster}
             alt=""
-            decoding="async"
+            decoding="sync"
             fetchPriority="high"
             draggable={false}
             className="absolute inset-0 h-full w-full object-cover bg-zinc-900"
@@ -163,18 +333,23 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           ref={videoRef}
           src={reel.video_url}
           poster={reel.poster ?? undefined}
+          style={{ filter: reel.videoFilter && reel.videoFilter !== "none" ? reel.videoFilter : undefined }}
           preload="auto"
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
-          onLoadedData={() => setFrameReady(true)}
-          onPlaying={() => setFrameReady(true)}
+          // With a poster, reveal the video only once it is past its first frames (uploaded clips often
+          // start black). Without a poster, show the video as soon as its first frame is ready.
+          onLoadedData={() => { if (!reel.poster) setFrameReady(true); }}
+          onPlaying={() => { if (!reel.poster) setFrameReady(true); }}
           loop
           muted={muted}
           playsInline
           autoPlay={false}
-          onClick={togglePlay}
-          onDoubleClick={doubleLike}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
+            // Trimmed reels loop inside their range.
+            const start = reel.trimStart ?? 0;
+            const end = reel.trimEnd ?? 0;
+            if (end && (v.currentTime >= end || v.currentTime < start)) v.currentTime = start;
             if (v.duration) setProgress((v.currentTime / v.duration) * 100);
           }}
         />
@@ -196,7 +371,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
         )}
 
         {/* bottom gradient + info */}
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-10 md:pb-12 px-3 flex items-end gap-3">
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-3 px-3 flex items-end gap-3">
           <div className="flex-1 min-w-0 text-white">
             <div className="flex items-center gap-2">
               <Link to="/profile/$username" params={{ username: reel.profiles.username }}>
@@ -213,28 +388,19 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             {reel.caption && (
               <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
             )}
+            {reel.tagged && reel.tagged.length > 0 && (
+              <p className="mt-1 text-xs text-white/85 drop-shadow">with {reel.tagged.map((t) => "@" + t).join(" ")}</p>
+            )}
+            <button
+              type="button"
+              className="mt-3 w-full rounded-lg sv-gradient-bg py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80"
+            >
+              Buy product
+            </button>
           </div>
 
-          {/* action rail */}
-          <div className="flex flex-col items-center gap-4 text-white pb-1">
-            <RailBtn
-              onClick={likeNow}
-              label={formatCount(reel.likes + (liked && !reel.likedByMe ? 1 : !liked && reel.likedByMe ? -1 : 0))}
-              icon={<Heart className={`h-7 w-7 ${liked ? "fill-red-500 text-red-500" : ""}`} />}
-            />
-            <RailBtn onClick={() => setCommentsOpen(true)} label={formatCount(reel.commentsCount)} icon={<MessageCircle className="h-7 w-7 -scale-x-100" />} />
-            <RailBtn
-              onClick={() => ui.openShare({
-                id: reel.id, user_id: reel.user_id, media_urls: reel.poster ? [reel.poster] : [],
-                caption: reel.caption, created_at: reel.created_at, profiles: reel.profiles,
-                likes: reel.likes, likedByMe: liked, savedByMe: false, commentsCount: reel.commentsCount,
-              }, "reel")}
-              label="Share"
-              icon={<Send className="h-7 w-7" />}
-            />
-            <RailBtn onClick={() => toast("More options coming soon")} label="" icon={<MoreHorizontal className="h-6 w-6" />} />
-            <span className="h-8 w-8 rounded-md border-2 border-white/70 bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5] animate-[spin_6s_linear_infinite]" />
-          </div>
+          {/* action rail (inside the card on mobile) */}
+          {rail("md:hidden")}
         </div>
 
         {/* progress bar */}
@@ -242,7 +408,15 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           <div className="h-full bg-white" style={{ width: `${progress}%` }} />
         </div>
 
-        {commentsOpen && <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />}
+        {commentsOpen && (
+          <div data-no-tap>
+            <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />
+          </div>
+        )}
+      </div>
+      {/* desktop: action buttons sit beside the reel, like the reference layout */}
+      <div className="hidden md:flex absolute bottom-16 md:left-[calc(50%+(100dvh-24px)*9/32+16px)] text-white">
+        {rail("")}
       </div>
     </div>
   );

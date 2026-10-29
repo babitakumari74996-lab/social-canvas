@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { applyDemoSnapshot, hydrateDemo } from "@/lib/demo-store";
+import { applyStoredColorInvert } from "@/lib/color-invert";
 import {
   Outlet,
   Link,
@@ -36,12 +37,26 @@ function NotFoundComponent() {
   );
 }
 
+// A page can fail to load its code after a new deploy (the old file names no longer exist). Reload once
+// to get the new files; a timestamp in sessionStorage stops it from reloading in a loop.
+const CHUNK_ERROR = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i;
+const RELOAD_KEY = "sv-chunk-reload-at";
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const isChunkError = CHUNK_ERROR.test(String(error?.message ?? error));
   useEffect(() => {
+    if (isChunkError) {
+      const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    }
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+  }, [error, isChunkError]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -93,8 +108,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-title", content: "Socialverse" },
     ],
     links: [
-      // Splash logo is preloaded so it paints with the first frame.
-      { rel: "preload", href: "/splash-logo.png", as: "image", type: "image/png" },
+      // Splash icon is preloaded so it paints with the first frame.
+      { rel: "preload", href: "/header-logo-v3.png", as: "image", type: "image/png" },
       // Not render-blocking: a print-media stylesheet does not hold back the first paint.
       // The body script switches it to "all" as soon as it has loaded.
       {
@@ -103,9 +118,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         media: "print",
         id: "sv-app-css",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "icon", href: "/icon-192.png", type: "image/png", sizes: "192x192" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "icon", href: "/favicon-v3.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/icon-192-v3.png", type: "image/png", sizes: "192x192" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon-v3.png" },
       { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
@@ -123,13 +138,17 @@ const SPLASH_CSS = `
 html[data-sv-done] #sv-splash{animation:sv-splash-out .2s ease-in 0s forwards}
 @keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
 html[data-embed] #sv-splash{display:none}
+/* Reels preview pages are black from the first paint (no white flash while the swipe reveals them). */
+html[data-reels],html[data-reels] body{background:#000 !important}
 `;
 
 function Splash() {
   return (
     <div id="sv-splash" aria-hidden="true">
       <style>{SPLASH_CSS}</style>
-      <img src="/splash-logo.png" width={312} height={222} alt="" fetchPriority="high" style={{ width: 312, maxWidth: "80vw", height: "auto" }} />
+      {/* Same icon and wordmark as the app header. Inline styles: this paints before the page CSS arrives. */}
+      <img src="/header-logo-v3.png" width={96} height={96} alt="" fetchPriority="high" style={{ width: 96, height: 96 }} />
+      <span style={{ fontFamily: "Georgia, 'DejaVu Serif', serif", fontStyle: "italic", fontWeight: 700, fontSize: 40, lineHeight: 1, letterSpacing: "-0.02em", background: "linear-gradient(90deg,#6366F1,#7C3AED,#4338CA)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>Socialverse</span>
     </div>
   );
 }
@@ -152,7 +171,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {/* Embedded pages (the swipe preview) never show the splash. Hard stop: splash is gone by 2s after navigation start (fade starts at 1.8s). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "(function(){var l=document.getElementById('sv-app-css');if(!l)return;function on(){l.media='all'}if(l.sheet)on();else l.addEventListener('load',on)})();if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');var done=function(){document.documentElement.setAttribute('data-sv-done','')};var css=document.getElementById('sv-app-css');var wait=function(){if(css&&css.media!=='all'){css.addEventListener('load',done)}else done()};setTimeout(wait,Math.max(0,1800-performance.now()))",
+            __html: "(function(){var l=document.getElementById('sv-app-css');if(!l)return;function on(){l.media='all'}if(l.sheet)on();else l.addEventListener('load',on)})();if(/[?&]embed=/.test(location.search))document.documentElement.setAttribute('data-embed','');if(/[?&]embed=/.test(location.search)&&location.pathname.indexOf('/reels')===0)document.documentElement.setAttribute('data-reels','');var done=function(){document.documentElement.setAttribute('data-sv-done','')};var css=document.getElementById('sv-app-css');var wait=function(){if(css&&css.media!=='all'){css.addEventListener('load',done)}else done()};setTimeout(wait,Math.max(0,1800-performance.now()))",
           }}
         />
         {children}
@@ -185,6 +204,7 @@ function RootComponent() {
     // Hydrated: apply the saved demo changes. Swipe-preview pages (embed) do this too, so they show the
     // saved state even before the opening page's snapshot arrives. The snapshot then keeps them in step.
     hydrateDemo();
+    applyStoredColorInvert();
   }, []);
 
   useEffect(() => {

@@ -63,7 +63,7 @@ function DMLayout() {
   void userId;
 
   return (
-    <div className="max-w-4xl mx-auto flex h-[calc(100dvh-6.5rem)] md:h-screen">
+    <div className="max-w-4xl mx-auto flex h-[calc(100dvh-9.5rem)] md:h-screen">
       <aside className={`${inThread ? "hidden md:flex" : "flex"} flex-col w-full md:w-80 border-r border-border`}>
         <div className="p-3 border-b border-border flex items-center justify-between">
           <span className="font-semibold">{userId ? "Messages" : "Demo messages"}</span>

@@ -11,6 +11,8 @@ export type SwipeTab = {
   params?: Record<string, string>;
   /** Overlay tabs (Create, Explore) open a panel instead of a page. */
   overlay?: "create" | "search";
+  /** Left out of swipe steps from the neighbouring tabs (still reachable from the nav and when it is the current tab). */
+  skipInSwipe?: boolean;
   icon: ComponentType<{ className?: string }>;
 };
 
@@ -86,6 +88,7 @@ export function SwipeTabs({
     };
 
     let width = window.innerWidth; // width of the swipeable area, measured at gesture start
+    let mainBox = { left: 0, width: window.innerWidth }; // the main column's box at gesture start
     let tracking = false;
     let busy = false;
     let pid = -1;
@@ -93,19 +96,41 @@ export function SwipeTabs({
     let sy = 0;
     let st = 0;
     let lock: "h" | "v" | null = null;
+    let touchGesture = false; // touch: a vertical start hands the gesture to the browser's scroll
     let dx = 0;
     let target: number | null = null;
     let dir: 1 | -1 = 1;
     let suppressClick = false;
+    // A swipe that starts on Reels runs with <main> at margin 0, so the full-window Reels layer keeps its
+    // left edge while <main> moves (otherwise it starts at the sidebar's 330px and jumps back on release).
+    let fromReels = false;
+    // The top bars never move sideways for a swipe that touches Reels: they only slide up/down
+    // (Reels -> Home they come down from the top, as before).
+    let barsFollow = true;
 
-    const setMain = (x: number, anim: boolean) => {
+    // The top bars are global (not inside <main>), so they only follow the page while a drag is in progress.
+    // `bars` = false: the page moves but the bars keep their own place (used once a swipe commits).
+    const setMain = (x: number, anim: boolean, bars = true) => {
       main.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
       main.style.transform = `translate3d(${x}px,0,0)`;
+      main.style.marginLeft = fromReels ? "0px" : "";
+      if (bars) setBars(x, anim);
+    };
+    // Top bars: same offset as the page, written in the same frame as the page.
+    const setBars = (x: number, anim: boolean) => {
+      const root = document.documentElement;
+      if (!barsFollow) x = 0;
+      root.style.transition = anim ? `--swipe-x ${ANIM_MS}ms ${EASE}` : "none";
+      root.style.setProperty("--swipe-x", `${x}px`);
     };
     // Back to rest: no inline transform, so fixed-position children of the page behave normally.
     const rest = () => {
       main.style.transition = "";
       main.style.transform = "";
+      main.style.marginLeft = "";
+      main.style.visibility = "";
+      document.documentElement.style.setProperty("--swipe-x", "0px");
+      document.documentElement.style.transition = "";
     };
     const setPv = (x: number, anim: boolean) => {
       pv.style.transition = anim ? `transform ${ANIM_MS}ms ${EASE}` : "none";
@@ -128,6 +153,13 @@ export function SwipeTabs({
     };
 
     const hidePreview = () => setPreview(null);
+    // The page fades out while swiping to Reels, and stays faded until the commit finishes. Once the new
+    // page is in place, bring it back at once: otherwise the Reels page itself stays invisible (a white screen)
+    // until the swipe state clears a moment later.
+    const endCommitFade = () => {
+      setSwipeProgress(null);
+      document.documentElement.style.setProperty("--feed-opacity", "1");
+    };
 
     const snapBack = () => {
       setSwipeProgress(null);
@@ -158,6 +190,8 @@ export function SwipeTabs({
     });
 
     const onDown = (e: PointerEvent) => {
+      fromReels = window.location.pathname.startsWith("/reels");
+      barsFollow = !fromReels;
       if (busy || tracking || !latest.current.enabled) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       if (blocked(e.target)) return;
@@ -168,42 +202,75 @@ export function SwipeTabs({
       sy = e.clientY;
       st = Date.now();
       lock = null;
+      touchGesture = e.pointerType !== "mouse";
       dx = 0;
       target = null;
       suppressClick = false;
       width = main.getBoundingClientRect().width || window.innerWidth;
-      const rect = main.getBoundingClientRect();
-      pv.style.left = `${rect.left}px`;
-      pv.style.width = `${rect.width}px`;
+      // The preview covers the whole window (on desktop the sidebar column too), so the incoming page is
+      // never cut off at the sidebar edge. On mobile the main column is already full width.
+      mainBox = { left: main.getBoundingClientRect().left, width: width };
+      pv.style.left = "0px";
+      pv.style.width = `${window.innerWidth}px`;
+      pv.style.background = ""; // no light flash before the target is known
     };
 
-    const onMove = (e: PointerEvent) => {
-      if (!tracking || busy || e.pointerId !== pid) return;
-      const cx = e.clientX - sx;
-      const cy = e.clientY - sy;
+    // Pointer moves can fire faster than the screen refreshes. Only the latest position is applied,
+    // once per animation frame, so the page follows the finger without re-rendering on every event.
+    let frame = 0;
+    let lastX = 0;
+    let lastY = 0;
+    const applyMove = (cx: number, cy: number) => {
       if (lock === null) {
         if (Math.abs(cx) < 8 && Math.abs(cy) < 8) return;
-        lock = Math.abs(cx) > Math.abs(cy) ? "h" : "v";
-        if (lock === "v") {
-          tracking = false;
+        if (Math.abs(cx) <= Math.abs(cy)) {
+          // Vertical so far. Touch hands the gesture to the page's scroll; a mouse keeps waiting,
+          // so a hold with a small vertical drift can still become a horizontal swipe.
+          if (touchGesture) tracking = false;
           return;
+        }
+        lock = "h";
+        window.getSelection()?.removeAllRanges(); // clear anything the drag already selected
+        // Once it is a real horizontal drag, keep the pointer on the page: a release over an iframe would
+        // otherwise never reach the page, and the swipe would stay stuck half-way. (Not set on a plain
+        // click, so clicks on buttons keep their normal target.)
+        if (!touchGesture) {
+          try { main.setPointerCapture(pid); } catch { /* not supported: the window listeners still work */ }
         }
       }
       dx = cx;
       const idx = latest.current.activeIndex;
       const d: 1 | -1 = dx < 0 ? 1 : -1; // swipe left -> next tab, swipe right -> previous tab
-      const ti = idx + d;
+      let ti = idx + d;
+      // Skip tabs marked skipInSwipe (e.g. Create) unless the current tab is that tab itself.
+      const skips = (i: number) => !!latest.current.tabs[i]?.skipInSwipe && !latest.current.tabs[idx]?.skipInSwipe;
+      while (ti >= 0 && ti < latest.current.tabs.length && skips(ti)) ti += d;
       const valid = idx >= 0 && ti >= 0 && ti < latest.current.tabs.length;
       if (valid) {
         target = ti;
         dir = d;
         const tgt = latest.current.tabs[ti];
+        barsFollow = !fromReels && tgt.key !== "reels";
+        // Reels covers the whole window (its sidebar column too). Other pages render in the main column's box,
+        // so their layout matches the page and the sidebar never covers them.
+        // Black is set here, in the same frame as the geometry. The layer's React style would apply it one
+        // render later, and until then the light background class would flash over the whole window.
+        if (tgt.key === "reels") {
+          pv.style.left = "0px";
+          pv.style.width = `${window.innerWidth}px`;
+          pv.style.background = "#000";
+        } else {
+          pv.style.left = `${mainBox.left}px`;
+          pv.style.width = `${mainBox.width}px`;
+          pv.style.background = "";
+        }
         const fromOverlay = !!latest.current.overlayKey;
         if (tgt.to && !fromOverlay) {
           // A page neighbour: reveal its real page from the swiped side.
           setPreview((p) => (p && p.index === ti && p.dir === d ? p : { index: ti, dir: d }));
           setMain(dx, false);
-          setPv(dx + d * width, false);
+          // Reels preview is full-window (left 0), so it sits one window-width away; other pages sit one column-width away.
+          setPv(dx + d * (tgt.key === "reels" ? window.innerWidth : width), false);
         } else {
           // An overlay (Create / Explore) has no page to reveal: the page only rubber-bands,
           // or stays put while an overlay is already open over it.
@@ -226,8 +293,28 @@ export function SwipeTabs({
       }
     };
 
+    const onMove = (e: PointerEvent) => {
+      if (!tracking || busy || e.pointerId !== pid) return;
+      // Watchdog: a mouse move with no button held means the release was missed. End the drag as a release.
+      if (e.pointerType === "mouse" && e.buttons === 0) {
+        onUp(e);
+        return;
+      }
+      lastX = e.clientX - sx;
+      lastY = e.clientY - sy;
+      if (!frame) frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (tracking && !busy) applyMove(lastX, lastY);
+      });
+    };
+
     const onUp = (e: PointerEvent) => {
       if (!tracking || e.pointerId !== pid) return;
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+        applyMove(lastX, lastY); // apply the final position before deciding
+      }
       tracking = false;
       if (lock !== "h") return;
       suppressClick = Math.abs(dx) > 8; // don't let the drag also trigger a click
@@ -264,6 +351,7 @@ export function SwipeTabs({
           } finally {
             rest();
             hidePreview();
+            endCommitFade();
             busy = false;
           }
         }, ANIM_MS);
@@ -274,7 +362,12 @@ export function SwipeTabs({
       setSwipeProgress({ from: latest.current.tabs[latest.current.activeIndex]?.key ?? "", to: to.key, dx: 0, full: 1, committed: true });
       later(() => setSwipeProgress(null), ANIM_MS * 2);
       // Current page slides out on the far side while the neighbour panel covers the area.
-      setMain(-d * width, true);
+      // Leaving Reels: its full-window layer is hidden at once, so it never stays on top of the incoming page.
+      if (window.location.pathname.startsWith("/reels")) main.style.visibility = "hidden";
+      setMain(-d * width, true, false);
+      // The bars settle in their own place (Home: back to 0) instead of following the page off-screen,
+      // so they never disappear while the destination is loading.
+      setBars(0, true);
       setPv(0, true);
       later(async () => {
         try {
@@ -282,11 +375,12 @@ export function SwipeTabs({
         } finally {
           // The real page mounts off-screen, then appears in place once it has painted. No entering
           // slide: the switch is instant, and the preview is removed in the same frame.
-          setMain(d * width, false);
+          setMain(d * width, false, false);
           void main.offsetWidth;
           await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
           rest();
           hidePreview();
+          endCommitFade();
           busy = false;
         }
       }, ANIM_MS);
@@ -338,6 +432,16 @@ export function SwipeTabs({
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
+    // Leaving the window mid-drag: end the drag so it can never stay half-way.
+    const onBlur = () => {
+      if (tracking && !busy) onCancel({ pointerId: pid } as PointerEvent);
+    };
+    window.addEventListener("blur", onBlur);
+    // A mouse drag would otherwise select text and images on the page. While a swipe is tracked, selection is off.
+    const onSelectStart = (e: Event) => {
+      if (tracking && !busy) e.preventDefault();
+    };
+    document.addEventListener("selectstart", onSelectStart);
     window.addEventListener("click", onClickCapture, true);
     setPv(window.innerWidth, false);
 
@@ -349,8 +453,11 @@ export function SwipeTabs({
       main.removeEventListener("wheel", onWheel);
       main.removeEventListener("dragstart", onDragStart);
       window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(frame);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("selectstart", onSelectStart);
       window.removeEventListener("click", onClickCapture, true);
       timers.forEach((t) => window.clearTimeout(t));
     };
@@ -377,7 +484,7 @@ export function SwipeTabs({
         ref={previewRef}
         aria-hidden
         className="fixed top-0 bottom-0 bg-background pointer-events-none"
-        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%", background: pvTab?.key === "reels" ? "#000" : undefined }}
+        style={{ visibility: pvPath ? "visible" : "hidden", left: 0, width: "100%", zIndex: 15, background: pvTab?.key === "reels" ? "#000" : undefined }}
       >
         {armed && pages.map((pg) => (
           <div

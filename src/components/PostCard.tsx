@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, useImageFade } from "@/components/Avatar";
-import { useActions } from "@/lib/data";
-import { demoActions, ui } from "@/lib/demo-store";
+import { useActions, useMyUserId } from "@/lib/data";
+import { demoActions, ui, useDemo } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
 import type { UPost } from "@/lib/types";
 
@@ -111,6 +111,16 @@ function useMouseDragCarousel(ref: React.RefObject<HTMLDivElement | null>) {
 
 export function PostCard({ post, withComments = false, tall = false }: { post: UPost; withComments?: boolean; tall?: boolean }) {
   const actions = useActions();
+  const myId = useMyUserId();
+  const demo = useDemo();
+  const [followedLocal, setFollowedLocal] = useState(false);
+  const authorId = post.profiles.id;
+  const following = actions.isDemo ? !!demo.following[authorId] : followedLocal;
+  const toggleFollow = () => {
+    const next = !following;
+    if (!actions.isDemo) setFollowedLocal(next);
+    actions.follow(authorId, next);
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   const [burst, setBurst] = useState(false);
@@ -163,6 +173,15 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           </div>
           {post.location && <div className="text-[11px] text-muted-foreground truncate">{post.location}</div>}
         </div>
+        {authorId !== myId && (
+          <button
+            type="button"
+            onClick={toggleFollow}
+            className={`rounded-md px-2.5 py-1 text-xs font-semibold ${following ? "border border-border text-foreground" : "sv-gradient-bg text-white hover:opacity-90"}`}
+          >
+            {following ? "Following" : "Follow"}
+          </button>
+        )}
         <button
           type="button"
           aria-label="More options"
@@ -178,7 +197,7 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         <div
           onDoubleClick={doubleTap}
           className={`relative mx-3 md:mx-0 rounded-lg md:rounded-none overflow-hidden ${tall ? "aspect-[4/5] max-h-[740px]" : "aspect-square max-h-[585px]"} flex items-center justify-center p-8 text-center select-none`}
-          style={{ background: "linear-gradient(135deg, #4F5BD5 0%, #962FBF 30%, #D62976 60%, #FA7E1E 85%, #FEDA75 100%)" }}
+          style={{ background: "linear-gradient(135deg, #4338CA 0%, #7C3AED 30%, #6366F1 60%, #2DD4BF 85%, #5EEAD4 100%)" }}
         >
           <p className="text-white text-xl md:text-2xl font-semibold leading-snug drop-shadow whitespace-pre-wrap break-words max-w-[85%]">
             {post.caption}
@@ -256,6 +275,12 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
         )}
         <button type="button" aria-label="Share" onClick={() => ui.openShare(post, "post")} className="active:scale-90 transition-transform">
           <Send className="h-6 w-6 hover:opacity-50" />
+        </button>
+        <button
+          type="button"
+          className="flex-1 rounded-lg sv-gradient-bg px-3 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80"
+        >
+          Buy product
         </button>
         <button
           type="button"

@@ -52,7 +52,7 @@ export function ShareSheet() {
                 toast(`Sent to ${u.username}`);
               }}
             >
-              <div className={`rounded-full p-[2px] ${sentTo[u.id] ? "bg-muted" : "bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5]"}`}>
+              <div className={`rounded-full p-[2px] ${sentTo[u.id] ? "bg-muted" : "bg-gradient-to-tr from-[#5EEAD4] via-[#6366F1] to-[#4338CA]"}`}>
                 <span className="block rounded-full bg-card p-[2px]">
                   <Avatar path={u.avatar_url} alt={u.username} size={48} />
                 </span>
@@ -74,7 +74,7 @@ export function ShareSheet() {
           {sharePost.media_urls[0] ? (
             <MediaImg src={sharePost.media_urls[0]} className="h-10 w-10 rounded object-cover" />
           ) : (
-            <span className="h-10 w-10 rounded bg-gradient-to-br from-[#4F5BD5] to-[#D62976]" />
+            <span className="h-10 w-10 rounded bg-gradient-to-br from-[#4338CA] to-[#6366F1]" />
           )}
           <p className="text-xs text-muted-foreground line-clamp-1">{sharePost.caption ?? "Post"}</p>
         </div>

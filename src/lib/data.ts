@@ -3,9 +3,9 @@ import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession, useMyProfile } from "@/lib/auth";
 import { uploadMedia } from "@/lib/media";
 import { makePoster, saveMedia } from "@/lib/media-store";
-import { DEMO_ME_ID, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
+import { DEMO_ME_ID, DEMO_REQUESTS, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
-import type { StoryGroup, UComment, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
+import type { StoryGroup, UComment, UMood, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Unified data layer: when the visitor has a real Supabase session we read
@@ -91,6 +91,15 @@ export function useFeed(): { posts: UPost[]; loading: boolean } {
   return { posts: [...demoState.posts], loading: false };
 }
 
+/** Moods shown on the Moods page, newest first. Demo mode only; the backend has no moods table yet. */
+export function useMoods(): { moods: UMood[]; loading: boolean } {
+  const { userId } = useSession();
+  const demo = useDemo();
+  if (userId) return { moods: [], loading: false };
+  const moods = [...demo.moods].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return { moods, loading: false };
+}
+
 export function useExplorePosts(): UPost[] {
   const { posts } = useFeed();
   // Most engaging first; ties broken by id. A stable order keeps the swipe preview and the opened page identical.
@@ -113,6 +122,16 @@ export function usePost(id: string): UPost | undefined {
   const real = useSupabasePosts();
   if (userId) return real?.find((p) => p.id === id);
   return demoState.posts.find((p) => p.id === id);
+}
+
+// Same lookup as usePost, plus whether the post list is still loading. A post page must not say "not found"
+// while the list is on its way (that showed as a flash of text before the post appeared).
+export function usePostState(id: string): { post: UPost | undefined; loading: boolean } {
+  const demoState = useDemo();
+  const { userId } = useSession();
+  const real = useSupabasePosts();
+  if (userId) return { post: real?.find((p) => p.id === id), loading: real === undefined };
+  return { post: demoState.posts.find((p) => p.id === id), loading: false };
 }
 
 // ---- comments ----------------------------------------------------------------
@@ -202,16 +221,17 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
     queryFn: async (): Promise<UReel[]> => {
       const { data: rows } = await (await getSupabase())
         .from("reels")
-        .select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`)
+        .select(`id, user_id, video_url, caption, created_at, cover_url, trim_start, trim_end, video_filter, audience, tagged, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
         .limit(50);
-      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; profiles: Record<string, unknown> }[];
+      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; cover_url: string | null; trim_start: number | null; trim_end: number | null; video_filter: string | null; audience: "everyone" | "followers"; tagged: string[] | null; profiles: Record<string, unknown> }[];
       if (reels.length === 0) return [];
       const ids = reels.map((r) => r.id);
       void ids;
       return reels.map((r) => ({
-        id: r.id, user_id: r.user_id, video_url: r.video_url, poster: null,
+        id: r.id, user_id: r.user_id, video_url: r.video_url, poster: r.cover_url ?? null,
         caption: r.caption, music: null, created_at: r.created_at,
+        trimStart: r.trim_start, trimEnd: r.trim_end, videoFilter: r.video_filter, audience: r.audience, tagged: r.tagged ?? [],
         profiles: supabaseProfile(r.profiles, r.user_id),
         likes: 0, likedByMe: false, commentsCount: 0,
       }));
@@ -381,6 +401,30 @@ export function useSuggestions(): { user: UProfile; reason: string }[] {
     .filter((s) => s.user);
 }
 
+// Friend requests: people who follow me and whom I do not follow back.
+export function useFriendRequests(): UProfile[] {
+  const demo = useDemo();
+  const { userId } = useSession();
+  const { data } = useQuery({
+    queryKey: ["friend-requests", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<UProfile[]> => {
+      const sb = await getSupabase();
+      const { data: followers } = await sb.from("follows").select("follower_id, profiles!follows_follower_id_fkey(id, username, display_name, avatar_url)").eq("following_id", userId!);
+      const { data: following } = await sb.from("follows").select("following_id").eq("follower_id", userId!);
+      const followingSet = new Set((following ?? []).map((f) => f.following_id as string));
+      return ((followers ?? []) as unknown as { follower_id: string; profiles: Record<string, unknown> | null }[])
+        .filter((f) => f.profiles && !followingSet.has(f.follower_id))
+        .map((f) => supabaseProfile(f.profiles!, f.follower_id));
+    },
+  });
+  if (userId) return data ?? [];
+  return DEMO_REQUESTS
+    .filter((id) => !demo.requestsHandled[id] && !demo.following[id])
+    .map((id) => demo.users.find((u) => u.id === id))
+    .filter((u): u is UProfile => !!u);
+}
+
 // ---- search ---------------------------------------------------------------------------
 
 export function useUserSearch(q: string): UProfile[] {
@@ -451,15 +495,35 @@ export function useActions() {
       });
       qc.invalidateQueries({ queryKey: ["stories", userId] });
     },
-    async createReel(input: { file?: File; galleryUrl?: string; caption: string }) {
+    async createReel(input: { file?: File; galleryUrl?: string; caption: string; edits?: { cover?: string; trimStart?: number; trimEnd?: number; filter?: string; audience?: "everyone" | "followers"; tagged?: string[] } }) {
       if (!userId) return;
       const url = input.file ? await uploadMedia(userId, input.file) : input.galleryUrl!;
-      await (await getSupabase()).from("reels").insert({ user_id: userId, video_url: url, caption: input.caption || null });
+      const e = input.edits ?? {};
+      const coverPath = e.cover ? await uploadMedia(userId, await dataUrlToFile(e.cover, "cover.jpg")) : null;
+      await (await getSupabase()).from("reels").insert({
+        user_id: userId,
+        video_url: url,
+        caption: input.caption || null,
+        cover_url: coverPath,
+        trim_start: e.trimStart ?? null,
+        trim_end: e.trimEnd ?? null,
+        video_filter: e.filter && e.filter !== "none" ? e.filter : null,
+        audience: e.audience ?? "everyone",
+        tagged: e.tagged ?? [],
+      });
       qc.invalidateQueries({ queryKey: ["reels", userId] });
     },
     async sendMessage(receiverId: string, content: string) {
       if (!userId) return;
       await (await getSupabase()).from("messages").insert({ sender_id: userId, receiver_id: receiverId, content });
+    },
+    async handleRequest(requesterId: string, accept: boolean) {
+      if (!userId) return;
+      const sb = await getSupabase();
+      if (accept) await sb.from("follows").insert({ follower_id: userId, following_id: requesterId });
+      else await sb.from("follows").delete().eq("follower_id", requesterId).eq("following_id", userId);
+      qc.invalidateQueries({ queryKey: ["friend-requests", userId] });
+      qc.invalidateQueries({ queryKey: ["following", userId] });
     },
     async updateProfile(patch: { display_name?: string; bio?: string }) {
       if (!userId) return;
@@ -473,6 +537,7 @@ export function useActions() {
     like: (postId: string, on: boolean) => (userId ? real.like(postId, on) : demoActions.toggleLike(postId)),
     comment: (postId: string, content: string) => (userId ? real.comment(postId, content) : demoActions.addComment(postId, content)),
     follow: (targetId: string, on: boolean) => (userId ? real.follow(targetId, on) : demoActions.toggleFollow(targetId)),
+    handleRequest: (requesterId: string, accept: boolean) => (userId ? real.handleRequest(requesterId, accept) : demoActions.handleRequest(requesterId, accept)),
     createPost: async (input: { files?: File[]; galleryUrls?: string[]; caption: string; location?: string | null }) => {
       if (userId) return real.createPost({ ...input, files: input.files ?? [] });
       const urls = [...(input.files ?? []).map((f) => fileToDataUrl(f)), ...(input.galleryUrls ?? [])];
@@ -483,24 +548,24 @@ export function useActions() {
       const url = input.file ? fileToDataUrl(input.file) : input.galleryUrl!;
       demoActions.addStory(url);
     },
-    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null }) => {
-      if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption });
+    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null; edits?: { cover?: string; trimStart?: number; trimEnd?: number; filter?: string; audience?: "everyone" | "followers"; tagged?: string[] } }) => {
+      if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption, edits: input.edits });
       if (input.file) {
-        // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint.
-        const poster = await makePoster(input.file);
+        // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint (the chosen cover).
+        const poster = input.edits?.cover ?? (await makePoster(input.file));
         const key = `m-${crypto.randomUUID()}`;
         try {
           await saveMedia(key, input.file);
-          demoActions.addReel({ videoUrl: `idb:${key}`, caption: input.caption, music: input.music, poster });
+          demoActions.addReel({ edits: input.edits, videoUrl: `idb:${key}`, caption: input.caption, music: input.music, poster });
           void ensureMedia();
         } catch {
-          demoActions.addReel({ videoUrl: objectUrl(input.file), caption: input.caption, music: input.music, poster });
+          demoActions.addReel({ edits: input.edits, videoUrl: objectUrl(input.file), caption: input.caption, music: input.music, poster });
         }
         return;
       }
       const url = input.galleryUrl!;
-      const poster = DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
-      demoActions.addReel({ videoUrl: url, caption: input.caption, music: input.music, poster });
+      const poster = input.edits?.cover ?? DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
+      demoActions.addReel({ edits: input.edits, videoUrl: url, caption: input.caption, music: input.music, poster });
     },
     sendMessage: (receiverId: string, content: string) => (userId ? real.sendMessage(receiverId, content) : demoActions.sendMessage(receiverId, content)),
     updateProfile: (patch: { display_name?: string; bio?: string; avatar_url?: string }) => (userId ? real.updateProfile(patch) : demoActions.updateProfile(patch)),
@@ -520,4 +585,10 @@ function demoReel(r: UReel): UReel {
 
 function objectUrl(file: File): string {
   return URL.createObjectURL(file);
+}
+
+/** A data URL (e.g. a frame captured in the editor) as a File, for upload. */
+export async function dataUrlToFile(dataUrl: string, name: string): Promise<File> {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], name, { type: blob.type || "image/jpeg" });
 }
