@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -33,7 +33,7 @@ const TEXT_THEMES = [
 ];
 
 type Mode = "photo" | "video" | "text";
-type Step = "pick" | "filter" | "edit" | "caption" | "text";
+type Step = "pick" | "filter" | "edit" | "preview" | "caption" | "text";
 
 interface Draft {
   files: File[];
@@ -490,6 +490,51 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           )}
         </header>
 
+        {step === "preview" && mode === "video" && draft.previews[0] && (
+          <div className="fixed inset-0 z-[70] bg-black text-white flex flex-col">
+            <div className="flex items-center gap-3 px-3 py-3">
+              <button type="button" aria-label="Back" onClick={() => setStep("pick")} className="p-1">
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button type="button" onClick={() => toast("Audio coming soon")} className="flex-1 min-w-0 rounded-full bg-white/15 px-4 py-2 text-left">
+                <span className="block text-sm font-semibold">Add audio</span>
+                <span className="block text-xs text-white/70">Discover suggestions</span>
+              </button>
+              <button type="button" aria-label="More" onClick={() => toast("More coming soon")} className="p-1">
+                <MoreHorizontal className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="relative flex-1 min-h-0">
+              <video key={draft.previews[0]} src={draft.previews[0]} className="absolute inset-0 h-full w-full object-contain" autoPlay muted loop playsInline />
+            </div>
+            <div className="h-0.5 bg-white/20">
+              <div className="h-full w-1/12 bg-white" />
+            </div>
+            <div className="flex items-start justify-around px-2 py-4">
+              {[
+                { label: "Audio", icon: Music2, action: () => toast("Audio coming soon") },
+                { label: "Edit", icon: Scissors, action: () => setStep("edit") },
+                { label: "Effects", icon: Sparkles, action: () => setStep("edit") },
+                { label: "Text", icon: TypeIcon, action: () => toast("Text coming soon") },
+                { label: "Stickers", icon: Smile, action: () => toast("Stickers coming soon") },
+              ].map((t) => (
+                <button key={t.label} type="button" onClick={t.action} className="flex w-14 flex-col items-center gap-1.5">
+                  <span className="grid place-items-center h-14 w-14 rounded-full bg-white/15">
+                    <t.icon className="h-6 w-6" />
+                  </span>
+                  <span className="text-[11px] font-medium">{t.label}</span>
+                </button>
+              ))}
+              <button type="button" aria-label="Next" onClick={() => setStep("caption")} className="flex w-14 flex-col items-center gap-1.5">
+                <span className="grid place-items-center h-14 w-14 rounded-full sv-gradient-bg">
+                  <ArrowRight className="h-6 w-6 text-white" />
+                </span>
+                <span className="text-[11px] font-medium">Next</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {cameraOpen && mode === "video" && (
           <CameraCapture
             onClose={() => setCameraOpen(false)}
@@ -497,7 +542,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               setDraft({ files: [file], gallery: [], previews: [url], filter: "none", zoom: 1 });
               setCover(null);
               setCameraOpen(false);
-              setStep("edit");
+              setStep("preview");
             }}
           />
         )}
