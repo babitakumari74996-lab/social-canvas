@@ -238,9 +238,6 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           <button type="button" onClick={() => setStarted(true)} className="rounded-lg sv-gradient-bg px-6 py-2.5 font-semibold text-white">
             Allow
           </button>
-          <button type="button" onClick={() => fileRef.current?.click()} className="rounded-lg border border-white/40 px-6 py-2.5 text-sm font-semibold text-white">
-            Phone camera se record karein
-          </button>
           <button type="button" onClick={close} className="text-sm text-white/70 underline">Cancel</button>
         </div>
       ) : (
