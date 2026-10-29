@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Heart, MessageCircle, Send, MoreHorizontal, Volume2, VolumeX, Play, Plus, BadgeCheck, ChevronUp, ChevronDown, Star, Users, CircleUser } from "lucide-react";
 import { toast } from "sonner";
@@ -236,6 +236,29 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
     if (vid) vid.muted = muted;
   }, [muted]);
 
+  // A tap anywhere on the reel pauses or plays it. Buttons, links and the comments sheet keep their own clicks.
+  // The pause/play waits briefly so that a double-tap (like) does not also pause.
+  const tapTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+  }, []);
+  const onReelTap = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-no-tap]")) return;
+    if (tapTimer.current !== null) window.clearTimeout(tapTimer.current);
+    tapTimer.current = window.setTimeout(() => {
+      tapTimer.current = null;
+      togglePlay();
+    }, 220);
+  };
+  const onReelDoubleTap = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, [data-no-tap]")) return;
+    if (tapTimer.current !== null) {
+      window.clearTimeout(tapTimer.current);
+      tapTimer.current = null;
+    }
+    doubleLike();
+  };
+
   const togglePlay = () => {
     const vid = videoRef.current;
     if (!vid) return;
@@ -290,7 +313,11 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
 
   return (
     <div ref={wrapRef} className="h-full w-full snap-start snap-always flex items-center justify-center py-0 md:py-3 md:relative">
-      <div className="relative h-full w-full md:h-full md:w-auto md:aspect-[9/16] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900">
+      <div
+        onClick={onReelTap}
+        onDoubleClick={onReelDoubleTap}
+        className="relative h-full w-full md:h-full md:w-auto md:aspect-[9/16] md:flex-none md:rounded-xl overflow-hidden bg-zinc-900"
+      >
         {reel.poster && (
           // Plain eager image at full opacity (no lazy load, no fade), so the poster is already on screen.
           <img
@@ -316,8 +343,6 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           muted={muted}
           playsInline
           autoPlay={false}
-          onClick={togglePlay}
-          onDoubleClick={doubleLike}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
             if (v.duration) setProgress((v.currentTime / v.duration) * 100);
@@ -375,7 +400,11 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           <div className="h-full bg-white" style={{ width: `${progress}%` }} />
         </div>
 
-        {commentsOpen && <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />}
+        {commentsOpen && (
+          <div data-no-tap>
+            <ReelComments reelId={reel.id} onClose={() => setCommentsOpen(false)} isReal={!!userId} reel={reel} />
+          </div>
+        )}
       </div>
       {/* desktop: action buttons sit beside the reel, like the reference layout */}
       <div className="hidden md:flex absolute bottom-16 md:left-[calc(50%+(100dvh-24px)*9/32+16px)] text-white">
