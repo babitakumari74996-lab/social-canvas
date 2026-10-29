@@ -310,9 +310,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
                 { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
               ].map((t) => (
-                <button key={t.label} type="button" onClick={t.action} className="flex w-16 shrink-0 flex-col items-center gap-2">
-                  <span className="grid place-items-center h-16 w-16 rounded-full bg-muted">
-                    <t.icon className="h-8 w-8" />
+                <button key={t.label} type="button" onClick={t.action} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
+                  <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
+                    <t.icon className="h-6 w-6" />
                   </span>
                   <span className="text-xs font-medium text-center leading-tight">{t.label}</span>
                 </button>
