@@ -281,26 +281,27 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             {step === "pick" || step === "text" ? (page ? null : <X className="h-5 w-5" />) : <ChevronLeft className="h-5 w-5" />}
           </button>
           <span className="font-semibold text-[15px]">{title}</span>
-          <button
-            type="button"
-            disabled={step === "pick" || step === "text" ? false : !canNext || busy}
-            onClick={() => (step === "pick" ? undefined : step === "text" ? share() : onNext())}
-            className="text-primary font-semibold text-sm disabled:opacity-30 px-1"
-          >
-            {step === "pick" ? "" : busy ? "Sharing…" : step === "text" ? "Share" : nextLabel}
-          </button>
+          {step === "pick" && mode === "video" ? (
+            <button type="button" aria-label="Settings" onClick={() => toast("Settings coming soon")} className="md:hidden p-1 hover:opacity-60">
+              <Settings className="h-6 w-6" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={step === "pick" || step === "text" ? false : !canNext || busy}
+              onClick={() => (step === "pick" ? undefined : step === "text" ? share() : onNext())}
+              className="text-primary font-semibold text-sm disabled:opacity-30 px-1"
+            >
+              {step === "pick" ? "" : busy ? "Sharing…" : step === "text" ? "Share" : nextLabel}
+            </button>
+          )}
         </header>
 
         {/* body */}
         {step === "pick" && mode === "video" && (
           <div className="md:hidden flex-1 flex flex-col min-h-0 bg-background">
-            <div className="flex justify-end px-4 pt-3">
-              <button type="button" aria-label="Settings" onClick={() => toast("Settings coming soon")} className="p-1 hover:opacity-60">
-                <Settings className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="pb-3 pt-1 px-3">
-              <div className="flex justify-between">
+            <div className="overflow-x-auto touch-pan-x overscroll-x-contain pb-3 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-max gap-6 px-4">
               {[
                 { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
@@ -309,11 +310,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
                 { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
               ].map((t) => (
-                <button key={t.label} type="button" onClick={t.action} className="flex w-14 flex-col items-center gap-1.5">
-                  <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
-                    <t.icon className="h-7 w-7" />
+                <button key={t.label} type="button" onClick={t.action} className="flex w-16 shrink-0 flex-col items-center gap-2">
+                  <span className="grid place-items-center h-16 w-16 rounded-full bg-muted">
+                    <t.icon className="h-8 w-8" />
                   </span>
-                  <span className="text-[10px] font-medium text-center leading-tight">{t.label}</span>
+                  <span className="text-xs font-medium text-center leading-tight">{t.label}</span>
                 </button>
               ))}
               </div>
