@@ -129,6 +129,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [alsoStory, setAlsoStory] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
+  const [coverIdx, setCoverIdx] = useState(0);
   const [frames, setFrames] = useState<string[]>([]);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
@@ -163,6 +164,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       if (cancelled) return;
       setFrames(f);
       setCover((c) => c ?? f[0] ?? null);
+      setCoverIdx(0);
     });
     return () => { cancelled = true; };
   }, [open, step, videoSrc]);
@@ -304,7 +306,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 { label: "Templates", icon: LayoutTemplate, action: () => toast("Templates coming soon") },
                 { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
-                { label: "Effects", icon: Sparkles, action: () => toast("Effects coming soon") },
+                { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
                 { label: "Upload", icon: Images, action: () => videoInput.current?.click() },
               ].map((t) => (
                 <button key={t.label} type="button" onClick={t.action} className="flex shrink-0 flex-col items-center gap-1.5 w-20">
@@ -588,9 +590,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setCover(f)}
+                      onClick={() => { setCover(f); setCoverIdx(i); }}
                       aria-label={`Cover frame ${i + 1}`}
-                      className={`shrink-0 w-14 h-24 rounded-md overflow-hidden border-2 ${cover === f ? "border-primary" : "border-transparent"}`}
+                      className={`shrink-0 w-14 h-24 rounded-md overflow-hidden border-2 ${coverIdx === i ? "border-primary" : "border-transparent"}`}
                     >
                       <img src={f} alt="" className="w-full h-full object-cover" />
                     </button>
