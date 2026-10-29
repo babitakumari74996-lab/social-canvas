@@ -135,7 +135,15 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
     setError(null);
     (async () => {
       try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: true });
+        if (!navigator.mediaDevices?.getUserMedia) throw Object.assign(new Error("no-media"), { name: "NoMediaApi" });
+        let s: MediaStream;
+        try {
+          s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: true });
+        } catch (first) {
+          // No microphone or mic blocked: keep the camera going with video only.
+          if ((first as Error).name === "NotAllowedError" || (first as Error).name === "SecurityError") throw first;
+          s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
+        }
         if (cancelled) {
           s.getTracks().forEach((t) => t.stop());
           return;
@@ -145,8 +153,18 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           videoRef.current.srcObject = s;
           await videoRef.current.play().catch(() => {});
         }
-      } catch {
-        if (!cancelled) setError("Camera ki permission nahi mili. Browser settings mein camera aur mic allow karein.");
+      } catch (err) {
+        if (cancelled) return;
+        const name = (err as Error)?.name ?? "";
+        const msg =
+          name === "NoMediaApi" || name === "SecurityError"
+            ? "Camera is page par nahi chal sakta. Secure (https) link se kholein."
+            : name === "NotFoundError" || name === "OverconstrainedError"
+              ? "Is device par camera nahi mila."
+              : name === "NotReadableError"
+                ? "Camera kisi aur app mein use ho raha hai. Use band karke dobara try karein."
+                : "Camera ki permission nahi mili. Browser settings mein camera aur mic allow karein.";
+        setError(`${msg} (${name || "error"})`);
       }
     })();
     return () => {
