@@ -67,20 +67,17 @@ export function CreateNavButton({
         {children}
       </button>
       {open && (
-        <div
-          role="menu"
-          className={`absolute ${pos} z-50 w-[200px] rounded-xl border border-border bg-card py-1.5 shadow-xl`}
-        >
+        <div role="menu" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 flex items-end gap-1">
           {OPTIONS.map((o) => (
             <button
               key={o.label}
               type="button"
               role="menuitem"
               onClick={() => pick(o)}
-              className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-muted"
+              className="flex w-14 flex-col items-center gap-1 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
             >
-              <o.icon className="h-5 w-5 text-primary" />
-              <span className="font-semibold">{o.label}</span>
+              <o.icon className="h-7 w-7" />
+              <span className="text-[11px] font-semibold leading-none [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{o.label}</span>
             </button>
           ))}
         </div>
