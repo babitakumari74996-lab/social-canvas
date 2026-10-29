@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { ImagePlus, ListVideo, Type as TypeIcon, Smile, CalendarClock, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { ui } from "@/lib/demo-store";
 
 type Option = {
   label: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   /** Opens the create modal in this mode; omitted = not available yet. */
   mode?: "photo" | "video" | "text";
 };
@@ -67,20 +67,33 @@ export function CreateNavButton({
         {children}
       </button>
       {open && (
-        <div role="menu" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 flex items-end gap-1">
-          {OPTIONS.map((o) => (
-            <button
-              key={o.label}
-              type="button"
-              role="menuitem"
-              onClick={() => pick(o)}
-              className="flex w-14 flex-col items-center gap-1 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
-            >
-              <o.icon className="h-7 w-7" />
-              <span className="text-[11px] font-semibold leading-none [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{o.label}</span>
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Socialverse gradient (teal -> indigo -> violet), same as the logo and Follow buttons */}
+          <svg width="0" height="0" className="absolute" aria-hidden="true">
+            <defs>
+              <linearGradient id="sv-create-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#2DD4BF" />
+                <stop offset="0.5" stopColor="#6366F1" />
+                <stop offset="1" stopColor="#7C3AED" />
+              </linearGradient>
+            </defs>
+          </svg>
+          {/* Full screen width on mobile, the bar's inner width on desktop; centred on the + button. */}
+          <div role="menu" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-screen md:w-[517px] px-5 flex items-end justify-between">
+            {OPTIONS.map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                role="menuitem"
+                onClick={() => pick(o)}
+                className="flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
+              >
+                <o.icon className="h-7 w-7" strokeWidth={2.6} style={{ stroke: "url(#sv-create-grad)" }} />
+                <span className="text-[11px] font-semibold leading-none [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
