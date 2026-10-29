@@ -236,13 +236,27 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
                 <p className="text-sm">{error}</p>
                 <button type="button" onClick={() => setStarted(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black">Try again</button>
                 {typeof window !== "undefined" && window.self !== window.top && (
-                  <button
-                    type="button"
-                    onClick={() => window.open(window.location.href, "_blank", "noopener")}
-                    className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Naye tab mein kholein
-                  </button>
+                  <div className="flex w-full max-w-xs flex-col items-center gap-2">
+                    <p className="text-xs text-white/70">Naye tab mein app kholne ke liye ye link copy karke browser mein paste karein:</p>
+                    <input
+                      readOnly
+                      value={window.location.href}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="w-full rounded-md bg-white/10 px-2 py-1.5 text-xs text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(window.location.href).then(
+                          () => toast("Link copy ho gaya"),
+                          () => toast("Link select karke copy karein"),
+                        );
+                      }}
+                      className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Link copy karein
+                    </button>
+                  </div>
                 )}
               </div>
             )}
