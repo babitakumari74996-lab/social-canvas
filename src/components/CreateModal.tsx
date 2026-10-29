@@ -299,7 +299,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <Settings className="h-6 w-6" />
               </button>
             </div>
-            <div className="flex gap-7 overflow-x-auto px-4 pb-3 pt-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="overflow-x-auto touch-pan-x overscroll-x-contain pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-max gap-7 pl-6 pr-6">
               {[
                 { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
@@ -315,6 +316,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
                 </button>
               ))}
+              </div>
             </div>
             <div className="flex items-center justify-between px-4 py-2">
               <span className="inline-flex items-center gap-1 text-sm font-semibold">
