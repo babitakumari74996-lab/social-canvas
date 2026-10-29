@@ -127,6 +127,15 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
   const [liked, setLiked] = useState(post.likedByMe);
   const [saved, setSaved] = useState(post.savedByMe);
   const [expanded, setExpanded] = useState(false);
+  // Feed: comment / "view comments" open a small floating options panel above the action row instead of the post page.
+  const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menu]);
   const [draft, setDraft] = useState("");
   const isText = post.media_urls.length === 0;
   useMouseDragCarousel(scrollRef);
@@ -258,7 +267,23 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
       )}
 
       {/* actions */}
-      <div className="flex items-center gap-4 px-3 pt-2.5">
+      <div ref={menuRef} className="relative flex items-center gap-4 px-3 pt-2.5">
+        {menu && !withComments && (
+          <div className="absolute bottom-full left-3 mb-2 z-20 flex items-center gap-1 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+            <button type="button" aria-label="Like" onClick={() => like(!liked)} className="p-2 rounded-lg hover:bg-muted">
+              <Heart className={`h-5 w-5 ${liked ? "text-red-500 fill-red-500" : ""}`} />
+            </button>
+            <button type="button" aria-label="Share" onClick={() => { setMenu(false); ui.openShare(post, "post"); }} className="p-2 rounded-lg hover:bg-muted">
+              <Send className="h-5 w-5" />
+            </button>
+            <button type="button" aria-label="Save" onClick={() => { const next = !saved; setSaved(next); if (actions.isDemo) demoActions.toggleSave(post.id); toast(next ? "Saved to collection" : "Removed from saved"); }} className="p-2 rounded-lg hover:bg-muted">
+              <Bookmark className={`h-5 w-5 ${saved ? "fill-current" : ""}`} />
+            </button>
+            <button type="button" aria-label="More options" onClick={() => toast("Post options coming soon")} className="p-2 rounded-lg hover:bg-muted">
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </div>
+        )}
         <button type="button" aria-label="Like" onClick={() => like(!liked)} className="active:scale-90 transition-transform">
           {liked
             ? <Heart className="h-6 w-6 text-red-500 fill-red-500" />
@@ -269,9 +294,9 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
             <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
           </button>
         ) : (
-          <Link to="/post/$id" params={{ id: post.id }} aria-label="Comment" className="active:scale-90 transition-transform">
+          <button type="button" aria-label="Comment" onClick={() => setMenu((v) => !v)} className="active:scale-90 transition-transform">
             <MessageCircle className="h-6 w-6 -scale-x-100 hover:opacity-50" />
-          </Link>
+          </button>
         )}
         <button type="button" aria-label="Share" onClick={() => ui.openShare(post, "post")} className="active:scale-90 transition-transform">
           <Send className="h-6 w-6 hover:opacity-50" />
@@ -314,9 +339,9 @@ export function PostCard({ post, withComments = false, tall = false }: { post: U
           </div>
         )}
         {post.commentsCount > 0 && !withComments && (
-          <Link to="/post/$id" params={{ id: post.id }} className="block text-muted-foreground">
+          <button type="button" onClick={() => setMenu(true)} className="block text-left text-muted-foreground">
             View all {post.commentsCount === 1 ? "1 comment" : `${formatCount(post.commentsCount)} comments`}
-          </Link>
+          </button>
         )}
         {withComments && <CommentsSection postId={post.id} onSubmit={submitComment} draft={draft} setDraft={setDraft} />}
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground pt-0.5">{timeAgo(post.created_at)} ago</div>
