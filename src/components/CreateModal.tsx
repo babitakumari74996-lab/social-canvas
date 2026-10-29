@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -111,6 +111,159 @@ function bakeImage(src: string, filter: string): Promise<string> {
   });
 }
 
+/* Live camera for the reel pick: asks permission first, then records a clip that goes to the edit step. */
+function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: string) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const discardRef = useRef(false);
+  const [started, setStarted] = useState(false);
+  const [facing, setFacing] = useState<"user" | "environment">("environment");
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const stopTracks = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  // Start the camera only after the user taps "Allow" (this is what triggers the browser permission prompt).
+  useEffect(() => {
+    if (!started) return;
+    let cancelled = false;
+    setError(null);
+    (async () => {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: true });
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = s;
+        if (videoRef.current) {
+          videoRef.current.srcObject = s;
+          await videoRef.current.play().catch(() => {});
+        }
+      } catch {
+        if (!cancelled) setError("Camera ki permission nahi mili. Browser settings mein camera aur mic allow karein.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopTracks();
+    };
+  }, [started, facing]);
+
+  // Stop everything when the camera closes.
+  useEffect(() => () => {
+    discardRef.current = true;
+    if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+    stopTracks();
+  }, []);
+
+  const startRec = () => {
+    const s = streamRef.current;
+    if (!s) return;
+    chunksRef.current = [];
+    discardRef.current = false;
+    const mime = ["video/mp4", "video/webm;codecs=vp9", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? "";
+    const rec = new MediaRecorder(s, mime ? { mimeType: mime } : undefined);
+    rec.ondataavailable = (e) => {
+      if (e.data.size) chunksRef.current.push(e.data);
+    };
+    rec.onstop = () => {
+      if (discardRef.current) return;
+      const type = rec.mimeType || "video/webm";
+      const blob = new Blob(chunksRef.current, { type });
+      const ext = type.includes("mp4") ? "mp4" : "webm";
+      const file = new File([blob], `camera-${Date.now()}.${ext}`, { type });
+      onCapture(file, URL.createObjectURL(blob));
+    };
+    rec.start();
+    recRef.current = rec;
+    setRecording(true);
+  };
+
+  const stopRec = () => {
+    recRef.current?.stop();
+    setRecording(false);
+  };
+
+  const close = () => {
+    discardRef.current = true;
+    if (recRef.current && recRef.current.state !== "inactive") recRef.current.stop();
+    stopTracks();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-black text-white flex flex-col">
+      {!started ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+          <Camera className="h-12 w-12" />
+          <p className="text-lg font-semibold">Camera aur mic ki permission chahiye</p>
+          <p className="text-sm text-white/70">Reel record karne ke liye camera aur microphone ki zarurat hai.</p>
+          <button type="button" onClick={() => setStarted(true)} className="rounded-lg sv-gradient-bg px-6 py-2.5 font-semibold text-white">
+            Allow
+          </button>
+          <button type="button" onClick={close} className="text-sm text-white/70 underline">Cancel</button>
+        </div>
+      ) : (
+        <>
+          <div className="relative flex-1 overflow-hidden">
+            <video ref={videoRef} muted playsInline autoPlay className={`absolute inset-0 h-full w-full object-cover ${facing === "user" ? "-scale-x-100" : ""}`} />
+            {error && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 text-center">
+                <p className="text-sm">{error}</p>
+                <button type="button" onClick={() => setStarted(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black">Try again</button>
+              </div>
+            )}
+            <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4">
+              <button type="button" aria-label="Close camera" onClick={close} className="p-1"><X className="h-7 w-7" /></button>
+            </div>
+            <div className="absolute right-4 top-16 flex flex-col items-end gap-5 text-sm font-semibold">
+              {[
+                { label: "Music", icon: Music2 },
+                { label: "Speed", icon: Gauge },
+                { label: "Effects", icon: Sparkles },
+                { label: "Green screen", icon: ScanFace },
+              ].map((t) => (
+                <button key={t.label} type="button" onClick={() => toast(`${t.label} coming soon`)} className="flex items-center gap-2 drop-shadow">
+                  {t.label} <t.icon className="h-6 w-6" />
+                </button>
+              ))}
+            </div>
+            {recording && (
+              <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded bg-red-600 px-2 py-0.5 text-xs font-bold">REC</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between px-8 py-6">
+            <span className="h-10 w-10" />
+            <button
+              type="button"
+              aria-label={recording ? "Stop recording" : "Start recording"}
+              onClick={recording ? stopRec : startRec}
+              className="grid place-items-center h-20 w-20 rounded-full border-4 border-white/70"
+            >
+              {recording ? <Square className="h-8 w-8 fill-red-500 text-red-500" /> : <span className="h-16 w-16 rounded-full bg-red-500" />}
+            </button>
+            <button
+              type="button"
+              aria-label="Flip camera"
+              disabled={recording}
+              onClick={() => setFacing((f) => (f === "user" ? "environment" : "user"))}
+              className="grid place-items-center h-10 w-10 disabled:opacity-40"
+            >
+              <SwitchCamera className="h-7 w-7" />
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const { overlay, createMode } = useUI();
   const actions = useActions();
@@ -129,6 +282,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [alsoStory, setAlsoStory] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [coverIdx, setCoverIdx] = useState(0);
   const [frames, setFrames] = useState<string[]>([]);
   const [trimStart, setTrimStart] = useState(0);
@@ -148,7 +302,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setStep(createMode === "text" ? "text" : "pick");
       setDraft({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
       setCaption(""); setLocation(""); setMusic(""); setTextPost("");
-      setCover(null); setFrames([]);
+      setCover(null); setFrames([]); setCameraOpen(false);
       setTrimStart(0); setTrimEnd(0); setDuration(0); setVideoFilter("none");
       setTags(""); setAudience("everyone"); setAlsoStory(false);
     }
@@ -297,13 +451,25 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           )}
         </header>
 
+        {cameraOpen && mode === "video" && (
+          <CameraCapture
+            onClose={() => setCameraOpen(false)}
+            onCapture={(file, url) => {
+              setDraft({ files: [file], gallery: [], previews: [url], filter: "none", zoom: 1 });
+              setCover(null);
+              setCameraOpen(false);
+              setStep("edit");
+            }}
+          />
+        )}
+
         {/* body */}
         {step === "pick" && mode === "video" && (
           <div className="md:hidden flex-1 flex flex-col min-h-0 bg-background">
             <div className="overflow-x-auto touch-pan-x overscroll-x-contain pb-3 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <div className="flex w-max min-w-full justify-between gap-6 px-4">
               {[
-                { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
+                { label: "Camera", icon: Camera, action: () => setCameraOpen(true) },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
                 { label: "Templates", icon: LayoutTemplate, action: () => toast("Templates coming soon") },
                 { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
