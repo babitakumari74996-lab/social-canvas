@@ -118,6 +118,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
   const recRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const discardRef = useRef(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [started, setStarted] = useState(false);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [recording, setRecording] = useState(false);
@@ -217,6 +218,18 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
 
   return (
     <div className="fixed inset-0 z-[70] bg-black text-white flex flex-col">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onCapture(f, URL.createObjectURL(f));
+          e.target.value = "";
+        }}
+      />
       {!started ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
           <Camera className="h-12 w-12" />
@@ -224,6 +237,9 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           <p className="text-sm text-white/70">Reel record karne ke liye camera aur microphone ki zarurat hai.</p>
           <button type="button" onClick={() => setStarted(true)} className="rounded-lg sv-gradient-bg px-6 py-2.5 font-semibold text-white">
             Allow
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()} className="rounded-lg border border-white/40 px-6 py-2.5 text-sm font-semibold text-white">
+            Phone camera se record karein
           </button>
           <button type="button" onClick={close} className="text-sm text-white/70 underline">Cancel</button>
         </div>
@@ -235,29 +251,14 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 text-center">
                 <p className="text-sm">{error}</p>
                 <button type="button" onClick={() => setStarted(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black">Try again</button>
-                {typeof window !== "undefined" && window.self !== window.top && (
-                  <div className="flex w-full max-w-xs flex-col items-center gap-2">
-                    <p className="text-xs text-white/70">Naye tab mein app kholne ke liye ye link copy karke browser mein paste karein:</p>
-                    <input
-                      readOnly
-                      value={window.location.href}
-                      onFocus={(e) => e.currentTarget.select()}
-                      className="w-full rounded-md bg-white/10 px-2 py-1.5 text-xs text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(window.location.href).then(
-                          () => toast("Link copy ho gaya"),
-                          () => toast("Link select karke copy karein"),
-                        );
-                      }}
-                      className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Link copy karein
-                    </button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="rounded-lg sv-gradient-bg px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Phone camera se record karein
+                </button>
+
               </div>
             )}
             <div className="absolute top-0 inset-x-0 flex items-center justify-between p-4">
