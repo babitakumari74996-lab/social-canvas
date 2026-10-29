@@ -19,51 +19,75 @@ const OPTIONS: Option[] = [
   { label: "Live", icon: Radio },
 ];
 
+// Stagger between options (ms) and the slide duration (ms), shared by the open and close animations.
+const STAGGER_MS = 45;
+const SLIDE_MS = 260;
+// Time until the last option has finished sliding out; the menu unmounts after this.
+const CLOSE_MS = SLIDE_MS + (OPTIONS.length - 1) * STAGGER_MS;
+
 /**
- * Create button for the bottom nav (mobile) and the side nav (desktop). A click opens a small
- * menu of post types right next to the button instead of the full Create page. The /create
- * route still works when opened by URL.
+ * Create button for the bottom nav (mobile) and the side nav (desktop). A click opens a row of
+ * post types floating above the button instead of the full Create page. The /create route still
+ * works when opened by URL.
  */
 export function CreateNavButton({
   className,
-  placement,
   children,
 }: {
   className: string;
-  placement: "up" | "right";
+  placement?: "up" | "right";
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // "closing" keeps the menu mounted while the options slide back down.
+  const [closing, setClosing] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const timer = useRef<number | null>(null);
+
+  const requestClose = () => {
+    if (!open || closing) return;
+    setClosing(true);
+    timer.current = window.setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+      timer.current = null;
+    }, CLOSE_MS);
+  };
+
+  const toggle = () => {
+    if (open && !closing) requestClose();
+    else if (!open) setOpen(true);
+  };
 
   useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    if (!open || closing) return;
+    const outside = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) requestClose();
     };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", close);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && requestClose();
+    document.addEventListener("mousedown", outside);
     document.addEventListener("keydown", esc);
     return () => {
-      document.removeEventListener("mousedown", close);
+      document.removeEventListener("mousedown", outside);
       document.removeEventListener("keydown", esc);
     };
-  }, [open]);
+    // requestClose only reads `open`/`closing`, which are listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, closing]);
+
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
 
   const pick = (o: Option) => {
-    setOpen(false);
+    requestClose();
     if (o.mode) ui.openCreate(o.mode);
     else toast(`${o.label} is coming soon`);
   };
 
-  const pos =
-    placement === "up"
-      ? "bottom-full left-1/2 -translate-x-1/2 mb-3"
-      : "left-full top-1/2 -translate-y-1/2 ml-3";
-
   return (
     <div ref={wrapRef} className="relative flex flex-1 h-full items-stretch">
-      <button type="button" aria-label="Create" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={className}>
+      <button type="button" aria-label="Create" aria-expanded={open} onClick={toggle} className={className}>
         {children}
       </button>
       {open && (
@@ -86,8 +110,12 @@ export function CreateNavButton({
                 type="button"
                 role="menuitem"
                 onClick={() => pick(o)}
-                style={{ animationDelay: `${i * 45}ms` }}
-                className="sv-menu-up flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
+                style={{
+                  // Open: slide up, first option first. Close: slide back down, last option first.
+                  animationName: closing ? "sv-menu-down" : "sv-menu-up",
+                  animationDelay: `${(closing ? OPTIONS.length - 1 - i : i) * STAGGER_MS}ms`,
+                }}
+                className="sv-menu-anim flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
               >
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white ring-1 ring-black/5 shadow-md">
                   <o.icon className="h-7 w-7" strokeWidth={2.6} style={{ stroke: "url(#sv-create-grad)" }} />

@@ -313,11 +313,17 @@ html[data-sh="1"] [data-bar] { transition: none !important; }
   background: linear-gradient(90deg, #2DD4BF, #6366F1, #7C3AED);
 }
 
-/* Create menu: each option slides up from below when the menu opens (staggered by its index). */
+/* Create menu: options slide up from below on open and back down on close, staggered by index. */
 @keyframes sv-menu-up {
   from { opacity: 0; transform: translate3d(0, 28px, 0); }
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-.sv-menu-up {
-  animation: sv-menu-up 260ms cubic-bezier(.2,.8,.2,1) both;
+@keyframes sv-menu-down {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(0, 28px, 0); }
+}
+.sv-menu-anim {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(.2,.8,.2,1);
+  animation-fill-mode: both;
 }
