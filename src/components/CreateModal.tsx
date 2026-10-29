@@ -33,7 +33,7 @@ const TEXT_THEMES = [
 ];
 
 type Mode = "photo" | "video" | "text";
-type Step = "pick" | "filter" | "caption" | "text";
+type Step = "pick" | "filter" | "edit" | "caption" | "text";
 
 interface Draft {
   files: File[];
@@ -41,6 +41,49 @@ interface Draft {
   previews: string[]; // object URLs / gallery urls
   filter: string;
   zoom: number;
+}
+
+// Waits for a media event, or gives up after a short time so a broken clip cannot hang the editor.
+function once(el: HTMLMediaElement, event: string): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => { window.clearTimeout(t); el.removeEventListener(event, done); resolve(); };
+    const t = window.setTimeout(done, 4000);
+    el.addEventListener(event, done);
+  });
+}
+
+/** Still frames spread across a clip (9:16 JPEG data URLs), used to pick the reel cover. */
+async function captureFrames(src: string, count = 8): Promise<string[]> {
+  const v = document.createElement("video");
+  v.muted = true;
+  v.playsInline = true;
+  v.preload = "auto";
+  v.src = src;
+  await once(v, "loadedmetadata");
+  if (!v.duration || !isFinite(v.duration) || !v.videoWidth) return [];
+  const W = 108, H = 192; // 9:16 thumbnails
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext("2d");
+  if (!ctx) return [];
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    v.currentTime = v.duration * (0.05 + (0.9 * i) / Math.max(1, count - 1));
+    await once(v, "seeked");
+    try {
+      // cover-fit the frame into the 9:16 box
+      const k = Math.max(W / v.videoWidth, H / v.videoHeight);
+      const dw = v.videoWidth * k, dh = v.videoHeight * k;
+      ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      out.push(c.toDataURL("image/jpeg", 0.8));
+    } catch {
+      break;
+    }
+  }
+  v.removeAttribute("src");
+  v.load();
+  return out;
 }
 
 function bakeImage(src: string, filter: string): Promise<string> {
@@ -85,6 +128,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [asReel, setAsReel] = useState(true);
   const [alsoStory, setAlsoStory] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cover, setCover] = useState<string | null>(null);
+  const [frames, setFrames] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const storyInput = useRef<HTMLInputElement>(null);
@@ -95,8 +140,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setStep(createMode === "text" ? "text" : "pick");
       setDraft({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
       setCaption(""); setLocation(""); setMusic(""); setTextPost("");
+      setCover(null); setFrames([]);
     }
   }, [open, createMode]);
+
+  // Reel edit step: sample frames from the clip for the cover picker.
+  const videoSrc = mode === "video" ? draft.previews[0] : undefined;
+  useEffect(() => {
+    if (!open || step !== "edit" || !videoSrc) return;
+    let cancelled = false;
+    setFrames([]);
+    captureFrames(videoSrc).then((f) => {
+      if (cancelled) return;
+      setFrames(f);
+      setCover((c) => c ?? f[0] ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [open, step, videoSrc]);
 
   if (!open) return null;
 
@@ -118,12 +178,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!files?.length) return;
     const f = files[0];
     setDraft({ files: [f], gallery: [], previews: [URL.createObjectURL(f)], filter: "none", zoom: 1 });
-    setStep("caption");
+    setCover(null);
+    setStep("edit");
   };
 
   const pickGalleryVideo = (v: { url: string; poster: string }) => {
     setDraft({ files: [], gallery: [v.url], previews: [v.url], filter: "none", zoom: 1 });
-    setStep("caption");
+    setCover(null);
+    setStep("edit");
   };
 
   const share = async () => {
@@ -149,6 +211,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           galleryUrl: draft.gallery[0],
           caption,
           music: music || null,
+          cover: cover ?? undefined,
         });
         toast("Reel shared 🎬");
         close();
@@ -172,7 +235,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     mode === null ? "Create new post"
     : step === "pick" ? (mode === "photo" ? "Create new photo post" : mode === "video" ? "Create new reel" : "New Twit")
     : step === "filter" ? "Edit media"
-    : step === "caption" ? "Create new post"
+    : step === "edit" ? "Edit reel"
+    : step === "caption" ? (mode === "video" ? "New reel" : "Create new post")
     : "New Twit";
 
   const canNext = mode === "video" ? !!draft.previews.length : mode === "text" ? !!textPost.trim() : !!draft.previews.length;
@@ -180,7 +244,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
   const onNext = () => {
     if (nextLabel === "Share") return share();
-    if (step === "filter") setStep(mode === "video" ? "caption" : "caption");
+    if (step === "filter") setStep("caption");
+    if (step === "edit") setStep("caption");
   };
 
   return (
@@ -193,7 +258,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       <div className={page ? "bg-card w-full flex-1 flex flex-col animate-in-fade" : "bg-card w-full h-full md:h-[min(660px,88vh)] md:max-w-[900px] md:rounded-2xl flex flex-col overflow-hidden animate-in-fade"}>
         {/* header */}
         <header className="flex items-center justify-between border-b border-border px-3 h-12 shrink-0">
-          <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : setStep("pick"))} className="p-1 hover:opacity-60">
+          <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : step === "caption" && mode === "video" ? setStep("edit") : setStep("pick"))} className="p-1 hover:opacity-60">
             {step === "pick" || step === "text" ? (page ? null : <X className="h-5 w-5" />) : <ChevronLeft className="h-5 w-5" />}
           </button>
           <span className="font-semibold text-[15px]">{title}</span>
@@ -350,11 +415,54 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           </div>
         )}
 
+        {step === "edit" && mode === "video" && (
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
+            <div className="flex-1 grid place-items-center bg-black/90 p-4 min-h-[300px]">
+              <video src={draft.previews[0]} className="max-h-[70vh] max-w-full aspect-[9/16] object-contain rounded-lg" autoPlay muted loop playsInline />
+            </div>
+            <div className="md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border p-4 space-y-5 overflow-y-auto">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Cover</p>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {frames.length === 0 && <span className="text-xs text-muted-foreground">Loading frames…</span>}
+                  {frames.map((f, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setCover(f)}
+                      aria-label={`Cover frame ${i + 1}`}
+                      className={`shrink-0 w-14 h-24 rounded-md overflow-hidden border-2 ${cover === f ? "border-primary" : "border-transparent"}`}
+                    >
+                      <img src={f} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Audio</p>
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <Music2 className="h-4 w-4 text-muted-foreground" />
+                  <input
+                    value={music}
+                    onChange={(e) => setMusic(e.target.value)}
+                    placeholder="Add music name (e.g. Lo-fi beats)"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {step === "caption" && (
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             <div className="flex-1 grid place-items-center bg-black/90 p-4 min-h-[260px]">
               {mode === "video" ? (
-                <video src={draft.previews[0]} className="max-h-full max-w-full md:aspect-[9/16] object-contain rounded-lg" autoPlay muted loop playsInline />
+                cover ? (
+                  <img src={cover} alt="Reel cover" className="h-[min(56vh,420px)] aspect-[9/16] object-cover rounded-lg shadow-lg md:h-auto md:max-h-full md:max-w-full" />
+                ) : (
+                  <video src={draft.previews[0]} className="max-h-full max-w-full md:aspect-[9/16] object-contain rounded-lg" autoPlay muted loop playsInline />
+                )
               ) : (
                 <MediaImg
                   src={draft.previews[0]}
@@ -381,17 +489,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
               </div>
-              {mode === "video" && (
-                <div className="flex items-center gap-2 border-b border-border pb-2">
-                  <Music2 className="h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={music}
-                    onChange={(e) => setMusic(e.target.value)}
-                    placeholder="Add music name (e.g. Lo-fi beats)"
-                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  />
-                </div>
-              )}
               {mode === "video" && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={asReel} onChange={(e) => setAsReel(e.target.checked)} className="accent-[#0095F6]" />

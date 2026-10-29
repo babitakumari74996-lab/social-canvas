@@ -535,11 +535,11 @@ export function useActions() {
       const url = input.file ? fileToDataUrl(input.file) : input.galleryUrl!;
       demoActions.addStory(url);
     },
-    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null }) => {
+    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null; cover?: string }) => {
       if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption });
       if (input.file) {
-        // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint.
-        const poster = await makePoster(input.file);
+        // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint (the chosen cover).
+        const poster = input.cover ?? (await makePoster(input.file));
         const key = `m-${crypto.randomUUID()}`;
         try {
           await saveMedia(key, input.file);
@@ -551,7 +551,7 @@ export function useActions() {
         return;
       }
       const url = input.galleryUrl!;
-      const poster = DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
+      const poster = input.cover ?? DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
       demoActions.addReel({ videoUrl: url, caption: input.caption, music: input.music, poster });
     },
     sendMessage: (receiverId: string, content: string) => (userId ? real.sendMessage(receiverId, content) : demoActions.sendMessage(receiverId, content)),
