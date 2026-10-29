@@ -62,15 +62,18 @@ function MoodsPage() {
               </p>
             )}
           </div>
-          <div className="w-1/2 min-w-0">
-            {twit.map((p) => (
-              <TwitPost key={p.id} post={p} />
-            ))}
-            {twit.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-16">
-                No posts with a photo or video and a message yet.
-              </p>
-            )}
+          <div className="w-1/2 min-w-0 flex justify-center">
+            {/* same width as the Home post column */}
+            <div className="w-full max-w-[470px] md:max-w-[518px]">
+              {twit.map((p) => (
+                <TwitPost key={p.id} post={p} />
+              ))}
+              {twit.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-16">
+                  No posts with a photo or video and a message yet.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
