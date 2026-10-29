@@ -145,7 +145,9 @@ export function AppShell() {
   let barHide = onReels ? 1 : 0;
   if (swipeP) {
     if (onReels) barHide = toHides ? 1 : 1 - swipeAmt;
-    else barHide = toHides ? swipeAmt : 0;
+    // Home -> Reels: the top bars stay in place while the drag is in progress (no gap showing behind them);
+    // they slide up once the swipe commits.
+    else barHide = toHides && swipeP.committed ? 1 : 0;
   }
   const swiping = !!swipeP && !swipeP.committed;
   // Floating window opened from a corner icon (desktop). One at a time; clicking the same icon again closes it.
