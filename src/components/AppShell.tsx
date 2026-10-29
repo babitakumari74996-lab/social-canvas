@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { SwipeTabs, type SwipeTab } from "@/components/SwipeTabs";
 import { FloatingPanel, type DockPanel } from "@/components/FloatingPanel";
+import { CreateNavButton } from "@/components/CreateMenu";
 import { MenuSheet, MenuList } from "@/components/MenuSheet";
 import { Avatar } from "@/components/Avatar";
 import { useMe } from "@/lib/data";
@@ -425,12 +426,12 @@ export function AppShell() {
         <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
           <Film className="h-6 w-6" />
         </Link>
-        <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
+        <CreateNavButton className={cell(navIndex === 2)} placement="up">
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
-        </Link>
+        </CreateNavButton>
         <Link to="/moods" aria-label="Moods" className={cell(navIndex === 3)}>
           <Smile className="h-6 w-6" />
         </Link>
@@ -514,12 +515,12 @@ export function AppShell() {
         <Link to="/reels" aria-label="Reels" className={cell(navIndex === 1)}>
           <Film className="h-6 w-6" />
         </Link>
-        <Link to="/create" aria-label="Create" className={cell(navIndex === 2)}>
+        <CreateNavButton className={cell(navIndex === 2)} placement="up">
           <span className="block h-6 w-6 rounded-[7px] border-2 border-current relative">
             <span className="absolute inset-0 m-auto h-3 w-0.5 bg-current" />
             <span className="absolute inset-0 m-auto h-0.5 w-3 bg-current" />
           </span>
-        </Link>
+        </CreateNavButton>
         <Link to="/moods" aria-label="Moods" className={cell(navIndex === 3)}>
           <Smile className="h-6 w-6" />
         </Link>
