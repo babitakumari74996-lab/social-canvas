@@ -299,6 +299,13 @@ export type Database = {
           id: string
           user_id: string
           video_url: string
+        
+          cover_url: string | null
+          trim_start: number | null
+          trim_end: number | null
+          video_filter: string | null
+          audience: string
+          tagged: string[]
         }
         Insert: {
           caption?: string | null
@@ -306,6 +313,13 @@ export type Database = {
           id?: string
           user_id: string
           video_url: string
+        
+          cover_url?: string | null
+          trim_start?: number | null
+          trim_end?: number | null
+          video_filter?: string | null
+          audience?: string
+          tagged?: string[]
         }
         Update: {
           caption?: string | null
@@ -313,6 +327,13 @@ export type Database = {
           id?: string
           user_id?: string
           video_url?: string
+        
+          cover_url?: string | null
+          trim_start?: number | null
+          trim_end?: number | null
+          video_filter?: string | null
+          audience?: string
+          tagged?: string[]
         }
         Relationships: [
           {

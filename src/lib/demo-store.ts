@@ -347,10 +347,12 @@ export const demoActions = {
     const st: UStory = { id: nid("s"), user_id: DEMO_ME_ID, media_url: mediaUrl, created_at: new Date().toISOString() };
     set((s) => ({ ...s, stories: [...s.stories, st] }));
   },
-  addReel(input: { videoUrl: string; caption: string; music?: string | null; poster?: string | null }) {
+  addReel(input: { videoUrl: string; caption: string; music?: string | null; poster?: string | null; edits?: { cover?: string; trimStart?: number; trimEnd?: number; filter?: string; audience?: "everyone" | "followers"; tagged?: string[] } }) {
     const r: UReel = {
       id: nid("r"), user_id: DEMO_ME_ID, video_url: input.videoUrl, poster: input.poster ?? null,
       caption: input.caption, music: input.music ?? "Original audio · aarav_sharma",
+      trimStart: input.edits?.trimStart ?? null, trimEnd: input.edits?.trimEnd ?? null,
+      videoFilter: input.edits?.filter ?? null, audience: input.edits?.audience ?? "everyone", tagged: input.edits?.tagged ?? [],
       created_at: new Date().toISOString(), profiles: demoMe(),
       likes: 0, likedByMe: false, commentsCount: 0,
     };

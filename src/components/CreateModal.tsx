@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
-import { useActions } from "@/lib/data";
+import { useActions, dataUrlToFile } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 
@@ -130,6 +130,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
   const [frames, setFrames] = useState<string[]>([]);
+  const [trimStart, setTrimStart] = useState(0);
+  const [trimEnd, setTrimEnd] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [videoFilter, setVideoFilter] = useState("none");
+  const [tags, setTags] = useState("");
+  const [audience, setAudience] = useState<"everyone" | "followers">("everyone");
+  const editVideo = useRef<HTMLVideoElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const storyInput = useRef<HTMLInputElement>(null);
@@ -141,6 +148,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setDraft({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
       setCaption(""); setLocation(""); setMusic(""); setTextPost("");
       setCover(null); setFrames([]);
+      setTrimStart(0); setTrimEnd(0); setDuration(0); setVideoFilter("none");
+      setTags(""); setAudience("everyone"); setAlsoStory(false);
     }
   }, [open, createMode]);
 
@@ -206,13 +215,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         close();
         navigate({ to: "/feed" });
       } else if (mode === "video") {
+        const tagged = tags.split(/[\s,]+/).map((t) => t.replace(/^@/, "").trim()).filter(Boolean);
+        const trimmed = duration > 0 && (trimStart > 0.05 || trimEnd < duration - 0.05);
         await actions.createReel({
           file: draft.gallery.length ? undefined : draft.files[0],
           galleryUrl: draft.gallery[0],
           caption,
           music: music || null,
-          cover: cover ?? undefined,
+          edits: {
+            cover: cover ?? undefined,
+            trimStart: trimmed ? trimStart : undefined,
+            trimEnd: trimmed ? trimEnd : undefined,
+            filter: videoFilter,
+            audience,
+            tagged,
+          },
         });
+        if (alsoStory && cover) await actions.createStory({ file: await dataUrlToFile(cover, "cover.jpg") });
         toast("Reel shared 🎬");
         close();
         navigate({ to: "/reels" });
@@ -418,7 +437,29 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {step === "edit" && mode === "video" && (
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             <div className="flex-1 grid place-items-center bg-black/90 p-4 min-h-[300px]">
-              <video src={draft.previews[0]} className="max-h-[70vh] max-w-full aspect-[9/16] object-contain rounded-lg" autoPlay muted loop playsInline />
+              <video
+                ref={editVideo}
+                src={draft.previews[0]}
+                style={{ filter: videoFilter === "none" ? undefined : videoFilter }}
+                className="max-h-[70vh] max-w-full aspect-[9/16] object-contain rounded-lg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                onLoadedMetadata={(e) => {
+                  const d = e.currentTarget.duration;
+                  if (isFinite(d) && d > 0) {
+                    setDuration(d);
+                    setTrimEnd((t) => t || d);
+                  }
+                }}
+                onTimeUpdate={(e) => {
+                  // Play only the trimmed range.
+                  const v = e.currentTarget;
+                  const end = trimEnd || duration;
+                  if (end && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
+                }}
+              />
             </div>
             <div className="md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border p-4 space-y-5 overflow-y-auto">
               <div>
@@ -434,6 +475,50 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       className={`shrink-0 w-14 h-24 rounded-md overflow-hidden border-2 ${cover === f ? "border-primary" : "border-transparent"}`}
                     >
                       <img src={f} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {duration > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Trim</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                    <span>Start {trimStart.toFixed(1)}s</span>
+                    <span>End {trimEnd.toFixed(1)}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(0, duration - 0.5)}
+                    step={0.1}
+                    value={trimStart}
+                    onChange={(e) => setTrimStart(Math.max(0, Math.min(Number(e.target.value), trimEnd - 0.5)))}
+                    aria-label="Trim start"
+                    className="w-full accent-[#6366F1]"
+                  />
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={duration}
+                    step={0.1}
+                    value={trimEnd}
+                    onChange={(e) => setTrimEnd(Math.min(duration, Math.max(Number(e.target.value), trimStart + 0.5)))}
+                    aria-label="Trim end"
+                    className="w-full accent-[#6366F1]"
+                  />
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Filter</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {FILTERS.map((f) => (
+                    <button
+                      key={f.name}
+                      type="button"
+                      onClick={() => setVideoFilter(f.css)}
+                      className={`shrink-0 text-xs px-2.5 py-1 rounded-full border ${videoFilter === f.css ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+                    >
+                      {f.name}
                     </button>
                   ))}
                 </div>
@@ -493,6 +578,35 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={asReel} onChange={(e) => setAsReel(e.target.checked)} className="accent-[#0095F6]" />
                   Share as Reel (recommended)
+                </label>
+              )}
+              {mode === "video" && (
+                <div className="flex items-center gap-2 border-b border-border pb-2">
+                  <input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder="Tag people (e.g. @rohan, @priya)"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+              )}
+              {mode === "video" && (
+                <label className="flex items-center justify-between gap-2 text-sm">
+                  <span>Audience</span>
+                  <select
+                    value={audience}
+                    onChange={(e) => setAudience(e.target.value as "everyone" | "followers")}
+                    className="bg-transparent text-sm outline-none"
+                  >
+                    <option value="everyone">Everyone</option>
+                    <option value="followers">Followers only</option>
+                  </select>
+                </label>
+              )}
+              {mode === "video" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={alsoStory} onChange={(e) => setAlsoStory(e.target.checked)} className="accent-[#0095F6]" />
+                  Also share to your story (cover)
                 </label>
               )}
               {mode === "photo" && (

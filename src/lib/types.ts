@@ -51,6 +51,11 @@ export interface UReel {
   likes: number;
   likedByMe: boolean;
   commentsCount: number;
+  trimStart?: number | null;
+  trimEnd?: number | null;
+  videoFilter?: string | null;
+  audience?: "everyone" | "followers";
+  tagged?: string[];
 }
 
 export interface UComment {

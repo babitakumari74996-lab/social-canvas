@@ -221,16 +221,17 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
     queryFn: async (): Promise<UReel[]> => {
       const { data: rows } = await (await getSupabase())
         .from("reels")
-        .select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`)
+        .select(`id, user_id, video_url, caption, created_at, cover_url, trim_start, trim_end, video_filter, audience, tagged, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
         .limit(50);
-      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; profiles: Record<string, unknown> }[];
+      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; cover_url: string | null; trim_start: number | null; trim_end: number | null; video_filter: string | null; audience: "everyone" | "followers"; tagged: string[] | null; profiles: Record<string, unknown> }[];
       if (reels.length === 0) return [];
       const ids = reels.map((r) => r.id);
       void ids;
       return reels.map((r) => ({
-        id: r.id, user_id: r.user_id, video_url: r.video_url, poster: null,
+        id: r.id, user_id: r.user_id, video_url: r.video_url, poster: r.cover_url ?? null,
         caption: r.caption, music: null, created_at: r.created_at,
+        trimStart: r.trim_start, trimEnd: r.trim_end, videoFilter: r.video_filter, audience: r.audience, tagged: r.tagged ?? [],
         profiles: supabaseProfile(r.profiles, r.user_id),
         likes: 0, likedByMe: false, commentsCount: 0,
       }));
@@ -494,10 +495,22 @@ export function useActions() {
       });
       qc.invalidateQueries({ queryKey: ["stories", userId] });
     },
-    async createReel(input: { file?: File; galleryUrl?: string; caption: string }) {
+    async createReel(input: { file?: File; galleryUrl?: string; caption: string; edits?: { cover?: string; trimStart?: number; trimEnd?: number; filter?: string; audience?: "everyone" | "followers"; tagged?: string[] } }) {
       if (!userId) return;
       const url = input.file ? await uploadMedia(userId, input.file) : input.galleryUrl!;
-      await (await getSupabase()).from("reels").insert({ user_id: userId, video_url: url, caption: input.caption || null });
+      const e = input.edits ?? {};
+      const coverPath = e.cover ? await uploadMedia(userId, await dataUrlToFile(e.cover, "cover.jpg")) : null;
+      await (await getSupabase()).from("reels").insert({
+        user_id: userId,
+        video_url: url,
+        caption: input.caption || null,
+        cover_url: coverPath,
+        trim_start: e.trimStart ?? null,
+        trim_end: e.trimEnd ?? null,
+        video_filter: e.filter && e.filter !== "none" ? e.filter : null,
+        audience: e.audience ?? "everyone",
+        tagged: e.tagged ?? [],
+      });
       qc.invalidateQueries({ queryKey: ["reels", userId] });
     },
     async sendMessage(receiverId: string, content: string) {
@@ -535,24 +548,24 @@ export function useActions() {
       const url = input.file ? fileToDataUrl(input.file) : input.galleryUrl!;
       demoActions.addStory(url);
     },
-    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null; cover?: string }) => {
-      if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption });
+    createReel: async (input: { file?: File; galleryUrl?: string; caption: string; music?: string | null; edits?: { cover?: string; trimStart?: number; trimEnd?: number; filter?: string; audience?: "everyone" | "followers"; tagged?: string[] } }) => {
+      if (userId) return real.createReel({ file: input.file, galleryUrl: input.galleryUrl, caption: input.caption, edits: input.edits });
       if (input.file) {
         // Keep the video in IndexedDB (survives reload) and a poster frame for the first paint (the chosen cover).
-        const poster = input.cover ?? (await makePoster(input.file));
+        const poster = input.edits?.cover ?? (await makePoster(input.file));
         const key = `m-${crypto.randomUUID()}`;
         try {
           await saveMedia(key, input.file);
-          demoActions.addReel({ videoUrl: `idb:${key}`, caption: input.caption, music: input.music, poster });
+          demoActions.addReel({ edits: input.edits, videoUrl: `idb:${key}`, caption: input.caption, music: input.music, poster });
           void ensureMedia();
         } catch {
-          demoActions.addReel({ videoUrl: objectUrl(input.file), caption: input.caption, music: input.music, poster });
+          demoActions.addReel({ edits: input.edits, videoUrl: objectUrl(input.file), caption: input.caption, music: input.music, poster });
         }
         return;
       }
       const url = input.galleryUrl!;
-      const poster = input.cover ?? DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
-      demoActions.addReel({ videoUrl: url, caption: input.caption, music: input.music, poster });
+      const poster = input.edits?.cover ?? DEMO_VIDEO_GALLERY.find((g) => g.url === url)?.poster ?? null;
+      demoActions.addReel({ edits: input.edits, videoUrl: url, caption: input.caption, music: input.music, poster });
     },
     sendMessage: (receiverId: string, content: string) => (userId ? real.sendMessage(receiverId, content) : demoActions.sendMessage(receiverId, content)),
     updateProfile: (patch: { display_name?: string; bio?: string; avatar_url?: string }) => (userId ? real.updateProfile(patch) : demoActions.updateProfile(patch)),
@@ -572,4 +585,10 @@ function demoReel(r: UReel): UReel {
 
 function objectUrl(file: File): string {
   return URL.createObjectURL(file);
+}
+
+/** A data URL (e.g. a frame captured in the editor) as a File, for upload. */
+export async function dataUrlToFile(dataUrl: string, name: string): Promise<File> {
+  const blob = await (await fetch(dataUrl)).blob();
+  return new File([blob], name, { type: blob.type || "image/jpeg" });
 }

@@ -333,6 +333,7 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           ref={videoRef}
           src={reel.video_url}
           poster={reel.poster ?? undefined}
+          style={{ filter: reel.videoFilter && reel.videoFilter !== "none" ? reel.videoFilter : undefined }}
           preload="auto"
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
           // With a poster, reveal the video only once it is past its first frames (uploaded clips often
@@ -345,6 +346,10 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
           autoPlay={false}
           onTimeUpdate={(e) => {
             const v = e.currentTarget;
+            // Trimmed reels loop inside their range.
+            const start = reel.trimStart ?? 0;
+            const end = reel.trimEnd ?? 0;
+            if (end && (v.currentTime >= end || v.currentTime < start)) v.currentTime = start;
             if (v.duration) setProgress((v.currentTime / v.duration) * 100);
           }}
         />
@@ -382,6 +387,9 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
             </div>
             {reel.caption && (
               <p className="mt-2 text-sm leading-snug line-clamp-2 drop-shadow">{reel.caption}</p>
+            )}
+            {reel.tagged && reel.tagged.length > 0 && (
+              <p className="mt-1 text-xs text-white/85 drop-shadow">with {reel.tagged.map((t) => "@" + t).join(" ")}</p>
             )}
             <button
               type="button"
