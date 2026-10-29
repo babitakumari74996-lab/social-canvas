@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, Images } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -292,25 +292,40 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {/* body */}
         {step === "pick" && mode === "video" && (
           <div className="md:hidden flex-1 flex flex-col min-h-0 bg-background">
-            <div className="flex items-start justify-around px-3 pt-4 pb-3">
-              <button type="button" onClick={() => videoInput.current?.click()} className="flex flex-col items-center gap-1.5 w-20">
-                <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
-                  <Camera className="h-6 w-6" />
-                </span>
-                <span className="text-xs font-medium">Camera</span>
+            <div className="flex justify-end px-4 pt-3">
+              <button type="button" aria-label="Settings" onClick={() => toast("Settings coming soon")} className="p-1 hover:opacity-60">
+                <Settings className="h-6 w-6" />
               </button>
-              <button type="button" onClick={() => videoInput.current?.click()} className="flex flex-col items-center gap-1.5 w-20">
-                <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
-                  <ListVideo className="h-6 w-6" />
-                </span>
-                <span className="text-xs font-medium">Upload</span>
-              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[
+                { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
+                { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
+                { label: "Templates", icon: LayoutTemplate, action: () => toast("Templates coming soon") },
+                { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
+                { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
+                { label: "Effects", icon: Sparkles, action: () => toast("Effects coming soon") },
+                { label: "Upload", icon: Images, action: () => videoInput.current?.click() },
+              ].map((t) => (
+                <button key={t.label} type="button" onClick={t.action} className="flex shrink-0 flex-col items-center gap-1.5 w-20">
+                  <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
+                    <t.icon className="h-6 w-6" />
+                  </span>
+                  <span className="text-xs font-medium text-center leading-tight">{t.label}</span>
+                </button>
+              ))}
             </div>
             <div className="flex items-center justify-between px-4 py-2">
               <span className="inline-flex items-center gap-1 text-sm font-semibold">
                 Gallery <ChevronDown className="h-4 w-4" />
               </span>
-              <span className="text-xs text-muted-foreground">Sample clips</span>
+              <button
+                type="button"
+                onClick={() => toast("Select multiple coming soon")}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium"
+              >
+                <Check className="h-4 w-4" /> Select multiple
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto">
               <div className="grid grid-cols-3 gap-px">
