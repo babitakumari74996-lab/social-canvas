@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions } from "@/lib/data";
@@ -156,7 +156,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       } else {
         if (!textPost.trim()) return;
         await actions.createPost({ files: [], galleryUrls: [], caption: textPost.trim() });
-        toast("Text post shared ✅");
+        toast("Twit shared ✅");
         close();
         navigate({ to: "/feed" });
       }
@@ -170,10 +170,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
   const title =
     mode === null ? "Create new post"
-    : step === "pick" ? (mode === "photo" ? "Create new photo post" : mode === "video" ? "Create new reel" : "New text post")
+    : step === "pick" ? (mode === "photo" ? "Create new photo post" : mode === "video" ? "Create new reel" : "New Twit")
     : step === "filter" ? "Edit media"
     : step === "caption" ? "Create new post"
-    : "New text post";
+    : "New Twit";
 
   const canNext = mode === "video" ? !!draft.previews.length : mode === "text" ? !!textPost.trim() : !!draft.previews.length;
   const nextLabel = mode === "video" ? (step === "caption" ? "Share" : "Next") : step === "filter" ? "Next" : "Share";
@@ -224,9 +224,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </button>
                 <button type="button" onClick={() => { setMode("text"); setStep("text"); }} className="bg-card p-8 flex flex-col items-center gap-3 hover:bg-muted">
                   <TypeIcon className="h-10 w-10 text-primary" />
-                  <span className="font-semibold">Text</span>
+                  <span className="font-semibold">Twit</span>
                   <span className="text-xs text-muted-foreground">Share a thought on a gradient</span>
                 </button>
+                {([
+                  { label: "Mood", desc: "Share how you feel today", icon: Smile },
+                  { label: "Today", desc: "Post a moment from your day", icon: CalendarClock },
+                  { label: "Live", desc: "Go live with your followers", icon: Radio },
+                ] as const).map((o) => (
+                  <button key={o.label} type="button" onClick={() => toast(`${o.label} is coming soon`)} className="bg-card p-8 flex flex-col items-center gap-3 hover:bg-muted">
+                    <o.icon className="h-10 w-10 text-primary" />
+                    <span className="font-semibold">{o.label}</span>
+                    <span className="text-xs text-muted-foreground">{o.desc}</span>
+                  </button>
+                ))}
               </div>
             )}
 
