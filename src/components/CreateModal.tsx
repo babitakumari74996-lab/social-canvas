@@ -299,7 +299,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <Settings className="h-6 w-6" />
               </button>
             </div>
-            <div className="flex gap-5 overflow-x-auto px-4 pb-3 pt-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-7 overflow-x-auto px-4 pb-3 pt-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
@@ -308,9 +308,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
                 { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
               ].map((t) => (
-                <button key={t.label} type="button" onClick={t.action} className="flex w-16 shrink-0 snap-start flex-col items-center gap-1.5">
-                  <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
-                    <t.icon className="h-6 w-6" />
+                <button key={t.label} type="button" onClick={t.action} className="flex w-16 shrink-0 snap-start flex-col items-center gap-2">
+                  <span className="grid place-items-center h-16 w-16 rounded-full bg-muted">
+                    <t.icon className="h-8 w-8" />
                   </span>
                   <span className="text-[11px] font-medium text-center leading-tight">{t.label}</span>
                 </button>
