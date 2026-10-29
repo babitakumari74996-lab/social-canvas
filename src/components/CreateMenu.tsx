@@ -88,7 +88,9 @@ export function CreateNavButton({
                 onClick={() => pick(o)}
                 className="flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
               >
-                <o.icon className="h-7 w-7" strokeWidth={2.6} style={{ stroke: "url(#sv-create-grad)" }} />
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/60 backdrop-blur-sm ring-1 ring-white/25 shadow-md">
+                  <o.icon className="h-7 w-7" strokeWidth={2.6} style={{ stroke: "url(#sv-create-grad)" }} />
+                </span>
                 <span className="text-[11px] font-semibold leading-none [text-shadow:0_1px_3px_rgba(0,0,0,0.7)]">{o.label}</span>
               </button>
             ))}
