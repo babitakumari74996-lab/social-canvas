@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -499,7 +499,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       <div className={page ? "bg-card w-full flex-1 flex flex-col animate-in-fade" : "bg-card w-full h-full md:h-[min(660px,88vh)] md:max-w-[900px] md:rounded-2xl flex flex-col overflow-hidden animate-in-fade"}>
         {/* header */}
         <header className="flex items-center justify-between border-b border-border px-3 h-12 shrink-0">
-          <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : step === "caption" && mode === "video" ? setStep("edit") : setStep("pick"))} className="p-1 hover:opacity-60">
+          <button type="button" aria-label="Back" onClick={() => (step === "pick" || step === "text" ? close() : step === "caption" && mode === "video" ? setStep("preview") : setStep("pick"))} className="p-1 hover:opacity-60">
             {step === "pick" || step === "text" ? (page ? null : <X className="h-5 w-5" />) : <ChevronLeft className="h-5 w-5" />}
           </button>
           <span className="font-semibold text-[15px]">{title}</span>
@@ -1035,13 +1035,33 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
                 />
               </div>
+              {[
+                { label: "Instagram", icon: Share2, sub: "" },
+                { label: "Add AI label", icon: PlusCircle, sub: "Label realistic content made with AI" },
+                { label: "Add topics", icon: Hash, sub: "" },
+                { label: "A/B tests", icon: FlaskConical, sub: "" },
+              ].map((r) => (
+                <button key={r.label} type="button" onClick={() => toast(`${r.label} coming soon`)} className="flex w-full items-center gap-4 px-4 py-4 text-left">
+                  <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                    <r.icon className="h-5 w-5" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[15px] font-medium">{r.label}</span>
+                    {r.sub && <span className="block text-xs text-muted-foreground">{r.sub}</span>}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+              ))}
             </div>
-            <div className="p-4">
+            <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-background p-4">
+              <button type="button" aria-label="Save draft" onClick={() => toast("Draft saved")} className="grid place-items-center h-12 w-12 rounded-lg bg-muted shrink-0">
+                <Save className="h-5 w-5" />
+              </button>
               <button
                 type="button"
                 disabled={!canNext || busy}
                 onClick={() => share()}
-                className="w-full rounded-lg sv-gradient-bg py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+                className="flex-1 rounded-lg sv-gradient-bg py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
               >
                 {busy ? "Sharing…" : "Share now"}
               </button>
