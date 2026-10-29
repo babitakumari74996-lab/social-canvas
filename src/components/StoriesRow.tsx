@@ -57,7 +57,7 @@ export function StoriesRow() {
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
       >
-        {/* Your story */}
+        {/* Your Today */}
         <div
           className="flex flex-col items-center gap-1 w-[100px] shrink-0 -translate-x-2 cursor-pointer"
           onClick={() => (hasMyStory ? ui.openStories(me!.username) : ui.openCreate("photo"))}
@@ -66,13 +66,13 @@ export function StoriesRow() {
             <StoryRing viewed={hasMyStory} size={96}>
 
 
-              <Avatar path={me?.avatar_url} alt="Your story" size={86} />
+              <Avatar path={me?.avatar_url} alt="Your Today" size={86} />
             </StoryRing>
             {!hasMyStory && (
               <PlusCircle className="absolute -bottom-0.5 -right-0.5 h-6 w-6 text-primary fill-background rounded-full" />
             )}
           </div>
-          <span className="text-xs text-muted-foreground truncate w-full text-center">Your story</span>
+          <span className="text-xs text-muted-foreground truncate w-full text-center">Your Today</span>
         </div>
 
         {groups.filter((g) => g.user.id !== me?.id).map((g) => (
