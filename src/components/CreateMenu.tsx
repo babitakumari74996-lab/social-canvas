@@ -71,7 +71,7 @@ export function CreateNavButton({
           {/* Socialverse gradient (teal -> indigo -> violet), same as the logo and Follow buttons */}
           <svg width="0" height="0" className="absolute" aria-hidden="true">
             <defs>
-              <linearGradient id="sv-create-grad" x1="0" y1="0" x2="1" y2="1">
+              <linearGradient id="sv-create-grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="24" y2="24">
                 <stop offset="0" stopColor="#2DD4BF" />
                 <stop offset="0.5" stopColor="#6366F1" />
                 <stop offset="1" stopColor="#7C3AED" />
