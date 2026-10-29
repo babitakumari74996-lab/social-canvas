@@ -292,7 +292,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {/* body */}
         {step === "pick" && mode === "video" && (
           <div
-            className="flex-1 flex flex-col md:flex-row overflow-hidden"
+            className="flex-1 overflow-y-auto md:flex md:flex-row md:overflow-hidden"
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
@@ -300,8 +300,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             }}
           >
             {/* left: add a video, sample clips, Upload */}
-            <div className="md:w-[320px] shrink-0 flex flex-col min-h-0 border-b md:border-b-0 md:border-r border-border">
-              <div className="p-4 flex-1 overflow-y-auto space-y-4">
+            <div className="md:w-[320px] shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
+              <div className="p-4 md:flex-1 md:overflow-y-auto space-y-4">
                 <button
                   type="button"
                   onClick={() => videoInput.current?.click()}
@@ -340,7 +340,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               </div>
             </div>
             {/* right: preview card on a dark background */}
-            <div className="flex-1 min-h-[320px] bg-[#333] flex items-center justify-center p-6">
+            <div className="flex-1 shrink-0 md:shrink min-h-[420px] bg-[#333] flex items-center justify-center p-6">
               <div className="w-full max-w-[340px] rounded-xl bg-white p-4 shadow-xl">
                 <p className="text-sm font-semibold mb-3">Preview</p>
                 <div className="aspect-[9/16] w-full rounded-lg bg-[#f2f3f6] overflow-hidden grid place-items-center text-center">
