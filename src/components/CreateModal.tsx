@@ -301,7 +301,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {step === "pick" && mode === "video" && (
           <div className="md:hidden flex-1 flex flex-col min-h-0 bg-background">
             <div className="overflow-x-auto touch-pan-x overscroll-x-contain pb-3 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max gap-8 px-4">
+              <div className="flex w-max min-w-full justify-between gap-6 px-4">
               {[
                 { label: "Camera", icon: Camera, action: () => videoInput.current?.click() },
                 { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
