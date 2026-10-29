@@ -226,7 +226,7 @@ const V = (name: string) => REEL_CLIPS[name];
 
 export const DEMO_REELS: DemoReelSeed[] = [
   {
-    id: "r-u5-1", user_id: "u5", video_url: V("ForBiggerBlazes"), poster: IMG.p4,
+    id: "r-u5-1", user_id: "u5", video_url: V("ForBiggerBlazes"), poster: "/demo/reels/poster-friday.jpg",
     caption: "5 moves for stronger legs 🦵 SAVE this for gym day! #fitness #legday",
     music: "Motivation Mode · DJ Aryan", mins: 500, likes: 8712,
     comments: [
@@ -234,7 +234,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-u2-1", user_id: "u2", video_url: V("ForBiggerEscapes"), poster: IMG.p7,
+    id: "r-u2-1", user_id: "u2", video_url: V("ForBiggerEscapes"), poster: "/demo/reels/poster-flower-mp4.jpg",
     caption: "Sunrise trek vlog ⛰️ Part 1 — the climb #travelreels #himalayas",
     music: "Wanderlust · Ritika", mins: 900, likes: 15600,
     comments: [
@@ -243,7 +243,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-u6-1", user_id: "u6", video_url: V("ForBiggerJoyrides"), poster: IMG.p5,
+    id: "r-u6-1", user_id: "u6", video_url: V("ForBiggerJoyrides"), poster: "/demo/reels/poster-sintel.jpg",
     caption: "Night drive through Marine Drive 🌊 #mumbai #nightdrive",
     music: "Lo-fi Bombay · SLOWED", mins: 1500, likes: 9821,
     comments: [
@@ -251,7 +251,7 @@ export const DEMO_REELS: DemoReelSeed[] = [
     ],
   },
   {
-    id: "r-me-1", user_id: DEMO_ME_ID, video_url: V("SubaruOutbackOnStreetAndDirt"), poster: IMG.p8,
+    id: "r-me-1", user_id: DEMO_ME_ID, video_url: V("SubaruOutbackOnStreetAndDirt"), poster: "/demo/reels/poster-flower-webm.jpg",
     caption: "Weekend drive dump 🚗💨 #roadtrip",
     music: "Highway Beats · Anon", mins: 2600, likes: 642,
     comments: [

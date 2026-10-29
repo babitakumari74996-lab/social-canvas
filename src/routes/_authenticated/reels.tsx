@@ -15,10 +15,18 @@ export const Route = createFileRoute("/_authenticated/reels")({
   component: ReelsPage,
 });
 
+const MUTED_KEY = "sv-reels-muted";
+
 function ReelsPage() {
   const { reels, loading } = useReels();
   const me = useMe();
-  const [muted, setMuted] = useState(true);
+  // The sound choice is remembered: unmuted once, the next Reels visit starts with sound (if the browser allows it).
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem(MUTED_KEY) !== "0"; } catch { return true; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(MUTED_KEY, muted ? "1" : "0"); } catch { /* storage unavailable: keep in memory only */ }
+  }, [muted]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
@@ -191,9 +199,21 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
       const h = Math.max(0, Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0));
       return (w * h) / (r.width * r.height);
     };
+    const playWithSound = () => {
+      vid.play().then(() => setPlaying(true)).catch(() => {
+        // Autoplay with sound was blocked: play silently now, and restore the user's sound choice on the next tap.
+        vid.muted = true;
+        vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        const unlock = () => {
+          vid.muted = mutedRef.current;
+          document.removeEventListener("pointerdown", unlock);
+        };
+        document.addEventListener("pointerdown", unlock);
+      });
+    };
     const check = () => {
       if (shown() >= 0.6) {
-        if (vid.paused) vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+        if (vid.paused) playWithSound();
       } else if (!vid.paused) {
         vid.pause();
         setPlaying(false);
@@ -209,6 +229,8 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
     };
   }, []);
 
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
   useEffect(() => {
     const vid = videoRef.current;
     if (vid) vid.muted = muted;
