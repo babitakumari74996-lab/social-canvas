@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -964,7 +964,92 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           </div>
         )}
 
-        {step === "caption" && (
+        {step === "caption" && mode === "video" && (
+          <div className="flex-1 overflow-y-auto bg-background">
+            <div className="flex gap-4 border-b border-border p-4">
+              <div className="h-44 w-[100px] shrink-0 overflow-hidden rounded-lg bg-black">
+                {cover ? (
+                  <img src={cover} alt="Reel cover" className="h-full w-full object-cover" />
+                ) : (
+                  <video src={draft.previews[0]} className="h-full w-full object-cover" muted playsInline />
+                )}
+              </div>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Describe your reel. You can also add hashtags here."
+                rows={6}
+                className="flex-1 min-w-0 bg-transparent text-base outline-none resize-none placeholder:text-muted-foreground"
+              />
+            </div>
+            <div className="divide-y divide-border">
+              <label className="flex items-center gap-4 px-4 py-4">
+                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                  <Globe className="h-5 w-5" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium">Who can see this?</span>
+                  <select
+                    value={audience}
+                    onChange={(e) => setAudience(e.target.value as "everyone" | "followers")}
+                    className="bg-transparent text-sm text-muted-foreground outline-none"
+                  >
+                    <option value="everyone">Public</option>
+                    <option value="followers">Followers only</option>
+                  </select>
+                </span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </label>
+              <label className="flex items-center gap-4 px-4 py-4">
+                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                  <PlusCircle className="h-5 w-5" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium">Share to your story</span>
+                  <span className="block text-sm text-muted-foreground">{alsoStory ? "On" : "Off"}</span>
+                </span>
+                <input type="checkbox" checked={alsoStory} onChange={(e) => setAlsoStory(e.target.checked)} className="accent-[#0095F6] h-5 w-5" />
+              </label>
+              <div className="flex items-center gap-4 px-4 py-4">
+                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                  <Tag className="h-5 w-5" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-medium">Tag people</span>
+                  <input
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder="e.g. @rohan, @priya"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 px-4 py-4">
+                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                  <MapPin className="h-5 w-5" />
+                </span>
+                <input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Add location"
+                  className="flex-1 min-w-0 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+            <div className="p-4">
+              <button
+                type="button"
+                disabled={!canNext || busy}
+                onClick={() => share()}
+                className="w-full rounded-lg sv-gradient-bg py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+              >
+                {busy ? "Sharing…" : "Share now"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "caption" && (mode as string) !== "video" && (
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
             <div className="flex-1 grid place-items-center bg-black/90 p-4 min-h-[260px]">
               {mode === "video" ? (
