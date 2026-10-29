@@ -80,13 +80,14 @@ export function CreateNavButton({
           </svg>
           {/* Full screen width on mobile, the bar's inner width on desktop; centred on the + button. */}
           <div role="menu" className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50 w-screen md:w-[517px] px-5 flex items-end justify-between">
-            {OPTIONS.map((o) => (
+            {OPTIONS.map((o, i) => (
               <button
                 key={o.label}
                 type="button"
                 role="menuitem"
                 onClick={() => pick(o)}
-                className="flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
+                style={{ animationDelay: `${i * 45}ms` }}
+                className="sv-menu-up flex flex-col items-center gap-1.5 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:opacity-80"
               >
                 <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white ring-1 ring-black/5 shadow-md">
                   <o.icon className="h-7 w-7" strokeWidth={2.6} style={{ stroke: "url(#sv-create-grad)" }} />
