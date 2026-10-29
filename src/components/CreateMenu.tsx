@@ -62,7 +62,7 @@ export function CreateNavButton({
       : "left-full top-1/2 -translate-y-1/2 ml-3";
 
   return (
-    <div ref={wrapRef} className="relative flex-1 h-full">
+    <div ref={wrapRef} className="relative flex flex-1 h-full items-stretch">
       <button type="button" aria-label="Create" aria-expanded={open} onClick={() => setOpen((v) => !v)} className={className}>
         {children}
       </button>
