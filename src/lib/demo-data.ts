@@ -119,7 +119,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u4-1", user_id: "u4", media_urls: [IMG.p3],
+    id: "p-u4-1", user_id: "u4", media_urls: ["/demo/reels/friday.mp4"],
     caption: "Shipped the new feature at 2am. Worth it 🚀 #buildinpublic #reactjs",
     mins: 420, likes: 341,
     comments: [
@@ -136,7 +136,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u5-1", user_id: "u5", media_urls: [IMG.p4],
+    id: "p-u5-1", user_id: "u5", media_urls: ["/demo/reels/flower.mp4"],
     caption: "Monday reset ✅ 100kg x 5. Who's training today? #fitness #gym #discipline",
     location: "Iron Temple Gym", mins: 540, likes: 2103,
     comments: [
@@ -145,7 +145,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u6-1", user_id: "u6", media_urls: [IMG.p5],
+    id: "p-u6-1", user_id: "u6", media_urls: ["/demo/reels/sintel-short.webm"],
     caption: "Bombay after rain hits different 🌧️ #streetphotography #mumbai",
     location: "Marine Drive, Mumbai", mins: 720, likes: 1567,
     comments: [
@@ -163,7 +163,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u6-2", user_id: "u6", media_urls: [IMG.p8],
+    id: "p-u6-2", user_id: "u6", media_urls: ["/demo/reels/flower.webm"],
     caption: "Midnight run 🏎️ #carphotography #nightdrive",
     mins: 1200, likes: 655,
     comments: [
@@ -189,7 +189,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
   },
   {
     id: "p-u5-2", user_id: "u5",
-    media_urls: ["https://picsum.photos/id/1011/900/900"],
+    media_urls: ["/demo/reels/friday.mp4"],
     caption: "Trail run mornings > everything ⛰️ #running #trailrun",
     mins: 2040, likes: 432,
     comments: [],

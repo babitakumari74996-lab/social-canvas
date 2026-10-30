@@ -15,10 +15,48 @@ function Verified({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return <BadgeCheck className={`${className} text-sky-500 fill-background`} />;
 }
 
+const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i;
+export function isVideoUrl(src: string) {
+  return VIDEO_EXT.test(src);
+}
+
+/* Muted looping video for a feed post: plays while it is on screen, pauses when it scrolls away. */
+function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) el.play().catch(() => {});
+        else el.pause();
+      },
+      { threshold: 0.5 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [src]);
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      onClick={onClick}
+      className={className}
+    />
+  );
+}
+
 export function MediaImg({
   src, alt = "", className = "", onClick,
 }: { src: string; alt?: string; className?: string; onClick?: () => void }) {
   const [err, setErr] = useState(false);
+  if (src && isVideoUrl(src)) {
+    return <VideoMedia src={src} className={className} onClick={onClick} />;
+  }
   if (err || !src) {
     return (
       <div
