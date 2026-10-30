@@ -327,6 +327,8 @@ export function AppShell() {
             : -1;
   // While search is open no tab is selected (Instagram-style): only the nav highlight changes, not the swipe position.
   const navIndex = overlay.overlay === "search" ? -1 : activeTabIndex;
+  // While a reel is being created the mobile bottom nav is hidden.
+  const reelCreating = overlay.overlay === "create" && overlay.createMode === "video";
   const activeKey = navIndex === 0 ? "home" : navIndex === 1 ? "reels" : navIndex === 2 ? "create"
     : navIndex === 3 ? "moods" : navIndex === 4 ? "profile" : null;
 
@@ -499,6 +501,7 @@ export function AppShell() {
       </SwipeTabs>
 
       {/* ------- mobile bottom nav ------- */}
+      {!reelCreating && (
       <nav
         style={{
           transform: `translate3d(0, min(${shBar}, 56px), 0)`,
@@ -535,6 +538,7 @@ export function AppShell() {
           <Avatar path={me?.avatar_url} alt="me" size={26} className={activeTabIndex === 4 ? "ring-2 ring-[#6366F1]" : "ring-1 ring-border"} />
         </Link>
       </nav>
+      )}
 
       {/* ------- quick icons: circles stacked upward from the bottom-right corner of the bottom nav ------- */}
       <div

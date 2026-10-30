@@ -543,7 +543,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   return (
     <div
       {...(page ? {} : { "data-overlay-swipe": "" })}
-      className={page ? "min-h-[calc(100vh-3.5rem)] md:min-h-screen flex flex-col bg-card" : "fixed inset-x-0 top-0 bottom-14 md:inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6"}
+      className={page ? "min-h-[calc(100vh-3.5rem)] md:min-h-screen flex flex-col bg-card" : `fixed inset-x-0 top-0 ${mode === "video" ? "bottom-0" : "bottom-14"} md:inset-0 z-[55] bg-black/70 flex items-center justify-center md:p-6`}
       role={page ? "region" : "dialog"}
       aria-modal={page ? undefined : true}
     >
