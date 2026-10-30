@@ -219,19 +219,31 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
   const { data, isLoading } = useQuery({
     queryKey: ["reels", userId],
     queryFn: async (): Promise<UReel[]> => {
-      const { data: rows } = await (await getSupabase())
+      const sb = await getSupabase();
+      const full = await sb
         .from("reels")
         .select(`id, user_id, video_url, caption, created_at, cover_url, trim_start, trim_end, video_filter, audience, tagged, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
         .limit(50);
-      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; cover_url: string | null; trim_start: number | null; trim_end: number | null; video_filter: string | null; audience: "everyone" | "followers"; tagged: string[] | null; profiles: Record<string, unknown> }[];
+      let rows: unknown[] | null = full.data;
+      if (full.error) {
+        // Edit-field columns are missing (migration not applied yet): still show the reels.
+        const base = await sb
+          .from("reels")
+          .select(`id, user_id, video_url, caption, created_at, profiles!inner(${PROFILES_COLS})`)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (base.error) throw base.error;
+        rows = base.data;
+      }
+      const reels = (rows ?? []) as unknown as { id: string; user_id: string; video_url: string; caption: string | null; created_at: string; cover_url?: string | null; trim_start?: number | null; trim_end?: number | null; video_filter?: string | null; audience?: "everyone" | "followers"; tagged?: string[] | null; profiles: Record<string, unknown> }[];
       if (reels.length === 0) return [];
       const ids = reels.map((r) => r.id);
       void ids;
       return reels.map((r) => ({
         id: r.id, user_id: r.user_id, video_url: r.video_url, poster: r.cover_url ?? null,
         caption: r.caption, music: null, created_at: r.created_at,
-        trimStart: r.trim_start, trimEnd: r.trim_end, videoFilter: r.video_filter, audience: r.audience, tagged: r.tagged ?? [],
+        trimStart: r.trim_start ?? null, trimEnd: r.trim_end ?? null, videoFilter: r.video_filter ?? null, audience: r.audience ?? "everyone", tagged: r.tagged ?? [],
         profiles: supabaseProfile(r.profiles, r.user_id),
         likes: 0, likedByMe: false, commentsCount: 0,
       }));
@@ -500,7 +512,7 @@ export function useActions() {
       const url = input.file ? await uploadMedia(userId, input.file) : input.galleryUrl!;
       const e = input.edits ?? {};
       const coverPath = e.cover ? await uploadMedia(userId, await dataUrlToFile(e.cover, "cover.jpg")) : null;
-      await (await getSupabase()).from("reels").insert({
+      const { error } = await (await getSupabase()).from("reels").insert({
         user_id: userId,
         video_url: url,
         caption: input.caption || null,
@@ -511,6 +523,7 @@ export function useActions() {
         audience: e.audience ?? "everyone",
         tagged: e.tagged ?? [],
       });
+      if (error) throw new Error(`Reel save nahi hua: ${error.message}`);
       qc.invalidateQueries({ queryKey: ["reels", userId] });
     },
     async sendMessage(receiverId: string, content: string) {

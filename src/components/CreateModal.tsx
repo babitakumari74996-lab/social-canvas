@@ -466,7 +466,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Share failed — try again");
+      toast.error(err instanceof Error ? err.message : "Share failed — try again");
     } finally {
       setBusy(false);
     }
