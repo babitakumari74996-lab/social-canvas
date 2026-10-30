@@ -1105,14 +1105,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
               ))}
-              <button type="button" onClick={() => setShowMoreOptions((v) => !v)} aria-expanded={showMoreOptions} className="flex w-full items-center gap-4 px-4 py-4 text-left">
-                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
-                  <MoreHorizontal className="h-5 w-5" />
-                </span>
-                <span className="flex-1 min-w-0 text-[15px] font-medium">See more options</span>
-                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${showMoreOptions ? "rotate-180" : ""}`} />
-              </button>
-              {showMoreOptions && (
+              {!showMoreOptions ? (
+                <button type="button" onClick={() => setShowMoreOptions(true)} aria-expanded={false} className="flex w-full items-center gap-4 px-4 py-4 text-left">
+                  <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </span>
+                  <span className="flex-1 min-w-0 text-[15px] font-medium">See more options</span>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                </button>
+              ) : (
                 <button type="button" onClick={() => toast("Earn rewards coming soon")} className="flex w-full items-center gap-4 px-4 py-4 text-left">
                   <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
                     <Coins className="h-5 w-5" />
