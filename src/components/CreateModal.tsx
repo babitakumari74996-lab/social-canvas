@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -111,6 +111,25 @@ function bakeImage(src: string, filter: string): Promise<string> {
   });
 }
 
+/* Once the user has allowed the camera, remember it (memory + storage) so the Allow screen is never shown again. */
+let cameraGrantedInMemory = false;
+function readCameraGranted(): boolean {
+  if (cameraGrantedInMemory) return true;
+  try {
+    return typeof window !== "undefined" && window.localStorage.getItem("sv-camera-granted") === "1";
+  } catch {
+    return false;
+  }
+}
+function rememberCameraGranted() {
+  cameraGrantedInMemory = true;
+  try {
+    window.localStorage.setItem("sv-camera-granted", "1");
+  } catch {
+    /* storage blocked: in-memory flag still applies */
+  }
+}
+
 /* Live camera for the reel pick: asks permission first, then records a clip that goes to the edit step. */
 function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: string) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -119,14 +138,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
   const chunksRef = useRef<Blob[]>([]);
   const discardRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const CAM_KEY = "sv-camera-granted";
-  const [started, setStarted] = useState(() => {
-    try {
-      return typeof window !== "undefined" && localStorage.getItem(CAM_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [started, setStarted] = useState(() => readCameraGranted());
   const [facing, setFacing] = useState<"user" | "environment">("environment");
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +147,25 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   };
+
+  // If the browser already has camera permission, skip the Allow screen.
+  useEffect(() => {
+    if (started) return;
+    let cancelled = false;
+    try {
+      navigator.permissions?.query({ name: "camera" as PermissionName }).then((st) => {
+        if (!cancelled && st.state === "granted") {
+          rememberCameraGranted();
+          setStarted(true);
+        }
+      }).catch(() => {});
+    } catch {
+      /* Permissions API not supported */
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [started]);
 
   // Start the camera only after the user taps "Allow" (this is what triggers the browser permission prompt).
   useEffect(() => {
@@ -157,11 +188,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           return;
         }
         streamRef.current = s;
-        try {
-          localStorage.setItem(CAM_KEY, "1");
-        } catch {
-          /* ignore */
-        }
+        rememberCameraGranted();
         if (videoRef.current) {
           videoRef.current.srcObject = s;
           await videoRef.current.play().catch(() => {});
@@ -328,6 +355,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [draft, setDraft] = useState<Draft>({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
   const [caption, setCaption] = useState("");
   const [location, setLocation] = useState("");
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [music, setMusic] = useState("");
   const [theme, setTheme] = useState(0);
   const [textPost, setTextPost] = useState("");
@@ -507,6 +535,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             <button type="button" aria-label="Settings" onClick={() => toast("Settings coming soon")} className="md:hidden p-1 hover:opacity-60">
               <Settings className="h-6 w-6" />
             </button>
+          ) : step === "caption" && mode === "video" ? (
+            <span className="w-8" aria-hidden="true" />
           ) : (
             <button
               type="button"
@@ -1052,6 +1082,22 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </button>
               ))}
+              <button type="button" onClick={() => setShowMoreOptions((v) => !v)} aria-expanded={showMoreOptions} className="flex w-full items-center gap-4 px-4 py-4 text-left">
+                <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                  <MoreHorizontal className="h-5 w-5" />
+                </span>
+                <span className="flex-1 min-w-0 text-[15px] font-medium">See more options</span>
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${showMoreOptions ? "rotate-180" : ""}`} />
+              </button>
+              {showMoreOptions && (
+                <button type="button" onClick={() => toast("Earn rewards coming soon")} className="flex w-full items-center gap-4 px-4 py-4 text-left">
+                  <span className="grid place-items-center h-11 w-11 rounded-full bg-muted shrink-0">
+                    <Coins className="h-5 w-5" />
+                  </span>
+                  <span className="flex-1 min-w-0 text-[15px] font-medium">Earn rewards</span>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+              )}
             </div>
             <div className="sticky bottom-0 flex items-center gap-3 border-t border-border bg-background p-4">
               <button type="button" aria-label="Save draft" onClick={() => toast("Draft saved")} className="grid place-items-center h-12 w-12 rounded-lg bg-muted shrink-0">
