@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins } from "lucide-react";
 import { toast } from "sonner";
@@ -340,6 +340,29 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/* Scroll area whose scrollbar is clipped away: the inner box is widened by the scrollbar width, so the
+   content keeps its normal width and the scrollbar sits outside the visible area in every browser. */
+function ClipScroll({ className, children }: { className?: string; children: ReactNode }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [gutter, setGutter] = useState(0);
+  useLayoutEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const measure = () => setGutter(el.offsetWidth - el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div className={`${className ?? ""} overflow-hidden`}>
+      <div ref={innerRef} className="h-full overflow-y-auto" style={{ width: `calc(100% + ${gutter}px)` }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -995,8 +1018,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         )}
 
         {step === "caption" && mode === "video" && (
-          <div className="flex-1 min-h-0 overflow-hidden bg-background">
-          <div className="h-full overflow-y-auto w-[calc(100%+24px)] bg-background">
+          <ClipScroll className="flex-1 min-h-0 bg-background">
             <div className="flex gap-4 border-b border-border p-4">
               <div className="h-44 w-[100px] shrink-0 overflow-hidden rounded-lg bg-black">
                 {cover ? (
@@ -1113,8 +1135,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 {busy ? "Sharing…" : "Share now"}
               </button>
             </div>
-          </div>
-          </div>
+          </ClipScroll>
         )}
 
         {step === "caption" && (mode as string) !== "video" && (
