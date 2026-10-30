@@ -995,7 +995,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         )}
 
         {step === "caption" && mode === "video" && (
-          <div className="flex-1 overflow-y-auto bg-background">
+          <div className="flex-1 min-h-0 overflow-hidden bg-background">
+          <div className="h-full overflow-y-auto w-[calc(100%+24px)] bg-background">
             <div className="flex gap-4 border-b border-border p-4">
               <div className="h-44 w-[100px] shrink-0 overflow-hidden rounded-lg bg-black">
                 {cover ? (
@@ -1112,6 +1113,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 {busy ? "Sharing…" : "Share now"}
               </button>
             </div>
+          </div>
           </div>
         )}
 
