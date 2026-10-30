@@ -119,7 +119,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u4-1", user_id: "u4", media_urls: ["/demo/reels/friday.mp4"],
+    id: "p-u4-1", user_id: "u4", media_urls: ["/demo/reels/sintel-short.webm"],
     caption: "Shipped the new feature at 2am. Worth it 🚀 #buildinpublic #reactjs",
     mins: 420, likes: 341,
     comments: [
@@ -127,7 +127,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-me-1", user_id: DEMO_ME_ID, media_urls: [IMG.p9],
+    id: "p-me-1", user_id: DEMO_ME_ID, media_urls: ["/demo/reels/flower.webm"],
     caption: "Sunday with this guy 🐶 no thoughts, only treats.",
     mins: 1800, likes: 88,
     comments: [
@@ -154,7 +154,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u7-1", user_id: "u7", media_urls: [IMG.p6],
+    id: "p-u7-1", user_id: "u7", media_urls: ["/demo/reels/friday.mp4"],
     caption: "New mural study — 6 hours in. Title ideas? 🎨 #watercolor #artistsoninstagram",
     mins: 960, likes: 743,
     comments: [
@@ -163,7 +163,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u6-2", user_id: "u6", media_urls: ["/demo/reels/flower.webm"],
+    id: "p-u6-2", user_id: "u6", media_urls: ["/demo/reels/flower.mp4"],
     caption: "Midnight run 🏎️ #carphotography #nightdrive",
     mins: 1200, likes: 655,
     comments: [
@@ -172,7 +172,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
   },
   {
     id: "p-u8-1", user_id: "u8",
-    media_urls: [IMG.p7, "https://picsum.photos/id/1018/900/900", "https://picsum.photos/id/1039/900/900"],
+    media_urls: ["/demo/reels/sintel-short.webm"],
     caption: "3 days, 2 passes, endless mountains 🏔️ swipe → #himalayas #trekking",
     location: "Kedarnath, Uttarakhand", mins: 1560, likes: 987,
     comments: [
