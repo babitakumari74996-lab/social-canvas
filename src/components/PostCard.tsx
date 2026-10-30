@@ -20,33 +20,63 @@ export function isVideoUrl(src: string) {
   return VIDEO_EXT.test(src);
 }
 
-/* Muted looping video for a feed post: plays while it is on screen, pauses when it scrolls away. */
+/* Muted video for a feed post: plays while it is on screen, pauses when it scrolls away.
+   When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [ended, setEnded] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) el.play().catch(() => {});
-        else el.pause();
+        if (entry.isIntersecting) {
+          if (!el.ended) el.play().catch(() => {});
+        } else el.pause();
       },
       { threshold: 0.5 },
     );
     io.observe(el);
     return () => io.disconnect();
   }, [src]);
+  const rewatch = () => {
+    const el = ref.current;
+    setEnded(false);
+    if (el) {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+  };
   return (
-    <video
-      ref={ref}
-      src={src}
-      muted
-      loop
-      playsInline
-      preload="metadata"
-      onClick={onClick}
-      className={className}
-    />
+    <div className="relative h-full w-full">
+      <video
+        ref={ref}
+        src={src}
+        muted
+        playsInline
+        preload="metadata"
+        onClick={onClick}
+        onEnded={() => setEnded(true)}
+        className={className}
+      />
+      {ended && (
+        <div className="animate-in-fade absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
+          <button
+            type="button"
+            onClick={rewatch}
+            className="min-w-[140px] rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-black hover:opacity-90"
+          >
+            Rewatch
+          </button>
+          <Link
+            to="/reels"
+            className="min-w-[140px] rounded-lg border border-white/60 px-6 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/10"
+          >
+            Reels
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }
 
