@@ -119,7 +119,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u4-1", user_id: "u4", media_urls: ["/demo/reels/sintel-short.webm"],
+    id: "p-u4-1", user_id: "u4", media_urls: ["/demo/reels/friday.mp4"],
     caption: "Shipped the new feature at 2am. Worth it 🚀 #buildinpublic #reactjs",
     mins: 420, likes: 341,
     comments: [
@@ -145,7 +145,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
     ],
   },
   {
-    id: "p-u6-1", user_id: "u6", media_urls: ["/demo/reels/sintel-short.webm"],
+    id: "p-u6-1", user_id: "u6", media_urls: ["/demo/reels/flower.webm"],
     caption: "Bombay after rain hits different 🌧️ #streetphotography #mumbai",
     location: "Marine Drive, Mumbai", mins: 720, likes: 1567,
     comments: [
@@ -172,7 +172,7 @@ export const DEMO_POSTS: DemoPostSeed[] = [
   },
   {
     id: "p-u8-1", user_id: "u8",
-    media_urls: ["/demo/reels/sintel-short.webm"],
+    media_urls: ["/demo/reels/flower.mp4"],
     caption: "3 days, 2 passes, endless mountains 🏔️ swipe → #himalayas #trekking",
     location: "Kedarnath, Uttarakhand", mins: 1560, likes: 987,
     comments: [

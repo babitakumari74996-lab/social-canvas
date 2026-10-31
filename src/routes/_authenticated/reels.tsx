@@ -13,9 +13,14 @@ import type { UReel } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/reels")({
   // `v` = the video URL of a feed post that was tapped; that reel is shown first and starts playing.
-  validateSearch: (search: Record<string, unknown>): { v?: string } => ({
-    v: typeof search.v === "string" && search.v ? search.v : undefined,
-  }),
+  // `t` = where the feed video had got to (seconds), so the reel continues from that point.
+  validateSearch: (search: Record<string, unknown>): { v?: string; t?: number } => {
+    const t = Number(search.t);
+    return {
+      v: typeof search.v === "string" && search.v ? search.v : undefined,
+      t: search.t !== undefined && Number.isFinite(t) && t > 0 ? t : undefined,
+    };
+  },
   component: ReelsPage,
 });
 
@@ -23,7 +28,7 @@ const MUTED_KEY = "sv-reels-muted";
 
 function ReelsPage() {
   const { reels: allReels, loading } = useReels();
-  const { v } = Route.useSearch();
+  const { v, t } = Route.useSearch();
   // A feed video that was tapped comes first (matched by its video file); otherwise the normal order.
   const reels = (() => {
     if (!v) return allReels;
@@ -136,19 +141,20 @@ function ReelsPage() {
           </div>
         )}
         {reels.map((r) => (
-          <ReelItem key={r.id} reel={r} muted={muted} />
+          <ReelItem key={r.id} reel={r} muted={muted} startAt={v && r.video_url === v ? t : undefined} />
         ))}
       </div>
     </div>
   );
 }
 
-function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
+function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; startAt?: number }) {
   const actions = useActions();
   const me = useMe();
   const { userId } = useSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const startedAtRef = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [liked, setLiked] = useState(reel.likedByMe);
   const [burst, setBurst] = useState(false);
@@ -212,6 +218,11 @@ function ReelItem({ reel, muted }: { reel: UReel; muted: boolean }) {
       return (w * h) / (r.width * r.height);
     };
     const playWithSound = () => {
+      // Opened from a feed video: start where that video was (only the first time this reel plays).
+      if (startAt !== undefined && !startedAtRef.current) {
+        startedAtRef.current = true;
+        vid.currentTime = startAt;
+      }
       vid.play().then(() => setPlaying(true)).catch(() => {
         // Autoplay with sound was blocked: play silently now, and restore the user's sound choice on the next tap.
         vid.muted = true;

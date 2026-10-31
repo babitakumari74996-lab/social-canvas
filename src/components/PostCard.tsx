@@ -67,8 +67,11 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
 
   // Open this video in the Reels tab: stop the feed videos first so their sound does not play behind Reels.
   const openInReels = () => {
+    const el = ref.current;
+    // Where this video is now (an ended video opens from the start).
+    const t = el && !ended ? el.currentTime : 0;
     document.querySelectorAll("video").forEach((v) => v.pause());
-    navigate({ to: "/reels", search: { v: src } });
+    navigate({ to: "/reels", search: { v: src, t: t > 0.2 ? Number(t.toFixed(2)) : undefined } });
   };
 
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
