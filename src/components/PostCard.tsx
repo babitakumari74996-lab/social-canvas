@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { listenDuration } from "@/lib/video-duration";
 import {
@@ -147,7 +147,8 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                   const v = Number(e.target.value);
                   setVideoAudio({ volume: v, muted: v === 0 });
                 }}
-                className="h-1 w-20 cursor-pointer accent-sky-400"
+                className="sv-range w-20"
+                style={{ "--fill": `${(audio.muted ? 0 : audio.volume) * 100}%` } as CSSProperties}
               />
             </div>
           </div>
