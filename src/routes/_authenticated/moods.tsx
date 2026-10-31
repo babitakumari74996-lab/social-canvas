@@ -15,11 +15,14 @@ export const Route = createFileRoute("/_authenticated/moods")({
 
 const isVideoUrl = (u: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 
-// Twit: only posts with a photo or video AND a message (caption), like X's media posts. No buy button.
+// Twit: only photo posts with a message (caption), like X's media posts. No videos, no buy button.
 function MoodsPage() {
   const { moods } = useMoods();
   const { posts } = useFeed();
-  const twit = posts.filter((p) => p.media_urls.length > 0 && (p.caption ?? "").trim().length > 0);
+  // Twits: photos only. Video posts are not shown here.
+  const twit = posts.filter(
+    (p) => p.media_urls.some((u) => !isVideoUrl(u)) && (p.caption ?? "").trim().length > 0,
+  );
   const [tab, setTab] = useState<0 | 1>(0);
   return (
     <div className="max-w-[520px] mx-auto pb-10">
@@ -70,7 +73,7 @@ function MoodsPage() {
               ))}
               {twit.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-16">
-                  No posts with a photo or video and a message yet.
+                  No photo posts with a message yet.
                 </p>
               )}
             </div>
@@ -98,13 +101,9 @@ function TwitPost({ post }: { post: UPost }) {
         </div>
         <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px]">{post.caption}</p>
         <div className="mt-2 space-y-2">
-          {post.media_urls.map((u, i) =>
-            isVideoUrl(u) ? (
-              <video key={i} src={u} controls playsInline preload="metadata" className="w-full max-h-[520px] rounded-2xl bg-black" />
-            ) : (
-              <MediaImg key={i} src={u} alt="" className="w-full max-h-[520px] rounded-2xl object-cover" />
-            ),
-          )}
+          {post.media_urls.filter((u) => !isVideoUrl(u)).map((u, i) => (
+            <MediaImg key={i} src={u} alt="" className="w-full max-h-[520px] rounded-2xl object-cover" />
+          ))}
         </div>
         <div className="flex items-center gap-6 pt-2 text-sm text-muted-foreground">
           <button
