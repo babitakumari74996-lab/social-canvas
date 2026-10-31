@@ -1,14 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
-  MoreHorizontal, BadgeCheck,
+  MoreHorizontal, BadgeCheck, Volume2, VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, useImageFade } from "@/components/Avatar";
 import { useActions, useMyUserId } from "@/lib/data";
 import { demoActions, ui, useDemo } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
+import {
+  getVideoAudio, registerVideo, setVideoAudio, subscribeVideoAudio, unregisterVideo, updateVideoRatio,
+} from "@/lib/video-focus";
 import type { UPost } from "@/lib/types";
 
 function Verified({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -20,55 +23,83 @@ export function isVideoUrl(src: string) {
   return VIDEO_EXT.test(src);
 }
 
-/* Muted video for a feed post: plays while it is on screen, pauses when it scrolls away.
-   When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
+/* Video for a feed post. Only the video nearest the middle of the screen plays (see video-focus.ts).
+   Sound follows the shared on/off + volume control shown on the video. When it ends, a black fade appears
+   with Rewatch (play again) and Reels (open the Reels tab). */
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [ended, setEnded] = useState(false);
-  const endedRef = useRef(false);
-  const markEnded = (v: boolean) => {
-    endedRef.current = v;
-    setEnded(v);
-  };
+  const audio = useSyncExternalStore(subscribeVideoAudio, getVideoAudio, getVideoAudio);
+
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
+    registerVideo(el, 0);
     const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Coming back to a post whose video already ended: start the reel again from the beginning.
-          if (el.ended || endedRef.current) {
-            el.currentTime = 0;
-            markEnded(false);
-          }
-          el.play().catch(() => {});
-        } else el.pause();
-      },
-      { threshold: 0.5 },
+      ([entry]) => updateVideoRatio(el, entry.intersectionRatio),
+      { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
     );
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      unregisterVideo(el);
+    };
   }, [src]);
+
   const rewatch = () => {
     const el = ref.current;
-    markEnded(false);
+    setEnded(false);
     if (el) {
       el.currentTime = 0;
       el.play().catch(() => {});
     }
   };
+
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+
   return (
     <div className="relative h-full w-full">
       <video
         ref={ref}
         src={src}
-        muted
         playsInline
         preload="metadata"
         onClick={onClick}
-        onEnded={() => markEnded(true)}
+        onPlay={() => setEnded(false)}
+        onEnded={() => setEnded(true)}
         className={className}
       />
+
+      {!ended && (
+        <div
+          onClick={stop}
+          onDoubleClick={stop}
+          className="absolute bottom-2 right-2 flex items-center gap-2 rounded-full bg-black/55 px-2 py-1.5 text-white"
+        >
+          <button
+            type="button"
+            aria-label={audio.muted || audio.volume === 0 ? "Turn sound on" : "Turn sound off"}
+            onClick={() => setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume })}
+            className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/15"
+          >
+            {audio.muted || audio.volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            aria-label="Sound volume"
+            value={audio.muted ? 0 : audio.volume}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setVideoAudio({ volume: v, muted: v === 0 });
+            }}
+            className="h-1 w-20 cursor-pointer accent-white"
+          />
+        </div>
+      )}
+
       {ended && (
         <div className="animate-in-fade absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
           <button
