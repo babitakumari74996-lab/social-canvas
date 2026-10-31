@@ -100,7 +100,8 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         ref={ref}
         src={src}
         playsInline
-        preload="metadata"
+        // Swipe-preview copies of the page (embed mode) do not download video.
+        preload={document.documentElement.hasAttribute("data-embed") ? "none" : "metadata"}
         onPlay={() => setEnded(false)}
         onEnded={() => setEnded(true)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}

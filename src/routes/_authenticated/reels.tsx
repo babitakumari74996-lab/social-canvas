@@ -392,7 +392,8 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
           src={reel.video_url}
           poster={reel.poster ?? undefined}
           style={{ filter: reel.videoFilter && reel.videoFilter !== "none" ? reel.videoFilter : undefined }}
-          preload="auto"
+          // Swipe-preview copies (embed mode) never play, so they download nothing.
+          preload={document.documentElement.hasAttribute("data-embed") ? "none" : "metadata"}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
           // With a poster, reveal the video only once it is past its first frames (uploaded clips often
           // start black). Without a poster, show the video as soon as its first frame is ready.
