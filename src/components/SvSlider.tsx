@@ -33,18 +33,26 @@ export function SvSlider({
     <div className={`relative h-3 ${className}`} style={style}>
       {/* grey track (unused part) */}
       <div
-        className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full bg-[#6b7280]"
-        style={{ height: thickness }}
+        className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full"
+        style={{ height: thickness, backgroundColor: "#6b7280" }}
       />
       {/* white fill (used part) up to the ball centre */}
       <div
-        className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-white"
-        style={{ height: thickness, width: `calc(${ball / 2}px + (100% - ${ball}px) * var(--f))` }}
+        className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          height: thickness,
+          width: `calc(${ball / 2}px + (100% - ${ball}px) * var(--f))`,
+          backgroundColor: "#ffffff",
+        }}
       />
       {/* white ball */}
       <div
-        className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_2px_rgba(0,0,0,0.45)]"
-        style={{ left: `calc((100% - ${ball}px) * var(--f))` }}
+        className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full"
+        style={{
+          left: `calc((100% - ${ball}px) * var(--f))`,
+          backgroundColor: "#ffffff",
+          boxShadow: "0 0 0 2px rgba(0,0,0,0.45)",
+        }}
       />
       <input
         type="range"
