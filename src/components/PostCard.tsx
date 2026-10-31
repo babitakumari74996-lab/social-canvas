@@ -148,7 +148,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                   setVideoAudio({ volume: v, muted: v === 0 });
                 }}
                 className="sv-range w-20"
-                style={{ "--fill": `${(audio.muted ? 0 : audio.volume) * 100}%` } as CSSProperties}
+                style={{ "--v": String(audio.muted ? 0 : audio.volume) } as CSSProperties}
               />
             </div>
           </div>
@@ -176,7 +176,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                 setTime(t);
               }}
               className="sv-range sv-seek block w-full"
-              style={{ "--fill": `${duration > 0 ? (Math.min(time, duration) / duration) * 100 : 0}%` } as CSSProperties}
+              style={{ "--v": String(duration > 0 ? Math.min(time, duration) / duration : 0) } as CSSProperties}
             />
           </div>
         </>
