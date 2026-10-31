@@ -63,7 +63,10 @@ function play(el: HTMLVideoElement) {
   applyAudio(el);
   const p = el.play();
   if (p && typeof p.catch === "function") {
-    p.catch(() => {
+    p.catch((err: unknown) => {
+      // A play request cancelled by a pause (AbortError) is normal when the visitor scrolls away;
+      // it must not change the shared sound setting.
+      if ((err as { name?: string } | null)?.name !== "NotAllowedError") return;
       // The browser blocked sound before the visitor interacted with the page: start muted,
       // and the visitor can turn the sound on with the speaker button.
       if (!el.muted) {
@@ -73,6 +76,12 @@ function play(el: HTMLVideoElement) {
       }
     });
   }
+}
+
+function setPreload(el: HTMLVideoElement, value: "auto" | "metadata") {
+  // Swipe-preview copies (embed mode) never download video.
+  if (document.documentElement.hasAttribute("data-embed")) return;
+  if (el.preload !== value) el.preload = value;
 }
 
 function reconcile() {
@@ -92,9 +101,15 @@ function reconcile() {
     if (best && best.paused && !best.ended) play(best);
     return;
   }
-  if (active) active.pause();
+  if (active) {
+    active.pause();
+    setPreload(active, "metadata");
+  }
   active = best;
   if (best) {
+    // Only the video that plays downloads in full. Others keep to metadata, so the playing one
+    // is not slowed down by several downloads sharing the connection.
+    setPreload(best, "auto");
     if (best.ended) best.currentTime = 0;
     play(best);
   }
@@ -106,6 +121,10 @@ function schedule() {
     frame = 0;
     reconcile();
   });
+}
+
+export function isActiveVideo(el: HTMLVideoElement): boolean {
+  return active === el;
 }
 
 export function registerVideo(el: HTMLVideoElement, ratio: number) {

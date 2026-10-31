@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { listenDuration } from "@/lib/video-duration";
+import { retryVideoOnError, useNearViewport } from "@/lib/use-near-viewport";
 import { SvSlider } from "@/components/SvSlider";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
@@ -12,7 +13,7 @@ import { useActions, useMyUserId } from "@/lib/data";
 import { demoActions, ui, useDemo } from "@/lib/demo-store";
 import { timeAgo, formatCount } from "@/lib/time";
 import {
-  getVideoAudio, registerVideo, setVideoAudio, subscribeVideoAudio, unregisterVideo, updateVideoRatio,
+  getVideoAudio, isActiveVideo, registerVideo, setVideoAudio, subscribeVideoAudio, unregisterVideo, updateVideoRatio,
 } from "@/lib/video-focus";
 import type { UPost } from "@/lib/types";
 
@@ -58,6 +59,9 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
   const [hovering, setHovering] = useState(false); // mouse over the video
   const railShown = railOpen || hovering;
   const audio = useSyncExternalStore(subscribeVideoAudio, getVideoAudio, getVideoAudio);
+  // Videos away from the screen download nothing; ones close to it load their length only. The playing
+  // video is switched to a full download by video-focus.ts. Keeps bandwidth for the video that plays.
+  const near = useNearViewport(ref, "600px");
 
   useEffect(() => {
     const el = ref.current;
@@ -113,8 +117,10 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         src={src}
         playsInline
         // Swipe-preview copies of the page (embed mode) do not download video.
-        preload={typeof document !== "undefined" && document.documentElement.hasAttribute("data-embed") ? "none" : "metadata"}
+        preload={typeof document !== "undefined" && document.documentElement.hasAttribute("data-embed") ? "none" : near ? "metadata" : "none"}
         onPlay={() => setEnded(false)}
+        onCanPlay={(e) => { delete e.currentTarget.dataset.retried; }}
+        onError={(e) => retryVideoOnError(e.currentTarget, isActiveVideo(e.currentTarget))}
         onEnded={() => setEnded(true)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
         poster={posterFor(src)}

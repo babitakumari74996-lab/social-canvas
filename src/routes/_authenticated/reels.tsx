@@ -7,6 +7,7 @@ import { useActions, useMe, useReels } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
 import { formatCount } from "@/lib/time";
 import { listenDuration } from "@/lib/video-duration";
+import { retryVideoOnError, useNearViewport } from "@/lib/use-near-viewport";
 import { useSession } from "@/lib/auth";
 import { timeAgo } from "@/lib/time";
 import { useComments } from "@/lib/data";
@@ -154,6 +155,8 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
   const me = useMe();
   const { userId } = useSession();
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Download the reel ahead of time when it is on or near the screen, so it starts without waiting.
+  const near = useNearViewport(videoRef, "400px");
   const wrapRef = useRef<HTMLDivElement>(null);
   const startedAtRef = useRef(false);
   // The effects below run once, so they read the latest start point from this ref.
@@ -252,6 +255,7 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
       return (w * h) / (r.width * r.height);
     };
     const playWithSound = () => {
+      vid.dataset.want = "1";
       // Opened from a feed video: start where that video was (only the first time this reel plays).
       const at = startAtRef.current;
       if (at !== undefined && !startedAtRef.current) {
@@ -273,6 +277,7 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
       if (shown() >= 0.6) {
         if (vid.paused) playWithSound();
       } else if (!vid.paused) {
+        vid.dataset.want = "0";
         vid.pause();
         setPlaying(false);
       }
@@ -324,6 +329,7 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
       vid.play();
       setPaused(false);
     } else {
+      vid.dataset.want = "0";
       vid.pause();
       setPaused(true);
     }
@@ -393,7 +399,9 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
           poster={reel.poster ?? undefined}
           style={{ filter: reel.videoFilter && reel.videoFilter !== "none" ? reel.videoFilter : undefined }}
           // Swipe-preview copies (embed mode) never play, so they download nothing.
-          preload={typeof document !== "undefined" && document.documentElement.hasAttribute("data-embed") ? "none" : "metadata"}
+          preload={typeof document !== "undefined" && document.documentElement.hasAttribute("data-embed") ? "none" : near ? "auto" : "metadata"}
+          onCanPlay={(e) => { delete e.currentTarget.dataset.retried; }}
+          onError={(e) => retryVideoOnError(e.currentTarget, !e.currentTarget.paused || e.currentTarget.dataset.want === "1")}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
           // With a poster, reveal the video only once it is past its first frames (uploaded clips often
           // start black). Without a poster, show the video as soon as its first frame is ready.
