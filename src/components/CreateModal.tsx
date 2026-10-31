@@ -658,11 +658,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <span className="text-[11px] font-medium">Next</span>
               </button>
             </div>
-          </div>
-        )}
-
-        {step === "preview" && mode === "video" && toolSheet && (
-          <div className="fixed inset-0 z-[80] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
+          {toolSheet && (
+          <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
             <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-base font-semibold">
@@ -753,6 +750,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </div>
               )}
             </div>
+          </div>
+          )}
           </div>
         )}
 
