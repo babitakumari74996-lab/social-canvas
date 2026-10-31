@@ -31,11 +31,6 @@ function formatTime(sec: number) {
   return `${m}:${s}`;
 }
 
-// Touch screens have no hover: there the volume slider opens when the sound icon is tapped.
-function isTouchScreen() {
-  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: none)").matches;
-}
-
 /* Video for a feed post. Only the video nearest the middle of the screen plays (see video-focus.ts).
    Top right: a sound icon; the volume slider shows on hover (touch: after tapping the icon).
    Bottom: seek bar (sky blue) with the time. Tapping the video opens it in the Reels tab, from the same point.
@@ -46,7 +41,9 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
   const [ended, setEnded] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [railOpen, setRailOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(false); // opened by tapping the sound icon
+  const [hovering, setHovering] = useState(false); // mouse over the video
+  const railShown = railOpen || hovering;
   const audio = useSyncExternalStore(subscribeVideoAudio, getVideoAudio, getVideoAudio);
 
   useEffect(() => {
@@ -92,7 +89,16 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
 
   return (
     <div
-      className="group relative h-full w-full cursor-pointer"
+      className="relative h-full w-full cursor-pointer"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") setHovering(true);
+      }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") {
+          setHovering(false);
+          setRailOpen(false);
+        }
+      }}
       onClick={() => {
         onClick?.();
         openInReels();
@@ -120,21 +126,15 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
             <button
               type="button"
               aria-label={muteLabel ? "Turn sound on" : "Turn sound off"}
-              onClick={() => {
-                if (isTouchScreen()) {
-                  setRailOpen((o) => !o);
-                  return;
-                }
-                setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume });
-              }}
+              onClick={() => setRailOpen((o) => !o)}
               className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/15"
             >
               {muteLabel ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
             <div
               className={`flex items-center overflow-hidden transition-all duration-200 ${
-                railOpen ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
-              } group-hover:ml-1 group-hover:w-20 group-hover:opacity-100`}
+                railShown ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
+              }`}
             >
               <input
                 type="range"
