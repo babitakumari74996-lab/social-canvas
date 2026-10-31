@@ -234,6 +234,13 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .sv-range::-moz-range-progress { background: #ffffff; height: 1px; border-radius: 999px; }
 .sv-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #ffffff; border: 0; }
 
+/* Video seek bar: same white/grey look as the volume track, a little thicker (4px). */
+.sv-range.sv-seek { height: 4px; }
+.sv-range.sv-seek::-webkit-slider-runnable-track { height: 4px; }
+.sv-range.sv-seek::-webkit-slider-thumb { margin-top: -4px; }
+.sv-range.sv-seek::-moz-range-track,
+.sv-range.sv-seek::-moz-range-progress { height: 4px; }
+
 /* hide every scrollbar in the app; elements still scroll with wheel, touch, trackpad and keys */
 *, *::before, *::after { scrollbar-width: none; }
 :is(html, body, div, main, section, article, aside, nav, header, footer, ul, ol, li, dialog, form, textarea, pre, table, img, video) { scrollbar-width: none; }

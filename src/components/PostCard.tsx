@@ -20,7 +20,7 @@ function Verified({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i;
-export function isVideoUrl(src: string) {
+function isVideoUrl(src: string) {
   return VIDEO_EXT.test(src);
 }
 
@@ -175,7 +175,8 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                 if (el) el.currentTime = t;
                 setTime(t);
               }}
-              className="block h-1 w-full cursor-pointer accent-sky-400"
+              className="sv-range sv-seek block w-full"
+              style={{ "--fill": `${duration > 0 ? (Math.min(time, duration) / duration) * 100 : 0}%` } as CSSProperties}
             />
           </div>
         </>
