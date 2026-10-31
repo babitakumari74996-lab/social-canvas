@@ -215,7 +215,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   appearance: none;
   height: 1px;
   border-radius: 999px;
-  background: linear-gradient(to right, #38bdf8 0%, #38bdf8 var(--fill, 100%), rgba(255, 255, 255, 0.35) var(--fill, 100%), rgba(255, 255, 255, 0.35) 100%);
+  background: linear-gradient(to right, #ffffff 0%, #ffffff var(--fill, 100%), #6b7280 var(--fill, 100%), #6b7280 100%);
   outline: none;
   cursor: pointer;
 }
@@ -227,12 +227,12 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   height: 12px;
   margin-top: -5.5px;
   border-radius: 50%;
-  background: #38bdf8;
+  background: #ffffff;
   border: 0;
 }
 .sv-range::-moz-range-track { background: transparent; height: 1px; }
-.sv-range::-moz-range-progress { background: #38bdf8; height: 1px; border-radius: 999px; }
-.sv-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #38bdf8; border: 0; }
+.sv-range::-moz-range-progress { background: #ffffff; height: 1px; border-radius: 999px; }
+.sv-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #ffffff; border: 0; }
 
 /* hide every scrollbar in the app; elements still scroll with wheel, touch, trackpad and keys */
 *, *::before, *::after { scrollbar-width: none; }
