@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { listenDuration } from "@/lib/video-duration";
+import { SvSlider } from "@/components/SvSlider";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
   MoreHorizontal, BadgeCheck, Volume2, VolumeX,
@@ -136,19 +137,15 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                 railShown ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
               }`}
             >
-              <input
-                type="range"
+              <SvSlider
+                value={audio.muted ? 0 : audio.volume}
                 min={0}
                 max={1}
                 step={0.05}
-                aria-label="Sound volume"
-                value={audio.muted ? 0 : audio.volume}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setVideoAudio({ volume: v, muted: v === 0 });
-                }}
-                className="sv-range w-20"
-                style={{ "--v": String(audio.muted ? 0 : audio.volume) } as CSSProperties}
+                ariaLabel="Sound volume"
+                thickness={4}
+                className="w-20"
+                onChange={(v) => setVideoAudio({ volume: v, muted: v === 0 })}
               />
             </div>
           </div>
@@ -162,21 +159,19 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
             <div className="mb-1 text-[11px] font-medium tabular-nums">
               {formatTime(time)} / {formatTime(duration)}
             </div>
-            <input
-              type="range"
+            <SvSlider
+              value={Math.min(time, duration || 0)}
               min={0}
               max={duration > 0 ? duration : 0}
               step={0.1}
-              aria-label="Seek"
-              value={Math.min(time, duration || 0)}
-              onChange={(e) => {
+              ariaLabel="Seek"
+              thickness={6}
+              className="block w-full"
+              onChange={(t) => {
                 const el = ref.current;
-                const t = Number(e.target.value);
                 if (el) el.currentTime = t;
                 setTime(t);
               }}
-              className="sv-range sv-seek block w-full"
-              style={{ "--v": String(duration > 0 ? Math.min(time, duration) / duration : 0) } as CSSProperties}
             />
           </div>
         </>
