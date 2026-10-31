@@ -25,13 +25,23 @@ export function isVideoUrl(src: string) {
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [ended, setEnded] = useState(false);
+  const endedRef = useRef(false);
+  const markEnded = (v: boolean) => {
+    endedRef.current = v;
+    setEnded(v);
+  };
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          if (!el.ended) el.play().catch(() => {});
+          // Coming back to a post whose video already ended: start the reel again from the beginning.
+          if (el.ended || endedRef.current) {
+            el.currentTime = 0;
+            markEnded(false);
+          }
+          el.play().catch(() => {});
         } else el.pause();
       },
       { threshold: 0.5 },
@@ -41,7 +51,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
   }, [src]);
   const rewatch = () => {
     const el = ref.current;
-    setEnded(false);
+    markEnded(false);
     if (el) {
       el.currentTime = 0;
       el.play().catch(() => {});
@@ -56,7 +66,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         playsInline
         preload="metadata"
         onClick={onClick}
-        onEnded={() => setEnded(true)}
+        onEnded={() => markEnded(true)}
         className={className}
       />
       {ended && (
