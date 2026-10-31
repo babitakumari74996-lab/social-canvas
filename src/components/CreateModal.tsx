@@ -384,6 +384,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [textPost, setTextPost] = useState("");
   const [asReel, setAsReel] = useState(true);
   const [alsoStory, setAlsoStory] = useState(false);
+  // Preview tools: bottom sheet (audio / text / stickers) and the items placed over the preview.
+  const [toolSheet, setToolSheet] = useState<null | "audio" | "text" | "stickers">(null);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker"; value: string; color: string }[]>([]);
+  const [overlayText, setOverlayText] = useState("");
+  const [overlayColor, setOverlayColor] = useState("#ffffff");
+  const [keepOriginalSound, setKeepOriginalSound] = useState(true);
+  const [audioLabel, setAudioLabel] = useState("Original sound");
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -594,7 +601,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 className="absolute inset-0 h-full w-full object-contain"
                 loop
                 playsInline
+                muted={previewMuted}
               />
+              {overlays.map((o, i) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  aria-label="Remove"
+                  onClick={() => setOverlays((list) => list.filter((x) => x.id !== o.id))}
+                  className={`absolute left-1/2 -translate-x-1/2 whitespace-pre-wrap text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
+                  style={{ top: `${30 + ((i * 14) % 50)}%`, color: o.color }}
+                >
+                  {o.value}
+                </button>
+              ))}
               <button
                 type="button"
                 aria-label={previewMuted ? "Sound on" : "Sound off"}
@@ -616,11 +636,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <div className="min-w-0 flex-1 overflow-x-auto touch-pan-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex w-max min-w-full justify-between gap-6 px-2">
                   {[
-                    { label: "Audio", icon: Music2, action: () => toast("Audio coming soon") },
+                    { label: "Audio", icon: Music2, action: () => setToolSheet("audio") },
                     { label: "Edit", icon: Scissors, action: () => setStep("edit") },
                     { label: "Effects", icon: Sparkles, action: () => setStep("edit") },
-                    { label: "Text", icon: TypeIcon, action: () => toast("Text coming soon") },
-                    { label: "Stickers", icon: Smile, action: () => toast("Stickers coming soon") },
+                    { label: "Text", icon: TypeIcon, action: () => setToolSheet("text") },
+                    { label: "Stickers", icon: Smile, action: () => setToolSheet("stickers") },
                   ].map((t) => (
                     <button key={t.label} type="button" onClick={t.action} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
                       <span className="grid place-items-center h-14 w-14 rounded-full bg-white/15">
@@ -637,6 +657,101 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </span>
                 <span className="text-[11px] font-medium">Next</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {step === "preview" && mode === "video" && toolSheet && (
+          <div className="fixed inset-0 z-[80] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
+            <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-base font-semibold">
+                  {toolSheet === "audio" ? "Audio" : toolSheet === "text" ? "Text" : "Stickers"}
+                </span>
+                <button type="button" aria-label="Close" onClick={() => setToolSheet(null)} className="p-1">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {toolSheet === "audio" && (
+                <div className="space-y-2">
+                  {[
+                    { id: "orig", label: "Original sound", on: true },
+                    { id: "mute", label: "Mute video", on: false },
+                  ].map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => {
+                        setKeepOriginalSound(o.on);
+                        setAudioLabel(o.label);
+                        if (previewVideo.current) previewVideo.current.muted = !o.on;
+                        setPreviewMuted(!o.on);
+                        setToolSheet(null);
+                        toast(`Audio: ${o.label}`);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left ${audioLabel === o.label ? "bg-white/20" : "bg-white/10"}`}
+                    >
+                      <span className="text-sm font-medium">{o.label}</span>
+                      {audioLabel === o.label && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {toolSheet === "text" && (
+                <div className="space-y-4">
+                  <input
+                    value={overlayText}
+                    onChange={(e) => setOverlayText(e.target.value)}
+                    placeholder="Type something"
+                    maxLength={80}
+                    className="w-full rounded-xl bg-white/10 px-4 py-3 text-sm outline-none placeholder:text-white/50"
+                  />
+                  <div className="flex items-center gap-3">
+                    {["#ffffff", "#000000", "#facc15", "#f472b6", "#38bdf8"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Colour ${c}`}
+                        onClick={() => setOverlayColor(c)}
+                        className={`h-8 w-8 rounded-full border-2 ${overlayColor === c ? "border-white" : "border-white/20"}`}
+                        style={{ background: c }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!overlayText.trim()}
+                    onClick={() => {
+                      setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: overlayText.trim(), color: overlayColor }]);
+                      setOverlayText("");
+                      setToolSheet(null);
+                    }}
+                    className="w-full rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-40"
+                  >
+                    Add text
+                  </button>
+                </div>
+              )}
+
+              {toolSheet === "stickers" && (
+                <div className="grid grid-cols-6 gap-3">
+                  {["😀", "😂", "😍", "🔥", "❤️", "🎉", "💪", "⭐", "😎", "🙌", "👏", "🥳"].map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => {
+                        setOverlays((list) => [...list, { id: Date.now(), kind: "sticker", value: e, color: "#ffffff" }]);
+                        setToolSheet(null);
+                      }}
+                      className="grid h-12 place-items-center rounded-xl bg-white/10 text-2xl"
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
