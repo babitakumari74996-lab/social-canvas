@@ -6,6 +6,7 @@ import { Avatar } from "@/components/Avatar";
 import { useActions, useMe, useReels } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
 import { formatCount } from "@/lib/time";
+import { listenDuration } from "@/lib/video-duration";
 import { useSession } from "@/lib/auth";
 import { timeAgo } from "@/lib/time";
 import { useComments } from "@/lib/data";
@@ -155,6 +156,26 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const startedAtRef = useRef(false);
+  const seekRef = useRef<HTMLDivElement>(null);
+  const seekingRef = useRef(false);
+
+  // Move the reel to the point under the finger/mouse on the seek bar.
+  const seekAt = (clientX: number) => {
+    const bar = seekRef.current;
+    const vid = videoRef.current;
+    if (!bar || !vid || !Number.isFinite(vid.duration) || vid.duration <= 0) return;
+    const r = bar.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+    vid.currentTime = f * vid.duration;
+    setProgress(f * 100);
+  };
+
+  // Some clips do not store their length; this learns it so the seek bar works.
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    return listenDuration(vid);
+  }, [reel.video_url]);
   const [playing, setPlaying] = useState(false);
   const [liked, setLiked] = useState(reel.likedByMe);
   const [burst, setBurst] = useState(false);
@@ -394,7 +415,7 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
         )}
 
         {/* bottom gradient + info */}
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-3 px-3 flex items-end gap-3">
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pt-16 pb-6 px-3 flex items-end gap-3">
           <div className="flex-1 min-w-0 text-white">
             <div className="flex items-center gap-2">
               <Link to="/profile/$username" params={{ username: reel.profiles.username }}>
@@ -426,9 +447,31 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
           {rail("md:hidden")}
         </div>
 
-        {/* progress bar */}
-        <div className="absolute bottom-0 inset-x-0 h-[2.5px] bg-white/20">
-          <div className="h-full bg-white" style={{ width: `${progress}%` }} />
+        {/* seek bar: tap or drag anywhere on it to move the reel */}
+        <div
+          ref={seekRef}
+          data-no-tap
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            seekingRef.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            seekAt(e.clientX);
+          }}
+          onPointerMove={(e) => {
+            if (seekingRef.current) seekAt(e.clientX);
+          }}
+          onPointerUp={() => {
+            seekingRef.current = false;
+          }}
+          onPointerCancel={() => {
+            seekingRef.current = false;
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute bottom-0 inset-x-0 h-6 z-30 flex items-end cursor-pointer touch-none"
+        >
+          <div className="relative h-[3px] w-full bg-white/25">
+            <div className="h-full bg-sky-400" style={{ width: `${progress}%` }} />
+          </div>
         </div>
 
         {commentsOpen && (

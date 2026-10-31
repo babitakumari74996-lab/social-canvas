@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { listenDuration } from "@/lib/video-duration";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
   MoreHorizontal, BadgeCheck, Volume2, VolumeX,
@@ -30,8 +31,14 @@ function formatTime(sec: number) {
   return `${m}:${s}`;
 }
 
+// Touch screens have no hover: there the volume slider opens when the sound icon is tapped.
+function isTouchScreen() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: none)").matches;
+}
+
 /* Video for a feed post. Only the video nearest the middle of the screen plays (see video-focus.ts).
-   Top right: sound on/off and volume. Bottom: seek bar with time. Tapping the video opens it in the Reels tab.
+   Top right: a sound icon; the volume slider shows on hover (touch: after tapping the icon).
+   Bottom: seek bar (sky blue) with the time. Tapping the video opens it in the Reels tab, from the same point.
    When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -39,6 +46,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
   const [ended, setEnded] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [railOpen, setRailOpen] = useState(false);
   const audio = useSyncExternalStore(subscribeVideoAudio, getVideoAudio, getVideoAudio);
 
   useEffect(() => {
@@ -56,6 +64,12 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
     };
   }, [src]);
 
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    return listenDuration(el, (d) => setDuration(d));
+  }, [src]);
+
   const rewatch = () => {
     const el = ref.current;
     setEnded(false);
@@ -65,10 +79,9 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
     }
   };
 
-  // Open this video in the Reels tab: stop the feed videos first so their sound does not play behind Reels.
+  // Open this video in the Reels tab, from the point it has reached (an ended video opens from the start).
   const openInReels = () => {
     const el = ref.current;
-    // Where this video is now (an ended video opens from the start).
     const t = el && !ended ? el.currentTime : 0;
     document.querySelectorAll("video").forEach((v) => v.pause());
     navigate({ to: "/reels", search: { v: src, t: t > 0.2 ? Number(t.toFixed(2)) : undefined } });
@@ -79,7 +92,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
 
   return (
     <div
-      className="relative h-full w-full cursor-pointer"
+      className="group relative h-full w-full cursor-pointer"
       onClick={() => {
         onClick?.();
         openInReels();
@@ -93,40 +106,50 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         onPlay={() => setEnded(false)}
         onEnded={() => setEnded(true)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
         className={className}
       />
 
       {!ended && (
         <>
-          {/* top right: sound */}
+          {/* top right: sound icon; the slider appears on hover */}
           <div
             onClick={stop}
             onDoubleClick={stop}
-            className="absolute top-2 right-2 flex items-center gap-2 rounded-full bg-black/55 px-2 py-1.5 text-white"
+            className="absolute top-2 right-2 flex items-center rounded-full bg-black/55 p-1.5 text-white"
           >
             <button
               type="button"
               aria-label={muteLabel ? "Turn sound on" : "Turn sound off"}
-              onClick={() => setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume })}
-              className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/15"
+              onClick={() => {
+                if (isTouchScreen()) {
+                  setRailOpen((o) => !o);
+                  return;
+                }
+                setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume });
+              }}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/15"
             >
               {muteLabel ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              aria-label="Sound volume"
-              value={audio.muted ? 0 : audio.volume}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                setVideoAudio({ volume: v, muted: v === 0 });
-              }}
-              className="h-1 w-20 cursor-pointer accent-white"
-            />
+            <div
+              className={`flex items-center overflow-hidden transition-all duration-200 ${
+                railOpen ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
+              } group-hover:ml-1 group-hover:w-20 group-hover:opacity-100`}
+            >
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                aria-label="Sound volume"
+                value={audio.muted ? 0 : audio.volume}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setVideoAudio({ volume: v, muted: v === 0 });
+                }}
+                className="h-1 w-20 cursor-pointer accent-sky-400"
+              />
+            </div>
           </div>
 
           {/* bottom: time and seek bar */}
@@ -151,7 +174,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                 if (el) el.currentTime = t;
                 setTime(t);
               }}
-              className="block h-1 w-full cursor-pointer accent-red-600"
+              className="block h-1 w-full cursor-pointer accent-sky-400"
             />
           </div>
         </>
