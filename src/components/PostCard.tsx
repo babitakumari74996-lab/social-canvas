@@ -36,6 +36,18 @@ function formatTime(sec: number) {
    Top right: a sound icon; the volume slider shows on hover (touch: after tapping the icon).
    Bottom: seek bar (sky blue) with the time. Tapping the video opens it in the Reels tab, from the same point.
    When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
+// Shown until the first frame of a demo clip is ready, so the video never flashes black on load.
+const DEMO_POSTERS: Record<string, string> = {
+  "friday.mp4": "/demo/reels/poster-friday.jpg",
+  "flower.mp4": "/demo/reels/poster-flower-mp4.jpg",
+  "flower.webm": "/demo/reels/poster-flower-webm.jpg",
+  "sintel-short.webm": "/demo/reels/poster-sintel.jpg",
+};
+function posterFor(src: string): string | undefined {
+  const file = src.split("?")[0].split("/").pop() ?? "";
+  return DEMO_POSTERS[file];
+}
+
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
@@ -105,7 +117,8 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         onPlay={() => setEnded(false)}
         onEnded={() => setEnded(true)}
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
-        className={className}
+        poster={posterFor(src)}
+        className={`bg-muted ${className}`}
       />
 
       {!ended && (
