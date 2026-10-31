@@ -90,15 +90,6 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
   return (
     <div
       className="relative h-full w-full cursor-pointer"
-      onPointerEnter={(e) => {
-        if (e.pointerType === "mouse") setHovering(true);
-      }}
-      onPointerLeave={(e) => {
-        if (e.pointerType === "mouse") {
-          setHovering(false);
-          setRailOpen(false);
-        }
-      }}
       onClick={() => {
         onClick?.();
         openInReels();
@@ -121,6 +112,15 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
           <div
             onClick={stop}
             onDoubleClick={stop}
+            onPointerEnter={(e) => {
+              if (e.pointerType === "mouse") setHovering(true);
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType === "mouse") {
+                setHovering(false);
+                setRailOpen(false);
+              }
+            }}
             className="absolute top-2 right-2 flex items-center rounded-full bg-black/55 p-1.5 text-white"
           >
             <button
