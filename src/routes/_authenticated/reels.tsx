@@ -156,6 +156,9 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
   const videoRef = useRef<HTMLVideoElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const startedAtRef = useRef(false);
+  // The effects below run once, so they read the latest start point from this ref.
+  const startAtRef = useRef(startAt);
+  startAtRef.current = startAt;
   const seekRef = useRef<HTMLDivElement>(null);
   const seekingRef = useRef(false);
 
@@ -174,8 +177,18 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
   useEffect(() => {
     const vid = videoRef.current;
     if (!vid) return;
-    return listenDuration(vid);
+    return listenDuration(vid, undefined, () => startAtRef.current);
   }, [reel.video_url]);
+  // Each time Reels is opened from a feed video (new start point), jump to that point right away,
+  // even if this reel is already on the page. If the clip is not loaded yet, playWithSound does it.
+  useEffect(() => {
+    startedAtRef.current = false;
+    const vid = videoRef.current;
+    if (vid && startAt !== undefined && vid.readyState >= 1) {
+      vid.currentTime = startAt;
+      startedAtRef.current = true;
+    }
+  }, [startAt, reel.video_url]);
   const [playing, setPlaying] = useState(false);
   const [liked, setLiked] = useState(reel.likedByMe);
   const [burst, setBurst] = useState(false);
@@ -240,9 +253,10 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
     };
     const playWithSound = () => {
       // Opened from a feed video: start where that video was (only the first time this reel plays).
-      if (startAt !== undefined && !startedAtRef.current) {
+      const at = startAtRef.current;
+      if (at !== undefined && !startedAtRef.current) {
         startedAtRef.current = true;
-        vid.currentTime = startAt;
+        vid.currentTime = at;
       }
       vid.play().then(() => setPlaying(true)).catch(() => {
         // Autoplay with sound was blocked: play silently now, and restore the user's sound choice on the next tap.

@@ -2,7 +2,13 @@
 // browser reports duration = Infinity and the seek bar shows 0:00. For those, jump to the end once (the browser
 // then learns the real length), go back to where the video was, and report the length.
 // Returns a cleanup function.
-export function listenDuration(el: HTMLVideoElement, onDuration?: (seconds: number) => void): () => void {
+// getStart (optional): if it returns a time, that time is used after the probe instead of the old position,
+// so a start point chosen by the page (for example from another screen) is not overwritten.
+export function listenDuration(
+  el: HTMLVideoElement,
+  onDuration?: (seconds: number) => void,
+  getStart?: () => number | undefined,
+): () => void {
   let fixing = false;
   let savedTime = 0;
   let wasPaused = true;
@@ -27,7 +33,8 @@ export function listenDuration(el: HTMLVideoElement, onDuration?: (seconds: numb
   const onDurationChange = () => {
     if (fixing && Number.isFinite(el.duration) && el.duration > 0) {
       fixing = false;
-      el.currentTime = savedTime;
+      const start = getStart?.();
+      el.currentTime = start !== undefined ? start : savedTime;
       if (!wasPaused) el.play().catch(() => {});
       report();
       return;
