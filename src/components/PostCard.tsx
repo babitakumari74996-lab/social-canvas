@@ -133,7 +133,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
             </button>
             <div
               className={`flex items-center overflow-hidden transition-all duration-200 ${
-                railShown ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
+                railShown ? "ml-1 w-28 opacity-100" : "ml-0 w-0 opacity-0"
               }`}
             >
               <input
@@ -147,7 +147,7 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                   const v = Number(e.target.value);
                   setVideoAudio({ volume: v, muted: v === 0 });
                 }}
-                className="sv-range w-20"
+                className="sv-range w-28"
                 style={{ "--fill": `${(audio.muted ? 0 : audio.volume) * 100}%` } as CSSProperties}
               />
             </div>
