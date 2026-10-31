@@ -87,7 +87,7 @@ export function SearchPanel() {
           // Instagram-style reels grid under the recent searches
           <div className="grid grid-cols-3 gap-0.5 pt-1">
             {reels.map((r) => (
-              <Link key={r.id} to="/reels" onClick={() => ui.closeAll()} className="relative aspect-[9/16] bg-muted overflow-hidden">
+              <Link key={r.id} to="/reels" search={{ v: r.video_url }} onClick={() => ui.closeAll()} className="relative aspect-[9/16] bg-muted overflow-hidden">
                 {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
               </Link>
             ))}

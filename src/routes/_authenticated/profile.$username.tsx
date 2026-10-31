@@ -223,7 +223,7 @@ function ReelGrid({ reels, emptyText }: { reels: UReel[]; emptyText: string }) {
   return (
     <div className="grid grid-cols-3 gap-1 mt-0.5">
       {reels.map((r) => (
-        <Link key={r.id} to="/reels" className="relative group aspect-square overflow-hidden bg-zinc-900">
+        <Link key={r.id} to="/reels" search={{ v: r.video_url }} className="relative group aspect-square overflow-hidden bg-zinc-900">
           {r.poster ? (
             <MediaImg src={r.poster} alt={r.caption ?? ""} className="absolute inset-0 h-full w-full object-cover" />
           ) : (

@@ -229,7 +229,7 @@ function ProductsStrip() {
   );
 }
 
-function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[] }) {
+function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null; video_url: string }[] }) {
   return (
     <section className="my-4 rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-4 pt-3 pb-2">
@@ -238,7 +238,7 @@ function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null }[]
       </div>
       <Carousel label="Next reels">
         {reels.slice(0, 8).map((r) => (
-          <Link key={r.id} to="/reels" className="relative aspect-[9/16] w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
+          <Link key={r.id} to="/reels" search={{ v: r.video_url }} className="relative aspect-[9/16] w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
             {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />}
           </Link>
         ))}
