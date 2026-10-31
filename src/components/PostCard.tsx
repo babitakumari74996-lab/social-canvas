@@ -108,7 +108,8 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
 
       {!ended && (
         <>
-          {/* top right: sound icon; the slider appears on hover */}
+          {/* top right: sound icon. Hover (desktop) or tap (mobile) opens the controller:
+              volume slider and a seek bar with the time. */}
           <div
             onClick={stop}
             onDoubleClick={stop}
@@ -121,35 +122,56 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
                 setRailOpen(false);
               }
             }}
-            className="absolute top-2 right-2 flex items-center rounded-full bg-black/55 p-1.5 text-white"
+            className="absolute top-2 right-2 flex items-start gap-2"
           >
+            {railShown && (
+              <div className="w-56 rounded-xl bg-black/65 p-2.5 text-white">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-3.5 w-3.5 shrink-0" />
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    aria-label="Sound volume"
+                    value={audio.muted ? 0 : audio.volume}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setVideoAudio({ volume: v, muted: v === 0 });
+                    }}
+                    className="h-1 w-full cursor-pointer accent-sky-400"
+                  />
+                </div>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <span className="shrink-0 text-[11px] font-medium tabular-nums">
+                    {formatTime(time)} / {formatTime(duration)}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration > 0 ? duration : 0}
+                    step={0.1}
+                    aria-label="Seek in controller"
+                    value={Math.min(time, duration || 0)}
+                    onChange={(e) => {
+                      const el = ref.current;
+                      const t = Number(e.target.value);
+                      if (el) el.currentTime = t;
+                      setTime(t);
+                    }}
+                    className="h-1 w-full cursor-pointer accent-sky-400"
+                  />
+                </div>
+              </div>
+            )}
             <button
               type="button"
               aria-label={muteLabel ? "Turn sound on" : "Turn sound off"}
               onClick={() => setRailOpen((o) => !o)}
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-full hover:bg-white/15"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/55 text-white hover:bg-black/70"
             >
               {muteLabel ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </button>
-            <div
-              className={`flex items-center overflow-hidden transition-all duration-200 ${
-                railShown ? "ml-1 w-20 opacity-100" : "ml-0 w-0 opacity-0"
-              }`}
-            >
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                aria-label="Sound volume"
-                value={audio.muted ? 0 : audio.volume}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setVideoAudio({ volume: v, muted: v === 0 });
-                }}
-                className="h-1 w-20 cursor-pointer accent-sky-400"
-              />
-            </div>
           </div>
 
           {/* bottom: time and seek bar */}
