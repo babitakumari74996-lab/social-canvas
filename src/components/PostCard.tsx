@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Heart, MessageCircle, Send, Bookmark, ChevronLeft, ChevronRight,
   MoreHorizontal, BadgeCheck, Volume2, VolumeX,
@@ -23,12 +23,22 @@ export function isVideoUrl(src: string) {
   return VIDEO_EXT.test(src);
 }
 
+function formatTime(sec: number) {
+  const t = Number.isFinite(sec) && sec > 0 ? sec : 0;
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 /* Video for a feed post. Only the video nearest the middle of the screen plays (see video-focus.ts).
-   Sound follows the shared on/off + volume control shown on the video. When it ends, a black fade appears
-   with Rewatch (play again) and Reels (open the Reels tab). */
+   Top right: sound on/off and volume. Bottom: seek bar with time. Tapping the video opens it in the Reels tab.
+   When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const navigate = useNavigate();
   const [ended, setEnded] = useState(false);
+  const [time, setTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audio = useSyncExternalStore(subscribeVideoAudio, getVideoAudio, getVideoAudio);
 
   useEffect(() => {
@@ -55,53 +65,101 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
     }
   };
 
+  // Open this video in the Reels tab: stop the feed videos first so their sound does not play behind Reels.
+  const openInReels = () => {
+    document.querySelectorAll("video").forEach((v) => v.pause());
+    navigate({ to: "/reels", search: { v: src } });
+  };
+
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  const muteLabel = audio.muted || audio.volume === 0;
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      className="relative h-full w-full cursor-pointer"
+      onClick={() => {
+        onClick?.();
+        openInReels();
+      }}
+    >
       <video
         ref={ref}
         src={src}
         playsInline
         preload="metadata"
-        onClick={onClick}
         onPlay={() => setEnded(false)}
         onEnded={() => setEnded(true)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
         className={className}
       />
 
       {!ended && (
-        <div
-          onClick={stop}
-          onDoubleClick={stop}
-          className="absolute bottom-2 right-2 flex items-center gap-2 rounded-full bg-black/55 px-2 py-1.5 text-white"
-        >
-          <button
-            type="button"
-            aria-label={audio.muted || audio.volume === 0 ? "Turn sound on" : "Turn sound off"}
-            onClick={() => setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume })}
-            className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/15"
+        <>
+          {/* top right: sound */}
+          <div
+            onClick={stop}
+            onDoubleClick={stop}
+            className="absolute top-2 right-2 flex items-center gap-2 rounded-full bg-black/55 px-2 py-1.5 text-white"
           >
-            {audio.muted || audio.volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            aria-label="Sound volume"
-            value={audio.muted ? 0 : audio.volume}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setVideoAudio({ volume: v, muted: v === 0 });
-            }}
-            className="h-1 w-20 cursor-pointer accent-white"
-          />
-        </div>
+            <button
+              type="button"
+              aria-label={muteLabel ? "Turn sound on" : "Turn sound off"}
+              onClick={() => setVideoAudio({ muted: !audio.muted, volume: audio.muted && audio.volume === 0 ? 1 : audio.volume })}
+              className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/15"
+            >
+              {muteLabel ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              aria-label="Sound volume"
+              value={audio.muted ? 0 : audio.volume}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setVideoAudio({ volume: v, muted: v === 0 });
+              }}
+              className="h-1 w-20 cursor-pointer accent-white"
+            />
+          </div>
+
+          {/* bottom: time and seek bar */}
+          <div
+            onClick={stop}
+            onDoubleClick={stop}
+            className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 pb-2 pt-8 text-white"
+          >
+            <div className="mb-1 text-[11px] font-medium tabular-nums">
+              {formatTime(time)} / {formatTime(duration)}
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={duration > 0 ? duration : 0}
+              step={0.1}
+              aria-label="Seek"
+              value={Math.min(time, duration || 0)}
+              onChange={(e) => {
+                const el = ref.current;
+                const t = Number(e.target.value);
+                if (el) el.currentTime = t;
+                setTime(t);
+              }}
+              className="block h-1 w-full cursor-pointer accent-red-600"
+            />
+          </div>
+        </>
       )}
 
       {ended && (
-        <div className="animate-in-fade absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
+        <div
+          onClick={stop}
+          onDoubleClick={stop}
+          className="animate-in-fade absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80"
+        >
           <button
             type="button"
             onClick={rewatch}

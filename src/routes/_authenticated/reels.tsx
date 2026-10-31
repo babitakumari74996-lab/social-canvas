@@ -12,13 +12,25 @@ import { useComments } from "@/lib/data";
 import type { UReel } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/reels")({
+  // `v` = the video URL of a feed post that was tapped; that reel is shown first and starts playing.
+  validateSearch: (search: Record<string, unknown>): { v?: string } => ({
+    v: typeof search.v === "string" && search.v ? search.v : undefined,
+  }),
   component: ReelsPage,
 });
 
 const MUTED_KEY = "sv-reels-muted";
 
 function ReelsPage() {
-  const { reels, loading } = useReels();
+  const { reels: allReels, loading } = useReels();
+  const { v } = Route.useSearch();
+  // A feed video that was tapped comes first (matched by its video file); otherwise the normal order.
+  const reels = (() => {
+    if (!v) return allReels;
+    const i = allReels.findIndex((r) => r.video_url === v);
+    if (i <= 0) return allReels;
+    return [allReels[i], ...allReels.slice(0, i), ...allReels.slice(i + 1)];
+  })();
   const me = useMe();
   // The sound choice is remembered: unmuted once, the next Reels visit starts with sound (if the browser allows it).
   const [muted, setMuted] = useState(() => {
