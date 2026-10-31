@@ -213,25 +213,25 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
 .sv-range {
   -webkit-appearance: none;
   appearance: none;
-  height: 2px;
+  height: 1px;
   border-radius: 999px;
   background: linear-gradient(to right, #38bdf8 0%, #38bdf8 var(--fill, 100%), rgba(255, 255, 255, 0.35) var(--fill, 100%), rgba(255, 255, 255, 0.35) 100%);
   outline: none;
   cursor: pointer;
 }
-.sv-range::-webkit-slider-runnable-track { background: transparent; height: 2px; }
+.sv-range::-webkit-slider-runnable-track { background: transparent; height: 1px; }
 .sv-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 12px;
   height: 12px;
-  margin-top: -5px;
+  margin-top: -5.5px;
   border-radius: 50%;
   background: #38bdf8;
   border: 0;
 }
-.sv-range::-moz-range-track { background: transparent; height: 2px; }
-.sv-range::-moz-range-progress { background: #38bdf8; height: 2px; border-radius: 999px; }
+.sv-range::-moz-range-track { background: transparent; height: 1px; }
+.sv-range::-moz-range-progress { background: #38bdf8; height: 1px; border-radius: 999px; }
 .sv-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #38bdf8; border: 0; }
 
 /* hide every scrollbar in the app; elements still scroll with wheel, touch, trackpad and keys */
