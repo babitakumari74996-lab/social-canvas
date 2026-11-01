@@ -16,6 +16,16 @@ const TEXT_COLOURS = ["#ffffff", "#000000", "#facc15", "#f472b6", "#38bdf8", "#2
 type TextFont = "sans" | "serif" | "mono";
 type TextAlign = "left" | "center" | "right";
 const TEXT_FONTS: Record<TextFont, string> = { sans: "system-ui, sans-serif", serif: "Georgia, serif", mono: "ui-monospace, monospace" };
+// Effects picker entries: the css is applied to the preview; badge is the circle label.
+const EFFECT_OPTIONS: { name: string; css: string; bg: string; fg: string; badge: string }[] = [
+  { name: "None", css: "none", bg: "#3f3f46", fg: "#fff", badge: "⊘" },
+  { name: "Sunset", css: "sepia(0.3) saturate(1.4) contrast(1.05)", bg: "linear-gradient(#60a5fa,#f59e0b)", fg: "#fff", badge: "" },
+  { name: "8K Ultra HD", css: "contrast(1.25) saturate(1.3) brightness(1.05)", bg: "#facc15", fg: "#000", badge: "8K\nULTRA HD" },
+  { name: "Glitch", css: "contrast(1.4) hue-rotate(-30deg) saturate(1.6)", bg: "#000", fg: "#fff", badge: "GLITCH" },
+  { name: "Teal", css: "hue-rotate(160deg) saturate(1.2)", bg: "linear-gradient(90deg,#0d9488,#2dd4bf)", fg: "#fff", badge: "" },
+  { name: "Vintage", css: "sepia(0.55) contrast(0.9) brightness(1.05)", bg: "#a16207", fg: "#fff", badge: "VINTAGE" },
+  { name: "Mono", css: "grayscale(1) contrast(1.1)", bg: "#52525b", fg: "#fff", badge: "B&W" },
+];
 const STICKERS = ["❤️", "😂", "😍", "🔥", "🎉", "💯", "🥳", "😎", "🌟", "🌈", "🎵", "🙌", "💕", "😜", "🍀", "🌸"];
 
 // Same recipes Instagram-style filters emulate
@@ -460,6 +470,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Last trim range before Undo, so Redo can bring it back.
   const trimHistory = useRef<{ start: number; end: number } | null>(null);
   const [textOpen, setTextOpen] = useState(false);
+  // Effects picker: the choice is previewed live and only applied with the check button.
+  const [effectsOpen, setEffectsOpen] = useState(false);
+  const [effectPick, setEffectPick] = useState("none");
   const [textAlign, setTextAlign] = useState<TextAlign>("center");
   const [textFont, setTextFont] = useState<TextFont>("sans");
   const [musicFromMix, setMusicFromMix] = useState(false);
@@ -523,7 +536,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setMusicTrack(null); setMusicOpen(false); setMixOpen(false); setVoiceOpen(false);
       setVoiceUrl(null); setVoiceVolume(1); setOriginalVolume(1); setKeepOriginalSound(true);
       setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
-      setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false);
+      setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false); setEffectsOpen(false);
     }
   }, [open, createMode]);
 
@@ -784,7 +797,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   {[
                     { label: "Audio", icon: Music2, action: () => setMixOpen(true) },
                     { label: "Edit", icon: Scissors, action: () => setEditorOpen(true) },
-                    { label: "Effects", icon: Sparkles, action: () => { setEditorPanel(null); setEditorOpen(true); } },
+                    { label: "Effects", icon: Sparkles, action: () => { setEffectPick(videoFilter); setEffectsOpen(true); } },
                     { label: "Text", icon: TypeIcon, action: () => setTextOpen(true) },
                     { label: "Stickers", icon: Smile, action: () => setToolSheet("stickers") },
                   ].map((t) => (
@@ -1022,6 +1035,56 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   className="w-full resize-none bg-transparent text-3xl font-bold outline-none placeholder:text-white/60"
                   style={{ color: overlayColor, fontFamily: TEXT_FONTS[textFont], textAlign }}
                 />
+              </div>
+            </div>
+          )}
+
+          {effectsOpen && (
+            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
+              <video
+                src={draft.previews[0]}
+                muted
+                autoPlay
+                loop
+                playsInline
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ filter: effectPick === "none" ? undefined : effectPick, transform: mirror ? "scaleX(-1)" : undefined }}
+              />
+              <div className="relative mt-auto flex flex-col gap-5 pb-6">
+                <div className="flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {EFFECT_OPTIONS.map((f) => (
+                    <button
+                      key={f.name}
+                      type="button"
+                      aria-label={f.name}
+                      onClick={() => setEffectPick(f.css)}
+                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-4 ring-white ring-offset-2 ring-offset-black" : ""}`}
+                      style={{ background: f.bg, color: f.fg }}
+                    >
+                      {f.badge}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between px-6">
+                  <button type="button" aria-label="Cancel effect" onClick={() => setEffectsOpen(false)} className="grid h-14 w-14 place-items-center rounded-full bg-zinc-800">
+                    <X className="h-7 w-7" />
+                  </button>
+                  <div className="text-center">
+                    <p className="text-lg font-bold">{EFFECT_OPTIONS.find((f) => f.css === effectPick)?.name ?? "None"}</p>
+                    <p className="text-sm text-white/70">By creators</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Apply effect"
+                    onClick={() => {
+                      setVideoFilter(effectPick);
+                      setEffectsOpen(false);
+                    }}
+                    className="grid h-14 w-14 place-items-center rounded-full bg-[#1877f2]"
+                  >
+                    <Check className="h-7 w-7" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
