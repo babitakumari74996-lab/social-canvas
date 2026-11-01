@@ -35,7 +35,7 @@ function formatTime(sec: number) {
 /* Video for a feed post. Only the video nearest the middle of the screen plays (see video-focus.ts).
    Top right: a sound icon; the volume slider shows on hover (touch: after tapping the icon).
    Bottom: seek bar (sky blue) with the time. Tapping the video opens it in the Reels tab, from the same point.
-   When it ends, a black fade appears with Rewatch (play again) and Reels (open the Reels tab). */
+   When it ends, it starts again from the beginning (no end screen). */
 // Shown until the first frame of a demo clip is ready, so the video never flashes black on load.
 const DEMO_POSTERS: Record<string, string> = {
   "friday.mp4": "/demo/reels/poster-friday.jpg",
@@ -51,7 +51,6 @@ function posterFor(src: string): string | undefined {
 function VideoMedia({ src, className = "", onClick }: { src: string; className?: string; onClick?: () => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
-  const [ended, setEnded] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [railOpen, setRailOpen] = useState(false); // opened by tapping the sound icon
@@ -80,19 +79,10 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
     return listenDuration(el, (d) => setDuration(d));
   }, [src]);
 
-  const rewatch = () => {
-    const el = ref.current;
-    setEnded(false);
-    if (el) {
-      el.currentTime = 0;
-      el.play().catch(() => {});
-    }
-  };
-
   // Open this video in the Reels tab, from the point it has reached (an ended video opens from the start).
   const openInReels = () => {
     const el = ref.current;
-    const t = el && !ended ? el.currentTime : 0;
+    const t = el && !el.ended ? el.currentTime : 0;
     document.querySelectorAll("video").forEach((v) => v.pause());
     navigate({ to: "/reels", search: { v: src, t: t > 0.2 ? Number(t.toFixed(2)) : undefined } });
   };
@@ -114,14 +104,13 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         playsInline
         // Swipe-preview copies of the page (embed mode) do not download video.
         preload={typeof document !== "undefined" && document.documentElement.hasAttribute("data-embed") ? "none" : "metadata"}
-        onPlay={() => setEnded(false)}
-        onEnded={() => setEnded(true)}
+        loop
         onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
         poster={posterFor(src)}
         className={`bg-muted ${className}`}
       />
 
-      {!ended && (
+      {(
         <>
           {/* top right: sound icon; the slider appears on hover */}
           <div
@@ -191,27 +180,6 @@ function VideoMedia({ src, className = "", onClick }: { src: string; className?:
         </>
       )}
 
-      {ended && (
-        <div
-          onClick={stop}
-          onDoubleClick={stop}
-          className="animate-in-fade absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80"
-        >
-          <button
-            type="button"
-            onClick={rewatch}
-            className="min-w-[140px] rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-black hover:opacity-90"
-          >
-            Rewatch
-          </button>
-          <Link
-            to="/reels"
-            className="min-w-[140px] rounded-lg border border-white/60 px-6 py-2.5 text-center text-sm font-semibold text-white hover:bg-white/10"
-          >
-            Reels
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
