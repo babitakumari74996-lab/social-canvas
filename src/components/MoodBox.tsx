@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/Avatar";
-import { useMe } from "@/lib/data";
-import { addMoodWithFiles } from "@/lib/demo-store";
+import { useActions, useMe } from "@/lib/data";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +42,7 @@ export function MoodDialog({
   const [files, setFiles] = useState<Attachment[]>([]);
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
+  const actions = useActions();
 
   const canSubmit = !!mood && (note.trim().length > 0 || files.length > 0);
   const picked = MOODS.find((m) => m.id === mood);
@@ -82,7 +82,11 @@ export function MoodDialog({
     if (!canSubmit || !mood) return;
     toast(`Mood shared: ${picked?.emoji ?? ""} ${picked?.label ?? ""}`);
     // Saved to the demo store so it shows on the Moods page.
-    void addMoodWithFiles({ mood, note: note.trim(), files: files.map((f) => f.file) });
+    const moodFiles = files.map((f) => f.file);
+    const moodNote = note.trim();
+    void actions.createMood({ mood, note: moodNote, files: moodFiles }).catch((err: unknown) =>
+      toast.error(err instanceof Error ? err.message : "Mood save nahi hua"),
+    );
     files.forEach((f) => URL.revokeObjectURL(f.url));
     setFiles([]);
     setNote("");

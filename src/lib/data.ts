@@ -4,8 +4,8 @@ import { useSession, useMyProfile } from "@/lib/auth";
 import { uploadMedia } from "@/lib/media";
 import { makePoster, saveMedia } from "@/lib/media-store";
 import { DEMO_ME_ID, DEMO_REQUESTS, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
-import { demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
-import type { StoryGroup, UComment, UMood, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
+import { addMoodWithFiles, demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
+import type { StoryGroup, UComment, UMood, UMoodMedia, UNotif, UPost, UProfile, UReel, UStory } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Unified data layer: when the visitor has a real Supabase session we read
@@ -95,7 +95,38 @@ export function useFeed(): { posts: UPost[]; loading: boolean } {
 export function useMoods(): { moods: UMood[]; loading: boolean } {
   const { userId } = useSession();
   const demo = useDemo();
-  if (userId) return { moods: [], loading: false };
+  const { data, isLoading } = useQuery({
+    queryKey: ["moods", userId],
+    queryFn: async (): Promise<UMood[]> => {
+      const sb = await getSupabase();
+      const { data: rows, error } = await sb
+        .from("moods")
+        .select(`id, user_id, mood, note, media, created_at, profiles!inner(${PROFILES_COLS})`)
+        .order("created_at", { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      const list = (rows ?? []) as unknown as { id: string; user_id: string; mood: string; note: string; media: UMoodMedia[] | null; created_at: string; profiles: Record<string, unknown> }[];
+      return Promise.all(
+        list.map(async (m) => {
+          // Media is stored as storage paths; turn them into signed URLs for display.
+          const media = await Promise.all(
+            (m.media ?? []).map(async (md) => {
+              if (md.url.startsWith("http")) return md;
+              const { data: signed } = await sb.storage.from("media").createSignedUrl(md.url, 60 * 60);
+              return { ...md, url: signed?.signedUrl ?? "" };
+            }),
+          );
+          return {
+            id: m.id, user_id: m.user_id, mood: m.mood, note: m.note, media,
+            created_at: m.created_at, likes: 0, commentsCount: 0,
+            profiles: supabaseProfile(m.profiles, m.user_id),
+          };
+        }),
+      );
+    },
+    enabled: !!userId,
+  });
+  if (userId) return { moods: data ?? [], loading: isLoading };
   const moods = [...demo.moods].sort((a, b) => b.created_at.localeCompare(a.created_at));
   return { moods, loading: false };
 }
@@ -526,6 +557,18 @@ export function useActions() {
       if (error) throw new Error(`Reel save nahi hua: ${error.message}`);
       qc.invalidateQueries({ queryKey: ["reels", userId] });
     },
+    async createMood(input: { mood: string; note: string; files: File[] }) {
+      if (!userId) return;
+      const media: { url: string; kind: "image" | "video" }[] = [];
+      for (const f of input.files) {
+        media.push({ url: await uploadMedia(userId, f), kind: f.type.startsWith("video") ? "video" : "image" });
+      }
+      const { error } = await (await getSupabase()).from("moods").insert({
+        user_id: userId, mood: input.mood, note: input.note, media,
+      });
+      if (error) throw new Error(`Mood save nahi hua: ${error.message}`);
+      qc.invalidateQueries({ queryKey: ["moods", userId] });
+    },
     async sendMessage(receiverId: string, content: string) {
       if (!userId) return;
       await (await getSupabase()).from("messages").insert({ sender_id: userId, receiver_id: receiverId, content });
@@ -555,6 +598,10 @@ export function useActions() {
       if (userId) return real.createPost({ ...input, files: input.files ?? [] });
       const urls = [...(input.files ?? []).map((f) => fileToDataUrl(f)), ...(input.galleryUrls ?? [])];
       demoActions.addPost({ media_urls: urls, caption: input.caption, location: input.location });
+    },
+    createMood: async (input: { mood: string; note: string; files: File[] }) => {
+      if (userId) return real.createMood(input);
+      return addMoodWithFiles(input);
     },
     createStory: async (input: { file?: File; galleryUrl?: string }) => {
       if (userId && input.file) return real.createStory(input.file);

@@ -86,6 +86,41 @@ export type Database = {
           },
         ]
       }
+      moods: {
+        Row: {
+          created_at: string
+          id: string
+          media: Json
+          mood: string
+          note: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media?: Json
+          mood: string
+          note?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media?: Json
+          mood?: string
+          note?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
