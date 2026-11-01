@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, StoryRing } from "@/components/Avatar";
-import { MediaImg } from "@/components/PostCard";
+import { MediaImg, isVideoUrl } from "@/components/PostCard";
 import { useActions, useMe, useProfilePage, useSavedPosts } from "@/lib/data";
 import { ui } from "@/lib/demo-store";
 import { DEMO_GALLERY } from "@/lib/demo-data";
@@ -197,6 +197,9 @@ function PostGrid({ posts, emptyText }: { posts: UPost[]; emptyText: string }) {
             <span className="absolute inset-0 p-2 flex items-center justify-center text-center text-white text-[11px] font-semibold line-clamp-5" style={{ background: "linear-gradient(135deg,#4338CA,#7C3AED,#6366F1)" }}>
               {p.caption}
             </span>
+          ) : isVideoUrl(p.media_urls[0]) ? (
+            // Grid tile only: a still picture of the video. No player, so no end screen or autoplay in the grid.
+            <video src={p.media_urls[0]} className="absolute inset-0 h-full w-full object-cover pointer-events-none" muted playsInline preload="metadata" />
           ) : (
             <MediaImg src={p.media_urls[0]} alt={p.caption ?? ""} className="absolute inset-0 h-full w-full object-cover" />
           )}

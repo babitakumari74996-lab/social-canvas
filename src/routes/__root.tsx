@@ -107,6 +107,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Socialverse" },
     ],
+    scripts: [
+      // Splash shows once per browser tab session. Later full page loads (opening a post or profile in a new
+      // load) skip it. Runs in the head, before the splash can paint.
+      { children: "try{if(sessionStorage.getItem('sv-seen'))document.documentElement.setAttribute('data-sv-seen','')}catch(e){}" },
+    ],
     links: [
       // Splash icon is preloaded so it paints with the first frame.
       { rel: "preload", href: "/header-logo-v3.png", as: "image", type: "image/png" },
@@ -138,6 +143,7 @@ const SPLASH_CSS = `
 html[data-sv-done] #sv-splash{animation:sv-splash-out .2s ease-in 0s forwards}
 @keyframes sv-splash-out{to{opacity:0;visibility:hidden}}
 html[data-embed] #sv-splash{display:none}
+html[data-sv-seen] #sv-splash{display:none}
 /* Reels preview pages are black from the first paint (no white flash while the swipe reveals them). */
 html[data-reels],html[data-reels] body{background:#000 !important}
 `;
@@ -222,6 +228,7 @@ function RootComponent() {
       const capped = performance.now() >= 1800;
       if ((imagesDone || capped) && performance.now() >= 1200) {
         document.documentElement.setAttribute("data-sv-done", "");
+        try { sessionStorage.setItem("sv-seen", "1"); } catch { /* storage blocked: splash shows on each load */ }
         return;
       }
       setTimeout(check, 50);

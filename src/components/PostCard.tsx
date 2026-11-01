@@ -21,7 +21,7 @@ function Verified({ className = "h-3.5 w-3.5" }: { className?: string }) {
 }
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i;
-function isVideoUrl(src: string) {
+export function isVideoUrl(src: string) {
   return VIDEO_EXT.test(src);
 }
 
