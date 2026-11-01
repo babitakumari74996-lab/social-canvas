@@ -1051,14 +1051,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 style={{ filter: effectPick === "none" ? undefined : effectPick, transform: mirror ? "scaleX(-1)" : undefined }}
               />
               <div className="relative mt-auto flex flex-col gap-5 pb-6">
-                <div className="flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex gap-4 overflow-x-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {EFFECT_OPTIONS.map((f) => (
                     <button
                       key={f.name}
                       type="button"
                       aria-label={f.name}
                       onClick={() => setEffectPick(f.css)}
-                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-4 ring-white ring-offset-2 ring-offset-black" : ""}`}
+                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white" : ""}`}
                       style={{ background: f.bg, color: f.fg }}
                     >
                       {f.badge}
