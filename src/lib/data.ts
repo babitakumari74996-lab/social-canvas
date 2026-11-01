@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getSupabase } from "@/integrations/supabase/lazy";
 import { useSession, useMyProfile } from "@/lib/auth";
-import { uploadMedia } from "@/lib/media";
+import { signAll, signOne, uploadMedia } from "@/lib/media";
 import { makePoster, saveMedia } from "@/lib/media-store";
 import { DEMO_ME_ID, DEMO_REQUESTS, DEMO_SUGGESTION_REASONS, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { addMoodWithFiles, demoActions, demoCommentsFor, demoMe, ensureMedia, resolveVideoUrl, useDemo } from "@/lib/demo-store";
@@ -66,7 +66,7 @@ function useSupabasePosts(): UPost[] | undefined {
         (await getSupabase()).from("likes").select("post_id, user_id").in("post_id", ids),
         (await getSupabase()).from("comments").select("post_id").in("post_id", ids),
       ]);
-      return posts.map((p) => ({
+      const mapped = posts.map((p) => ({
         id: p.id, user_id: p.user_id, media_urls: p.media_urls ?? [], caption: p.caption,
         location: p.location, created_at: p.created_at, profiles: supabaseProfile(p.profiles, p.user_id),
         likes: likes?.filter((l) => l.post_id === p.id).length ?? 0,
@@ -74,6 +74,7 @@ function useSupabasePosts(): UPost[] | undefined {
         savedByMe: false,
         commentsCount: comments?.filter((c) => c.post_id === p.id).length ?? 0,
       }));
+      return Promise.all(mapped.map(async (p) => ({ ...p, media_urls: await signAll(p.media_urls) })));
     },
     enabled: !!userId,
     refetchOnWindowFocus: false,
@@ -271,13 +272,21 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
       if (reels.length === 0) return [];
       const ids = reels.map((r) => r.id);
       void ids;
-      return reels.map((r) => ({
+      const mapped = reels.map((r) => ({
         id: r.id, user_id: r.user_id, video_url: r.video_url, poster: r.cover_url ?? null,
         caption: r.caption, music: null, created_at: r.created_at,
         trimStart: r.trim_start ?? null, trimEnd: r.trim_end ?? null, videoFilter: r.video_filter ?? null, audience: r.audience ?? "everyone", tagged: r.tagged ?? [],
         profiles: supabaseProfile(r.profiles, r.user_id),
         likes: 0, likedByMe: false, commentsCount: 0,
       }));
+      // Reels and their posters live in the private media bucket: sign them for playback.
+      return Promise.all(
+        mapped.map(async (r) => ({
+          ...r,
+          video_url: await signOne(r.video_url),
+          poster: r.poster ? await signOne(r.poster) : null,
+        })),
+      );
     },
     enabled: !!userId,
   });
@@ -330,6 +339,8 @@ export function useProfilePage(username: string): { page: ProfilePage | null; lo
         id: r.id, user_id: r.user_id, video_url: r.video_url, poster: null, caption: r.caption, music: null,
         created_at: r.created_at, profiles: supabaseProfile(r.profiles, r.user_id), likes: 0, likedByMe: false, commentsCount: 0,
       }));
+      for (const p of posts) p.media_urls = await signAll(p.media_urls);
+      for (const r of reels) r.video_url = await signOne(r.video_url);
       return {
         profile: supabaseProfile(prof as unknown as Record<string, unknown>, pid),
         posts,

@@ -238,7 +238,7 @@ function ReelsStrip({ reels }: { reels: { id: string; poster?: string | null; vi
       </div>
       <Carousel label="Next reels">
         {reels.slice(0, 8).map((r) => (
-          <Link key={r.id} to="/reels" search={{ v: r.video_url }} className="relative aspect-[9/16] w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
+          <Link key={r.id} to="/reels" search={{ v: r.id }} className="relative aspect-[9/16] w-36 shrink-0 overflow-hidden rounded-lg bg-muted">
             {r.poster && <img src={r.poster} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />}
           </Link>
         ))}

@@ -30,10 +30,10 @@ const MUTED_KEY = "sv-reels-muted";
 function ReelsPage() {
   const { reels: allReels, loading } = useReels();
   const { v, t } = Route.useSearch();
-  // A feed video that was tapped comes first (matched by its video file); otherwise the normal order.
+  // A feed video that was tapped comes first (matched by its reel id); otherwise the normal order.
   const reels = (() => {
     if (!v) return allReels;
-    const i = allReels.findIndex((r) => r.video_url === v);
+    const i = allReels.findIndex((r) => r.id === v);
     if (i <= 0) return allReels;
     return [allReels[i], ...allReels.slice(0, i), ...allReels.slice(i + 1)];
   })();
@@ -142,7 +142,7 @@ function ReelsPage() {
           </div>
         )}
         {reels.map((r) => (
-          <ReelItem key={r.id} reel={r} muted={muted} startAt={v && r.video_url === v ? t : undefined} />
+          <ReelItem key={r.id} reel={r} muted={muted} startAt={v && r.id === v ? t : undefined} />
         ))}
       </div>
     </div>

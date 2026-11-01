@@ -26,3 +26,14 @@ export async function uploadMedia(userId: string, file: File): Promise<string> {
   if (error) throw error;
   return path;
 }
+/** Storage path (private bucket) -> signed URL. Full URLs, blob/idb keys and local paths are returned as they are. */
+export async function signOne(path: string): Promise<string> {
+  if (!path || /^(https?:|blob:|data:|idb:|\/)/.test(path)) return path;
+  const { data, error } = await (await getSupabase()).storage.from("media").createSignedUrl(path, 60 * 60);
+  if (error || !data) return "";
+  return data.signedUrl;
+}
+
+export async function signAll(paths: string[]): Promise<string[]> {
+  return Promise.all(paths.map(signOne));
+}
