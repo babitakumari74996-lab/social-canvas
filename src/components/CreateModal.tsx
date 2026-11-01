@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -27,6 +27,30 @@ const EFFECT_OPTIONS: { name: string; css: string; bg: string; fg: string; badge
   { name: "Vintage", css: "sepia(0.55) contrast(0.9) brightness(1.05)", bg: "#a16207", fg: "#fff", badge: "VINTAGE" },
   { name: "Mono", css: "grayscale(1) contrast(1.1)", bg: "#52525b", fg: "#fff", badge: "B&W" },
 ];
+// Templates shown on the Create page. Picking one opens the camera with it in mind.
+const TEMPLATES = [
+  { name: "Quick cut", desc: "Fast cuts to the beat", bg: "from-fuchsia-600 to-orange-400" },
+  { name: "Slideshow", desc: "Photos with smooth transitions", bg: "from-sky-500 to-indigo-600" },
+  { name: "Before & after", desc: "Show a change side by side", bg: "from-emerald-500 to-teal-600" },
+  { name: "Countdown", desc: "3, 2, 1, then go", bg: "from-amber-400 to-red-500" },
+  { name: "Split screen", desc: "Two clips in one frame", bg: "from-violet-500 to-pink-500" },
+  { name: "Intro title", desc: "Big title, then your clip", bg: "from-slate-500 to-zinc-800" },
+];
+
+// Drafts are saved in this browser (the video file itself is not kept).
+type SavedDraft = { id: string; caption: string; music: string | null; filter: string; speed: number; savedAt: number };
+const DRAFTS_KEY = "sv-drafts";
+function readDrafts(): SavedDraft[] {
+  try {
+    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function writeDrafts(list: SavedDraft[]) {
+  localStorage.setItem(DRAFTS_KEY, JSON.stringify(list));
+}
+
 const STICKERS = ["❤️", "😂", "😍", "🔥", "🎉", "💯", "🥳", "😎", "🌟", "🌈", "🎵", "🙌", "💕", "😜", "🍀", "🌸"];
 
 // Same recipes Instagram-style filters emulate
@@ -479,6 +503,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [musicFromMix, setMusicFromMix] = useState(false);
   // "Mood" tile opens the same mood popup as the feed's mood box.
   const [moodOpen, setMoodOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [drafts, setDrafts] = useState<SavedDraft[]>([]);
+  // Green screen: pick a scene (background) and apply it to the preview.
+  const [greenOpen, setGreenOpen] = useState(false);
+  const [greenTab, setGreenTab] = useState<"scenes" | "roll">("scenes");
+  const [greenScene, setGreenScene] = useState<string | null>(null);
+  const greenPrev = useRef<string | null>(null);
+  const greenInput = useRef<HTMLInputElement>(null);
   // Reel audio: picked track, mix levels, and the optional voiceover clip.
   const [musicTrack, setMusicTrack] = useState<MusicTrack | null>(null);
   const [musicOpen, setMusicOpen] = useState(false);
@@ -721,11 +754,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <span className="block text-sm font-semibold">Add audio</span>
                 <span className="block text-xs text-white/70">Discover suggestions</span>
               </button>
-              <button type="button" aria-label="More" onClick={() => toast("More coming soon")} className="p-1">
+              <button
+                type="button"
+                aria-label="Save draft"
+                onClick={() => {
+                  writeDrafts([
+                    { id: String(Date.now()), caption, music: musicTrack?.title ?? (music || null), filter: videoFilter, speed, savedAt: Date.now() },
+                    ...readDrafts(),
+                  ]);
+                  toast("Draft saved");
+                }}
+                className="p-1"
+              >
                 <MoreHorizontal className="h-6 w-6" />
               </button>
             </div>
             <div className="relative flex-1 min-h-0">
+              {greenScene && <img src={greenScene} alt="" className="absolute inset-0 h-full w-full object-cover" />}
               <video
                 ref={previewVideo}
                 key={draft.previews[0]}
@@ -1368,6 +1413,165 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         )}
 
         <MoodDialog open={moodOpen} onOpenChange={setMoodOpen} onShared={() => close()} />
+
+        {templatesOpen && (
+          <div className="fixed inset-0 z-[90] flex flex-col bg-zinc-900 text-white">
+            <div className="flex items-center gap-3 px-3 py-4">
+              <button type="button" aria-label="Back" onClick={() => setTemplatesOpen(false)} className="p-1">
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <span className="text-base font-semibold">Templates</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 overflow-y-auto px-4 pb-6">
+              {TEMPLATES.map((t) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  onClick={() => {
+                    setTemplatesOpen(false);
+                    setCameraOpen(true);
+                    toast(`Template: ${t.name}`);
+                  }}
+                  className={`flex aspect-[9/12] flex-col justify-end rounded-2xl bg-gradient-to-br ${t.bg} p-3 text-left`}
+                >
+                  <span className="text-sm font-semibold">{t.name}</span>
+                  <span className="text-xs text-white/80">{t.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {draftsOpen && (
+          <div className="fixed inset-0 z-[90] flex flex-col bg-zinc-900 text-white">
+            <div className="flex items-center gap-3 px-3 py-4">
+              <button type="button" aria-label="Back" onClick={() => setDraftsOpen(false)} className="p-1">
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <span className="text-base font-semibold">Drafts</span>
+            </div>
+            {drafts.length === 0 ? (
+              <p className="px-6 pt-10 text-center text-sm text-white/70">No drafts yet. Open a reel preview and tap ⋯ to save one.</p>
+            ) : (
+              <ul className="space-y-2 overflow-y-auto px-4 pb-6">
+                {drafts.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCaption(d.caption);
+                        setMusic(d.music ?? "");
+                        setDraftsOpen(false);
+                        toast("Draft opened. Pick the video to continue.");
+                      }}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="truncate text-sm font-semibold">{d.caption || "Untitled draft"}</p>
+                      <p className="text-xs text-white/60">{new Date(d.savedAt).toLocaleString()}</p>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete draft"
+                      onClick={() => {
+                        const next = drafts.filter((x) => x.id !== d.id);
+                        writeDrafts(next);
+                        setDrafts(next);
+                      }}
+                      className="p-2 text-white/70"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {greenOpen && (
+          <div className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
+            <div className="flex items-center justify-between px-5 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setGreenScene(greenPrev.current);
+                  setGreenOpen(false);
+                }}
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold"
+              >
+                Cancel
+              </button>
+              <SwitchCamera className="h-6 w-6" />
+              <button
+                type="button"
+                onClick={() => {
+                  setGreenOpen(false);
+                  toast("Background set");
+                }}
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold"
+              >
+                Done
+              </button>
+            </div>
+            <div className="relative mx-auto mb-4 min-h-0 w-[56%] max-w-[260px] flex-1 overflow-hidden rounded-2xl bg-zinc-800">
+              {greenScene && <img src={greenScene} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              {draft.previews[0] ? (
+                <video src={draft.previews[0]} muted autoPlay loop playsInline className="relative h-full w-full object-contain" />
+              ) : (
+                <div className="relative grid h-full place-items-center p-4 text-center text-sm text-white/70">Pick or record a video first to see it here.</div>
+              )}
+            </div>
+            <div className="rounded-t-2xl bg-white text-zinc-900">
+              <div className="flex border-b border-zinc-200 text-sm font-semibold">
+                {(["scenes", "roll"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setGreenTab(t)}
+                    className={`flex-1 py-3 ${greenTab === t ? "border-b-2 border-[#1877f2] text-[#1877f2]" : "text-zinc-500"}`}
+                  >
+                    {t === "scenes" ? "Scenes" : "Camera roll"}
+                  </button>
+                ))}
+              </div>
+              {greenTab === "scenes" ? (
+                <div className="grid max-h-[38vh] grid-cols-4 gap-0.5 overflow-y-auto">
+                  {DEMO_GALLERY.map((src) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setGreenScene(src)}
+                      className={`aspect-square overflow-hidden ${greenScene === src ? "ring-2 ring-inset ring-[#1877f2]" : ""}`}
+                    >
+                      <img src={src} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid place-items-center gap-3 p-8">
+                  <button
+                    type="button"
+                    onClick={() => greenInput.current?.click()}
+                    className="rounded-lg bg-[#1877f2] px-5 py-3 text-sm font-semibold text-white"
+                  >
+                    Choose from camera roll
+                  </button>
+                  <input
+                    ref={greenInput}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) setGreenScene(URL.createObjectURL(f));
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {musicOpen && step === "pick" && mode === "video" && (
           <div className="fixed inset-0 z-[90]">
             <MusicPicker
@@ -1405,10 +1609,34 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               {[
                 { label: "Camera", icon: Camera, action: () => setCameraOpen(true) },
                 { label: "Music", icon: Music2, action: () => setMusicOpen(true) },
-                { label: "Templates", icon: LayoutTemplate, action: () => toast("Templates coming soon") },
-                { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
-                { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
-                { label: "Effects", icon: Sparkles, action: () => { if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]); setStep("edit"); } },
+                { label: "Templates", icon: LayoutTemplate, action: () => setTemplatesOpen(true) },
+                {
+                  label: "Drafts",
+                  icon: FileText,
+                  action: () => {
+                    setDrafts(readDrafts());
+                    setDraftsOpen(true);
+                  },
+                },
+                {
+                  label: "Green screen",
+                  icon: ScanFace,
+                  action: () => {
+                    greenPrev.current = greenScene;
+                    setGreenTab("scenes");
+                    setGreenOpen(true);
+                  },
+                },
+                {
+                  label: "Effects",
+                  icon: Sparkles,
+                  action: () => {
+                    if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]);
+                    setStep("preview");
+                    setEffectPick(videoFilter);
+                    setEffectsOpen(true);
+                  },
+                },
               ].map((t) => (
                 <button key={t.label} type="button" onClick={t.action} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
                   <span className="grid place-items-center h-14 w-14 rounded-full bg-muted">
