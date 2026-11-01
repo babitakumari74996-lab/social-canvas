@@ -56,10 +56,10 @@ function useSupabasePosts(): UPost[] | undefined {
       if (!userId) return [];
       const { data: rows } = await (await getSupabase())
         .from("posts")
-        .select(`id, user_id, media_urls, caption, location, created_at, profiles!inner(${PROFILES_COLS})`)
+        .select(`id, user_id, media_urls, caption, location, created_at, is_twit, profiles!inner(${PROFILES_COLS})`)
         .order("created_at", { ascending: false })
         .limit(100);
-      const posts = (rows ?? []) as unknown as { id: string; user_id: string; media_urls: string[] | null; caption: string | null; location: string | null; created_at: string; profiles: Record<string, unknown> }[];
+      const posts = (rows ?? []) as unknown as { id: string; user_id: string; media_urls: string[] | null; caption: string | null; location: string | null; created_at: string; is_twit?: boolean | null; profiles: Record<string, unknown> }[];
       if (posts.length === 0) return [];
       const ids = posts.map((p) => p.id);
       const [{ data: likes }, { data: comments }] = await Promise.all([
@@ -68,7 +68,7 @@ function useSupabasePosts(): UPost[] | undefined {
       ]);
       const mapped = posts.map((p) => ({
         id: p.id, user_id: p.user_id, media_urls: p.media_urls ?? [], caption: p.caption,
-        location: p.location, created_at: p.created_at, profiles: supabaseProfile(p.profiles, p.user_id),
+        location: p.location, created_at: p.created_at, profiles: supabaseProfile(p.profiles, p.user_id), isTwit: !!p.is_twit,
         likes: likes?.filter((l) => l.post_id === p.id).length ?? 0,
         likedByMe: !!likes?.some((l) => l.post_id === p.id && l.user_id === userId),
         savedByMe: false,
@@ -87,12 +87,28 @@ export function useFeed(): { posts: UPost[]; loading: boolean } {
   const { userId } = useSession();
   const real = useSupabasePosts();
   if (userId) {
-    return { posts: real ?? [], loading: !real };
+    return { posts: (real ?? []).filter((p) => !p.isTwit), loading: !real };
   }
-  return { posts: [...demoState.posts], loading: false };
+  return { posts: demoState.posts.filter((p) => !p.isTwit), loading: false };
 }
 
-/** Moods shown on the Moods page, newest first. Demo mode only; the backend has no moods table yet. */
+/** Twits (text posts, optional photos) for the Moods > Twits tab, newest first. */
+export function useTwits(): { posts: UPost[]; loading: boolean } {
+  const demoState = useDemo();
+  const { userId } = useSession();
+  const real = useSupabasePosts();
+  if (userId) return { posts: (real ?? []).filter((p) => p.isTwit), loading: !real };
+  return { posts: demoState.posts.filter((p) => p.isTwit), loading: false };
+}
+
+/** Start of today in the user's local time. Moods older than this are not shown. */
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/** Moods shown on the Moods page, newest first: only today's, by me or by people I follow. */
 export function useMoods(): { moods: UMood[]; loading: boolean } {
   const { userId } = useSession();
   const demo = useDemo();
@@ -100,9 +116,13 @@ export function useMoods(): { moods: UMood[]; loading: boolean } {
     queryKey: ["moods", userId],
     queryFn: async (): Promise<UMood[]> => {
       const sb = await getSupabase();
+      const { data: follows } = await sb.from("follows").select("following_id").eq("follower_id", userId!);
+      const ids = [userId!, ...(follows ?? []).map((f) => f.following_id as string)];
       const { data: rows, error } = await sb
         .from("moods")
         .select(`id, user_id, mood, note, media, created_at, profiles!inner(${PROFILES_COLS})`)
+        .in("user_id", ids)
+        .gte("created_at", startOfToday().toISOString())
         .order("created_at", { ascending: false })
         .limit(60);
       if (error) throw error;
@@ -111,11 +131,7 @@ export function useMoods(): { moods: UMood[]; loading: boolean } {
         list.map(async (m) => {
           // Media is stored as storage paths; turn them into signed URLs for display.
           const media = await Promise.all(
-            (m.media ?? []).map(async (md) => {
-              if (md.url.startsWith("http")) return md;
-              const { data: signed } = await sb.storage.from("media").createSignedUrl(md.url, 60 * 60);
-              return { ...md, url: signed?.signedUrl ?? "" };
-            }),
+            (m.media ?? []).map(async (md) => ({ ...md, url: await signOne(md.url) })),
           );
           return {
             id: m.id, user_id: m.user_id, mood: m.mood, note: m.note, media,
@@ -128,7 +144,11 @@ export function useMoods(): { moods: UMood[]; loading: boolean } {
     enabled: !!userId,
   });
   if (userId) return { moods: data ?? [], loading: isLoading };
-  const moods = [...demo.moods].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const since = startOfToday().getTime();
+  const people = new Set([DEMO_ME_ID, ...Object.keys(demo.following).filter((k) => demo.following[k])]);
+  const moods = demo.moods
+    .filter((m) => people.has(m.user_id) && new Date(m.created_at).getTime() >= since)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
   return { moods, loading: false };
 }
 
@@ -529,14 +549,14 @@ export function useActions() {
       else await (await getSupabase()).from("follows").delete().eq("follower_id", userId).eq("following_id", targetId);
       qc.invalidateQueries({ queryKey: ["profile-page"] });
     },
-    async createPost(input: { files: File[]; galleryUrls?: string[]; caption: string; location?: string | null; filter?: string }) {
+    async createPost(input: { files: File[]; galleryUrls?: string[]; caption: string; location?: string | null; filter?: string; isTwit?: boolean }) {
       if (!userId) return;
       const urls: string[] = [];
       for (const f of input.files) urls.push(await uploadMedia(userId, f));
       for (const g of input.galleryUrls ?? []) urls.push(g);
       await (await getSupabase()).from("posts").insert({
         user_id: userId, media_urls: urls, caption: input.caption || null,
-        location: input.location || null, hide_from_feed: false,
+        location: input.location || null, hide_from_feed: false, is_twit: !!input.isTwit,
       });
       qc.invalidateQueries({ queryKey: ["all-posts", userId] });
     },
@@ -605,10 +625,10 @@ export function useActions() {
     comment: (postId: string, content: string) => (userId ? real.comment(postId, content) : demoActions.addComment(postId, content)),
     follow: (targetId: string, on: boolean) => (userId ? real.follow(targetId, on) : demoActions.toggleFollow(targetId)),
     handleRequest: (requesterId: string, accept: boolean) => (userId ? real.handleRequest(requesterId, accept) : demoActions.handleRequest(requesterId, accept)),
-    createPost: async (input: { files?: File[]; galleryUrls?: string[]; caption: string; location?: string | null }) => {
+    createPost: async (input: { files?: File[]; galleryUrls?: string[]; caption: string; location?: string | null; isTwit?: boolean }) => {
       if (userId) return real.createPost({ ...input, files: input.files ?? [] });
       const urls = [...(input.files ?? []).map((f) => fileToDataUrl(f)), ...(input.galleryUrls ?? [])];
-      demoActions.addPost({ media_urls: urls, caption: input.caption, location: input.location });
+      demoActions.addPost({ media_urls: urls, caption: input.caption, location: input.location, isTwit: input.isTwit });
     },
     createMood: async (input: { mood: string; note: string; files: File[] }) => {
       if (userId) return real.createMood(input);

@@ -333,10 +333,10 @@ export const demoActions = {
   markStorySeen(userId: string) {
     set((s) => ({ ...s, viewedStories: { ...s.viewedStories, [userId]: true } }));
   },
-  addPost(input: { media_urls: string[]; caption: string; location?: string | null }) {
+  addPost(input: { media_urls: string[]; caption: string; location?: string | null; isTwit?: boolean }) {
     const p: UPost = {
       id: nid("p"), user_id: DEMO_ME_ID, media_urls: input.media_urls,
-      caption: input.caption, location: input.location ?? null,
+      caption: input.caption, location: input.location ?? null, isTwit: !!input.isTwit,
       created_at: new Date().toISOString(), profiles: demoMe(),
       likes: 0, likedByMe: false, savedByMe: false, commentsCount: 0,
     };

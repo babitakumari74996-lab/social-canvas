@@ -4,7 +4,7 @@ import { Heart, MessageCircle } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MediaImg } from "@/components/PostCard";
 import { MOODS } from "@/components/MoodBox";
-import { useFeed, useMoods, useMyUserId } from "@/lib/data";
+import { useMoods, useMyUserId, useTwits } from "@/lib/data";
 import { demoActions, resolveVideoUrl, useDemo } from "@/lib/demo-store";
 import { formatCount, timeAgo } from "@/lib/time";
 import type { UMood, UPost } from "@/lib/types";
@@ -15,14 +15,10 @@ export const Route = createFileRoute("/_authenticated/moods")({
 
 const isVideoUrl = (u: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 
-// Twit: only photo posts with a message (caption), like X's media posts. No videos, no buy button.
+// Twit: a text post, optionally with photos. Twits are not shown on the home feed.
 function MoodsPage() {
   const { moods } = useMoods();
-  const { posts } = useFeed();
-  // Twits: photos only. Video posts are not shown here.
-  const twit = posts.filter(
-    (p) => p.media_urls.some((u) => !isVideoUrl(u)) && (p.caption ?? "").trim().length > 0,
-  );
+  const { posts: twit } = useTwits();
   const [tab, setTab] = useState<0 | 1>(0);
   return (
     <div className="max-w-[520px] mx-auto pb-10">
@@ -73,7 +69,7 @@ function MoodsPage() {
               ))}
               {twit.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground py-16">
-                  No photo posts with a message yet.
+                  No twits yet. Tap + and choose Twit to share one.
                 </p>
               )}
             </div>

@@ -24,6 +24,8 @@ export interface UPost {
   likedByMe: boolean;
   savedByMe: boolean;
   commentsCount: number;
+  /** A Twit: a text post (optional photos) shown on the Moods > Twits tab, not on the home feed. */
+  isTwit?: boolean;
 }
 
 export interface UStory {

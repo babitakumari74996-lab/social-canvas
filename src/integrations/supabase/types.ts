@@ -249,6 +249,7 @@ export type Database = {
           caption: string | null
           created_at: string
           hide_from_feed: boolean
+          is_twit: boolean
           id: string
           location: string | null
           media_urls: string[]
@@ -259,6 +260,7 @@ export type Database = {
           created_at?: string
           hide_from_feed?: boolean
           id?: string
+          is_twit?: boolean
           location?: string | null
           media_urls?: string[]
           user_id: string
@@ -268,6 +270,7 @@ export type Database = {
           created_at?: string
           hide_from_feed?: boolean
           id?: string
+          is_twit?: boolean
           location?: string | null
           media_urls?: string[]
           user_id?: string
