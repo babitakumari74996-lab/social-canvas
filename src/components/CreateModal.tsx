@@ -1,16 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
-import { MusicPicker, MixAudioSheet, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
+import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
+import { SvSlider } from "@/components/SvSlider";
 
 // Playback speeds offered by the reel editor and the camera.
 const SPEEDS = [0.5, 1, 2] as const;
 type CaptureMeta = { speed: number; filter: string };
+const TEXT_COLOURS = ["#ffffff", "#000000", "#facc15", "#f472b6", "#38bdf8", "#22c55e"];
+type TextFont = "sans" | "serif" | "mono";
+type TextAlign = "left" | "center" | "right";
+const TEXT_FONTS: Record<TextFont, string> = { sans: "system-ui, sans-serif", serif: "Georgia, serif", mono: "ui-monospace, monospace" };
+const STICKERS = ["❤️", "😂", "😍", "🔥", "🎉", "💯", "🥳", "😎", "🌟", "🌈", "🎵", "🙌", "💕", "😜", "🍀", "🌸"];
 
 // Same recipes Instagram-style filters emulate
 const FILTERS: { name: string; css: string }[] = [
@@ -442,7 +448,19 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [asReel, setAsReel] = useState(true);
   const [alsoStory, setAlsoStory] = useState(false);
   // Preview tools: bottom sheet (audio / text / stickers) and the items placed over the preview.
-  const [toolSheet, setToolSheet] = useState<null | "text" | "stickers" | "effects" | "edit">(null);
+  const [toolSheet, setToolSheet] = useState<null | "stickers">(null);
+  // Full-screen reel tools (match the Facebook reel editor screens).
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop">(null);
+  const [editorPlaying, setEditorPlaying] = useState(false);
+  const [editorTime, setEditorTime] = useState(0);
+  const editorRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<null | "start" | "end">(null);
+  const [textOpen, setTextOpen] = useState(false);
+  const [textAlign, setTextAlign] = useState<TextAlign>("center");
+  const [textFont, setTextFont] = useState<TextFont>("sans");
+  const [musicFromMix, setMusicFromMix] = useState(false);
   // Reel audio: picked track, mix levels, and the optional voiceover clip.
   const [musicTrack, setMusicTrack] = useState<MusicTrack | null>(null);
   const [musicOpen, setMusicOpen] = useState(false);
@@ -456,7 +474,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [speed, setSpeed] = useState(1);
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
   const [mirror, setMirror] = useState(false);
-  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker"; value: string; color: string }[]>([]);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker"; value: string; color: string; font?: TextFont; align?: TextAlign }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
@@ -503,13 +521,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setMusicTrack(null); setMusicOpen(false); setMixOpen(false); setVoiceOpen(false);
       setVoiceUrl(null); setVoiceVolume(1); setOriginalVolume(1); setKeepOriginalSound(true);
       setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
+      setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false);
     }
   }, [open, createMode]);
 
   // Reel edit step: sample frames from the clip for the cover picker.
   const videoSrc = mode === "video" ? draft.previews[0] : undefined;
   useEffect(() => {
-    if (!open || step !== "edit" || !videoSrc) return;
+    if (!open || (step !== "edit" && !editorOpen) || !videoSrc) return;
     let cancelled = false;
     setFrames([]);
     captureFrames(videoSrc).then((f) => {
@@ -519,11 +538,34 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setCoverIdx(0);
     });
     return () => { cancelled = true; };
-  }, [open, step, videoSrc]);
+  }, [open, step, editorOpen, videoSrc]);
+
+  // Full-screen editor: start playing when it opens.
+  useEffect(() => {
+    if (editorOpen) editorRef.current?.play().catch(() => {});
+  }, [editorOpen]);
 
   if (!open) return null;
 
   const close = () => (page ? navigate({ to: "/feed" }) : ui.closeAll());
+  const filmStyle = () => ({
+    filter: videoFilter === "none" ? undefined : videoFilter,
+    transform: mirror ? "scaleX(-1)" : undefined,
+  });
+  // Leaving the music list returns to the mix screen when it was opened from there.
+  const leaveMusic = () => {
+    setMusicOpen(false);
+    if (musicFromMix) {
+      setMusicFromMix(false);
+      setMixOpen(true);
+    }
+  };
+  const closeEditor = () => {
+    editorRef.current?.pause();
+    setEditorOpen(false);
+    setEditorPanel(null);
+  };
+  const togglePanel = (p: "filter" | "speed" | "crop") => setEditorPanel((cur) => (cur === p ? null : p));
 
   const pickImages = (files: FileList | null) => {
     if (!files?.length) return;
@@ -700,8 +742,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   type="button"
                   aria-label="Remove"
                   onClick={() => setOverlays((list) => list.filter((x) => x.id !== o.id))}
-                  className={`absolute left-1/2 -translate-x-1/2 whitespace-pre-wrap text-center font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
-                  style={{ top: `${30 + ((i * 14) % 50)}%`, color: o.color }}
+                  className={`absolute whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
+                  style={{
+                    top: `${30 + ((i * 14) % 50)}%`,
+                    color: o.color,
+                    fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
+                    textAlign: o.align ?? "center",
+                    ...(o.align === "left"
+                      ? { left: "1rem", maxWidth: "80%" }
+                      : o.align === "right"
+                        ? { right: "1rem", maxWidth: "80%" }
+                        : { left: "50%", transform: "translateX(-50%)", width: "max-content", maxWidth: "90%" }),
+                  }}
                 >
                   {o.value}
                 </button>
@@ -728,10 +780,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <div className="min-w-0 flex-1 overflow-x-auto touch-pan-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex w-max min-w-full justify-between gap-6 px-2">
                   {[
-                    { label: "Audio", icon: Music2, action: () => setMusicOpen(true) },
-                    { label: "Edit", icon: Scissors, action: () => setToolSheet("edit") },
-                    { label: "Effects", icon: Sparkles, action: () => setToolSheet("effects") },
-                    { label: "Text", icon: TypeIcon, action: () => setToolSheet("text") },
+                    { label: "Audio", icon: Music2, action: () => setMixOpen(true) },
+                    { label: "Edit", icon: Scissors, action: () => setEditorOpen(true) },
+                    { label: "Effects", icon: Sparkles, action: () => { setEditorPanel("filter"); setEditorOpen(true); } },
+                    { label: "Text", icon: TypeIcon, action: () => setTextOpen(true) },
                     { label: "Stickers", icon: Smile, action: () => setToolSheet("stickers") },
                   ].map((t) => (
                     <button key={t.label} type="button" onClick={t.action} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
@@ -753,22 +805,140 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           {musicOpen && (
             <MusicPicker
               selectedId={musicTrack?.id ?? null}
-              onClose={() => setMusicOpen(false)}
+              onClose={leaveMusic}
               onSelect={(t) => {
                 setMusicTrack(t);
-                setMusicOpen(false);
                 toast(`Music: ${t.title}`);
-              }}
-              onMix={() => {
-                setMusicOpen(false);
-                setMixOpen(true);
+                leaveMusic();
               }}
             />
           )}
+
+          {mixOpen && (
+            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
+              <div className="flex items-center justify-between px-4 py-3">
+                <button type="button" onClick={() => setMixOpen(false)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Cancel
+                </button>
+                <button type="button" onClick={() => setMixOpen(false)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Done
+                </button>
+              </div>
+              <div className="grid min-h-0 flex-1 place-items-center px-6">
+                <video
+                  src={draft.previews[0]}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                  className="aspect-[9/16] max-h-[42vh] max-w-full rounded-xl object-contain"
+                  style={filmStyle()}
+                />
+              </div>
+              <div className="space-y-4 rounded-t-2xl bg-zinc-900 px-5 pb-8 pt-4">
+                <p className="text-center text-base font-semibold">Mix your audio</p>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">
+                    {keepOriginalSound ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                  </span>
+                  <div className="flex-1">
+                    <SvSlider value={originalVolume} min={0} max={1} step={0.05} thickness={4} ariaLabel="Original sound volume" onChange={(v) => {
+                      setOriginalVolume(v);
+                      if (previewVideo.current) previewVideo.current.volume = v;
+                    }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const on = !keepOriginalSound;
+                      setKeepOriginalSound(on);
+                      if (previewVideo.current) previewVideo.current.muted = !on;
+                      setPreviewMuted(!on);
+                    }}
+                    className="w-14 text-right text-sm font-semibold text-[#60a5fa]"
+                  >
+                    {keepOriginalSound ? "Mute" : "On"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">
+                    <Mic className="h-5 w-5" />
+                  </span>
+                  <div className="flex-1">
+                    {voiceUrl ? (
+                      <SvSlider value={voiceVolume} min={0} max={1} step={0.05} thickness={4} ariaLabel="Voiceover volume" onChange={(v) => {
+                        setVoiceVolume(v);
+                        if (voiceRef.current) voiceRef.current.volume = v;
+                      }} />
+                    ) : (
+                      <div className="h-1 rounded bg-white/20" />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (voiceUrl) {
+                        voiceRef.current?.pause();
+                        voiceRef.current = null;
+                        setVoiceUrl(null);
+                      } else {
+                        setMixOpen(false);
+                        setVoiceOpen(true);
+                      }
+                    }}
+                    className="w-14 text-right text-sm font-semibold text-[#60a5fa]"
+                  >
+                    {voiceUrl ? "Remove" : "Add"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMixOpen(false);
+                      setMusicFromMix(true);
+                      setMusicOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-[#1877f2] py-3 text-sm font-semibold"
+                  >
+                    <Music2 className="h-4 w-4" />
+                    {musicTrack ? "Change music" : "Add music"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMixOpen(false);
+                      setVoiceOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-[#1877f2] py-3 text-sm font-semibold"
+                  >
+                    <Mic className="h-4 w-4" />
+                    Add voiceover
+                  </button>
+                </div>
+                {musicTrack && <p className="truncate text-center text-xs text-white/70">♪ {musicTrack.title}</p>}
+              </div>
+            </div>
+          )}
+
           {voiceOpen && (
-            <div className="absolute inset-0 z-[95] flex flex-col justify-center bg-black text-white">
+            <div className="absolute inset-0 z-[95] flex flex-col bg-black text-white">
+              <div className="grid min-h-0 flex-1 place-items-center px-6 pt-4">
+                <video
+                  src={draft.previews[0]}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                  className="aspect-[9/16] max-h-[45vh] max-w-full rounded-xl object-contain"
+                  style={filmStyle()}
+                />
+              </div>
               <VoiceoverRecorder
-                onCancel={() => setVoiceOpen(false)}
+                onCancel={() => {
+                  setVoiceOpen(false);
+                  setMixOpen(true);
+                }}
                 onDone={(url) => {
                   setVoiceUrl(url);
                   const a = new Audio(url);
@@ -781,212 +951,318 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               />
             </div>
           )}
-          {mixOpen && (
-            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setMixOpen(false)}>
-              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
-                <MixAudioSheet
-                  keepOriginal={keepOriginalSound}
-                  onToggleOriginal={() => {
-                    const on = !keepOriginalSound;
-                    setKeepOriginalSound(on);
-                    if (previewVideo.current) previewVideo.current.muted = !on;
-                    setPreviewMuted(!on);
+
+          {textOpen && (
+            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
+              <video src={draft.previews[0]} muted autoPlay loop playsInline className="absolute inset-0 h-full w-full object-cover opacity-40" style={filmStyle()} />
+              <div className="relative flex items-center justify-between px-4 py-3">
+                <button
+                  type="button"
+                  aria-label="Close text"
+                  onClick={() => {
+                    setTextOpen(false);
+                    setOverlayText("");
                   }}
-                  originalVolume={originalVolume}
-                  onOriginalVolume={(v) => {
-                    setOriginalVolume(v);
-                    if (previewVideo.current) previewVideo.current.volume = v;
-                  }}
-                  musicTitle={musicTrack?.title ?? null}
-                  voiceUrl={voiceUrl}
-                  voiceVolume={voiceVolume}
-                  onVoiceVolume={(v) => {
-                    setVoiceVolume(v);
-                    if (voiceRef.current) voiceRef.current.volume = v;
-                  }}
-                  onRemoveVoice={() => {
-                    voiceRef.current?.pause();
-                    voiceRef.current = null;
-                    setVoiceUrl(null);
-                  }}
-                  onAddMusic={() => {
-                    setMixOpen(false);
-                    setMusicOpen(true);
-                  }}
-                  onAddVoice={() => {
-                    setMixOpen(false);
-                    setVoiceOpen(true);
-                  }}
-                  onClose={() => setMixOpen(false)}
+                  className="p-1"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    aria-label="Text colour"
+                    onClick={() => setOverlayColor(TEXT_COLOURS[(TEXT_COLOURS.indexOf(overlayColor) + 1) % TEXT_COLOURS.length])}
+                    className="h-7 w-7 rounded-full border-2 border-white"
+                    style={{ background: "conic-gradient(#f87171, #facc15, #4ade80, #38bdf8, #a78bfa, #f87171)" }}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Text font"
+                    onClick={() => setTextFont((f) => (f === "sans" ? "serif" : f === "serif" ? "mono" : "sans"))}
+                    className="grid h-7 w-7 place-items-center rounded border-2 border-white text-xs font-bold"
+                    style={{ fontFamily: TEXT_FONTS[textFont] }}
+                  >
+                    Aa
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Text alignment"
+                    onClick={() => setTextAlign((a) => (a === "left" ? "center" : a === "center" ? "right" : "left"))}
+                    className="p-1"
+                  >
+                    {textAlign === "left" ? <AlignLeft className="h-5 w-5" /> : textAlign === "right" ? <AlignRight className="h-5 w-5" /> : <AlignCenter className="h-5 w-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!overlayText.trim()}
+                    onClick={() => {
+                      setOverlays((list) => [
+                        ...list,
+                        { id: Date.now(), kind: "text", value: overlayText.trim(), color: overlayColor, font: textFont, align: textAlign },
+                      ]);
+                      setOverlayText("");
+                      setTextOpen(false);
+                    }}
+                    className="rounded-lg bg-white/15 px-4 py-1.5 text-sm font-semibold disabled:opacity-40"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+              <div className="relative flex flex-1 items-center justify-center px-6">
+                <textarea
+                  autoFocus
+                  value={overlayText}
+                  onChange={(e) => setOverlayText(e.target.value)}
+                  maxLength={80}
+                  rows={3}
+                  placeholder="Start typing"
+                  className="w-full resize-none bg-transparent text-3xl font-bold outline-none placeholder:text-white/60"
+                  style={{ color: overlayColor, fontFamily: TEXT_FONTS[textFont], textAlign }}
                 />
               </div>
             </div>
           )}
-          {toolSheet === "edit" && (
-            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
-              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white space-y-5" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold">Edit</span>
-                  <button type="button" aria-label="Close" onClick={() => setToolSheet(null)} className="p-1">
-                    <X className="h-5 w-5" />
+
+          {editorOpen && (
+            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
+              <div className="flex items-center justify-between px-4 py-3">
+                <button type="button" onClick={closeEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Cancel
+                </button>
+                <button type="button" onClick={closeEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Done
+                </button>
+              </div>
+              <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+                <video
+                  ref={editorRef}
+                  src={draft.previews[0]}
+                  muted={previewMuted}
+                  playsInline
+                  className="aspect-[9/16] max-h-full max-w-full rounded-xl object-contain"
+                  style={filmStyle()}
+                  onLoadedMetadata={(e) => {
+                    const d = e.currentTarget.duration;
+                    if (isFinite(d) && d > 0) {
+                      setDuration(d);
+                      setTrimEnd((t) => t || d);
+                    }
+                    e.currentTarget.playbackRate = speed;
+                  }}
+                  onTimeUpdate={(e) => {
+                    const v = e.currentTarget;
+                    setEditorTime(v.currentTime);
+                    // Loop inside the trimmed range.
+                    const end = trimEnd || duration;
+                    if (end && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
+                  }}
+                  onPlay={() => setEditorPlaying(true)}
+                  onPause={() => setEditorPlaying(false)}
+                />
+              </div>
+              <div className="flex items-center justify-between px-8 pt-2">
+                <button
+                  type="button"
+                  aria-label={editorPlaying ? "Pause" : "Play"}
+                  onClick={() => {
+                    const v = editorRef.current;
+                    if (!v) return;
+                    if (v.paused) v.play().catch(() => {});
+                    else v.pause();
+                  }}
+                  className="p-1"
+                >
+                  {editorPlaying ? <Pause className="h-7 w-7 fill-white" /> : <Play className="h-7 w-7 fill-white" />}
+                </button>
+                <span className="text-sm tabular-nums">
+                  <span className="font-semibold">{editorTime.toFixed(1)}</span> / {duration.toFixed(1)}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Reset trim"
+                  onClick={() => {
+                    setTrimStart(0);
+                    setTrimEnd(duration);
+                  }}
+                  className="p-1"
+                >
+                  <Undo2 className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="px-6 pt-4">
+                <div
+                  ref={trackRef}
+                  className="relative h-14 touch-none select-none overflow-hidden rounded-md bg-zinc-800"
+                  onPointerDown={(e) => {
+                    if (!duration) return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const x = (e.clientX - r.left) / r.width;
+                    const near = (frac: number) => Math.abs(frac - x) * r.width < 18;
+                    if (near(trimStart / duration)) dragRef.current = "start";
+                    else if (near((trimEnd || duration) / duration)) dragRef.current = "end";
+                    else if (editorRef.current) {
+                      editorRef.current.currentTime = Math.min(Math.max(trimStart, x * duration), trimEnd || duration);
+                    }
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                  }}
+                  onPointerMove={(e) => {
+                    if (!dragRef.current || !duration) return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const t = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * duration;
+                    if (dragRef.current === "start") setTrimStart(Math.max(0, Math.min(t, trimEnd - 0.5)));
+                    else setTrimEnd(Math.min(duration, Math.max(t, trimStart + 0.5)));
+                  }}
+                  onPointerUp={() => {
+                    dragRef.current = null;
+                  }}
+                  onPointerCancel={() => {
+                    dragRef.current = null;
+                  }}
+                >
+                  <div className="absolute inset-0 flex opacity-70">
+                    {frames.map((f, i) => (
+                      <img key={i} src={f} alt="" draggable={false} className="h-full flex-1 object-cover" />
+                    ))}
+                  </div>
+                  {duration > 0 && (
+                    <>
+                      <div className="absolute inset-y-0 left-0 bg-black/60" style={{ width: `${(trimStart / duration) * 100}%` }} />
+                      <div className="absolute inset-y-0 right-0 bg-black/60" style={{ width: `${(1 - (trimEnd || duration) / duration) * 100}%` }} />
+                      <div
+                        className="absolute inset-y-0 rounded-md border-y-4 border-yellow-400"
+                        style={{ left: `${(trimStart / duration) * 100}%`, right: `${(1 - (trimEnd || duration) / duration) * 100}%` }}
+                      >
+                        <span className="absolute inset-y-0 left-0 w-3 rounded-l-md bg-yellow-400" />
+                        <span className="absolute inset-y-0 right-0 w-3 rounded-r-md bg-yellow-400" />
+                      </div>
+                      <div className="absolute inset-y-0 w-0.5 bg-white" style={{ left: `${(editorTime / duration) * 100}%` }} />
+                    </>
+                  )}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" onClick={() => setMixOpen(true)} className="flex-1 truncate rounded-md border border-dashed border-white/40 py-2 text-xs text-white/80">
+                    {musicTrack ? `♪ ${musicTrack.title}` : "+ Audio"}
+                  </button>
+                  <button type="button" onClick={() => setTextOpen(true)} className="flex-1 rounded-md border border-dashed border-white/40 py-2 text-xs text-white/80">
+                    + Text
                   </button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Speed</span>
-                  <div className="flex gap-2">
-                    {SPEEDS.map((sp) => (
+              </div>
+              {editorPanel && (
+                <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
+                  {editorPanel === "filter" &&
+                    FILTERS.map((f) => (
+                      <button
+                        key={f.name}
+                        type="button"
+                        onClick={() => setVideoFilter(f.css)}
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${videoFilter === f.css ? "bg-white text-black" : "bg-white/10"}`}
+                      >
+                        {f.name}
+                      </button>
+                    ))}
+                  {editorPanel === "speed" &&
+                    SPEEDS.map((sp) => (
                       <button
                         key={sp}
                         type="button"
                         onClick={() => {
                           setSpeed(sp);
+                          if (editorRef.current) editorRef.current.playbackRate = sp;
                           if (previewVideo.current) previewVideo.current.playbackRate = sp;
                         }}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${speed === sp ? "bg-white text-black" : "bg-white/10"}`}
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${speed === sp ? "bg-white text-black" : "bg-white/10"}`}
                       >
                         {sp}x
                       </button>
                     ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Crop</span>
-                  <div className="flex gap-2">
-                    {(["fit", "fill"] as const).map((c) => (
+                  {editorPanel === "crop" &&
+                    (["fit", "fill"] as const).map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setCrop(c)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${crop === c ? "bg-white text-black" : "bg-white/10"}`}
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${crop === c ? "bg-white text-black" : "bg-white/10"}`}
                       >
                         {c === "fit" ? "Fit" : "Fill"}
                       </button>
                     ))}
-                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setMirror((m) => !m)} className={`rounded-xl py-3 text-sm font-medium ${mirror ? "bg-white text-black" : "bg-white/10"}`}>
-                    Mirror {mirror ? "on" : "off"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setToolSheet(null);
+              )}
+              <div className="mt-4 flex gap-6 overflow-x-auto px-5 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {[
+                  { label: "Add", icon: Plus, on: false, action: () => toast("Adding more clips isn't available in this version") },
+                  {
+                    label: "Reshoot",
+                    icon: Video,
+                    on: false,
+                    action: () => {
+                      closeEditor();
+                      setCameraOpen(true);
+                    },
+                  },
+                  { label: "Adjust", icon: SlidersHorizontal, on: editorPanel === "filter", action: () => togglePanel("filter") },
+                  { label: "Speed", icon: Gauge, on: editorPanel === "speed", action: () => togglePanel("speed") },
+                  { label: "Crop", icon: Crop, on: editorPanel === "crop", action: () => togglePanel("crop") },
+                  { label: "Mirror", icon: FlipHorizontal2, on: mirror, action: () => setMirror((m) => !m) },
+                  { label: "Reverse", icon: Repeat2, on: false, action: () => toast("Reverse isn't available in this version") },
+                  { label: "Split", icon: Scissors, on: false, action: () => toast("Split isn't available in this version") },
+                  {
+                    label: "Cover",
+                    icon: ImagePlus,
+                    on: false,
+                    action: () => {
+                      closeEditor();
                       setStep("edit");
-                    }}
-                    className="rounded-xl bg-white/10 py-3 text-sm font-medium"
-                  >
-                    Trim &amp; cover
+                    },
+                  },
+                ].map((t) => (
+                  <button key={t.label} type="button" onClick={t.action} className={`flex w-14 shrink-0 flex-col items-center gap-1.5 ${t.on ? "text-[#60a5fa]" : ""}`}>
+                    <t.icon className="h-6 w-6" />
+                    <span className="text-[11px]">{t.label}</span>
                   </button>
-                  <button type="button" onClick={() => toast("Reverse isn't available in this version")} className="rounded-xl bg-white/10 py-3 text-sm font-medium">
-                    Reverse
-                  </button>
-                  <button type="button" onClick={() => toast("Split isn't available in this version")} className="rounded-xl bg-white/10 py-3 text-sm font-medium">
-                    Split
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
           )}
-          {toolSheet === "effects" && (
-            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
-              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-base font-semibold">Effects</span>
-                  <button type="button" aria-label="Done" onClick={() => setToolSheet(null)} className="grid h-8 w-8 place-items-center rounded-full bg-white text-black">
-                    <Check className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {FILTERS.map((f) => (
+
+          {toolSheet === "stickers" && (
+            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/40" onClick={() => setToolSheet(null)}>
+              <div className="rounded-t-3xl bg-zinc-800 px-4 pb-8 pt-3 text-white" onClick={(e) => e.stopPropagation()}>
+                <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/40" />
+                <div className="flex flex-wrap justify-center gap-2.5">
+                  {[
+                    { label: "Location", icon: MapPin, color: "text-sky-500" },
+                    { label: `${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`, icon: Clock, color: "text-yellow-500", key: "Time" },
+                    { label: "GIF", icon: Search, color: "text-green-500" },
+                    { label: "Music", icon: Music2, color: "text-pink-500" },
+                    { label: "Avatar", icon: Smile, color: "text-red-500" },
+                  ].map((c) => (
                     <button
-                      key={f.name}
+                      key={c.label}
                       type="button"
-                      onClick={() => setVideoFilter(f.css)}
-                      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${videoFilter === f.css ? "bg-white text-black" : "bg-white/10"}`}
+                      onClick={() => {
+                        if (c.key === "Time") {
+                          setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: c.label, color: "#ffffff" }]);
+                          setToolSheet(null);
+                        } else if (c.label === "Music") {
+                          setToolSheet(null);
+                          setMusicFromMix(false);
+                          setMusicOpen(true);
+                        } else {
+                          toast(`${c.label} isn't available in this version`);
+                        }
+                      }}
+                      className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-zinc-900"
                     >
-                      {f.name}
+                      <c.icon className={`h-5 w-5 ${c.color}`} />
+                      {c.label}
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-          {toolSheet && toolSheet !== "edit" && toolSheet !== "effects" && (
-          <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
-            <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-base font-semibold">
-                  {toolSheet === "text" ? "Text" : "Stickers"}
-                </span>
-                <button type="button" aria-label="Close" onClick={() => setToolSheet(null)} className="p-1">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {toolSheet === "text" && (
-                <div className="space-y-4">
-                  <input
-                    value={overlayText}
-                    onChange={(e) => setOverlayText(e.target.value)}
-                    placeholder="Type something"
-                    maxLength={80}
-                    className="w-full rounded-xl bg-white/10 px-4 py-3 text-sm outline-none placeholder:text-white/50"
-                  />
-                  <div className="flex items-center gap-3">
-                    {["#ffffff", "#000000", "#facc15", "#f472b6", "#38bdf8"].map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        aria-label={`Colour ${c}`}
-                        onClick={() => setOverlayColor(c)}
-                        className={`h-8 w-8 rounded-full border-2 ${overlayColor === c ? "border-white" : "border-white/20"}`}
-                        style={{ background: c }}
-                      />
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={!overlayText.trim()}
-                    onClick={() => {
-                      setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: overlayText.trim(), color: overlayColor }]);
-                      setOverlayText("");
-                      setToolSheet(null);
-                    }}
-                    className="w-full rounded-xl bg-white py-3 text-sm font-semibold text-black disabled:opacity-40"
-                  >
-                    Add text
-                  </button>
-                </div>
-              )}
-
-              {toolSheet === "stickers" && (
-                <div className="space-y-4">
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {["Location", "Time", "GIF", "Music", "Avatar"].map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => {
-                          if (c === "Time") {
-                            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                            setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: now, color: "#ffffff" }]);
-                            setToolSheet(null);
-                          } else if (c === "Music") {
-                            setToolSheet(null);
-                            setMusicOpen(true);
-                          } else {
-                            toast(`${c} isn't available in this version`);
-                          }
-                        }}
-                        className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold"
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                <div className="grid grid-cols-6 gap-3">
-                  {["😀", "😂", "😍", "🔥", "❤️", "🎉", "💪", "⭐", "😎", "🙌", "👏", "🥳"].map((e) => (
+                <div className="mt-5 grid max-h-[45vh] grid-cols-4 gap-2 overflow-y-auto">
+                  {STICKERS.map((e) => (
                     <button
                       key={e}
                       type="button"
@@ -994,16 +1270,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                         setOverlays((list) => [...list, { id: Date.now(), kind: "sticker", value: e, color: "#ffffff" }]);
                         setToolSheet(null);
                       }}
-                      className="grid h-12 place-items-center rounded-xl bg-white/10 text-2xl"
+                      className="grid aspect-square place-items-center rounded-xl text-4xl"
                     >
                       {e}
                     </button>
                   ))}
                 </div>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
           )}
           </div>
         )}
