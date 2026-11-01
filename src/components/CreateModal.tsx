@@ -533,6 +533,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [cover, setCover] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [previewMuted, setPreviewMuted] = useState(false);
+  // Playback progress of the reel preview, shown on the thin bar under the video.
+  const [previewProgress, setPreviewProgress] = useState(0);
   const previewVideo = useRef<HTMLVideoElement>(null);
   // Preview plays the clip's own sound. If the browser blocks sound, fall back to muted playback.
   useEffect(() => {
@@ -789,6 +791,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   voiceRef.current?.play().catch(() => {});
                 }}
                 onPause={() => voiceRef.current?.pause()}
+                onTimeUpdate={(e) => {
+                  const v = e.currentTarget;
+                  setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
+                }}
               />
               {musicTrack && (
                 <div className="absolute left-1/2 top-3 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold">
@@ -837,7 +843,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               </button>
             </div>
             <div className="h-0.5 bg-white/20">
-              <div className="h-full w-1/12 bg-white" />
+              <div className="h-full bg-white" style={{ width: `${Math.min(100, previewProgress * 100)}%` }} />
             </div>
             <div className="flex items-center px-2 py-4">
               <div className="min-w-0 flex-1 overflow-x-auto touch-pan-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
