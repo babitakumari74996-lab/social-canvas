@@ -27,26 +27,30 @@ type Attachment = { id: string; file: File; url: string; kind: "image" | "video"
  * the type bar. Tapping an emoji or the type bar opens a dialog with the chosen mood,
  * a note, and photo/video attachments. Sharing needs a mood plus a note, photo or video.
  */
-export function MoodBox() {
-  const me = useMe();
+export function MoodDialog({
+  open,
+  onOpenChange,
+  initialMood,
+  onShared,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialMood?: string | null;
+  onShared?: () => void;
+}) {
   const [mood, setMood] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<Attachment[]>([]);
-  const [open, setOpen] = useState(false);
-  const [tick, setTick] = useState(0);
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
 
-  const showBar = open || tick % 2 === 1;
   const canSubmit = !!mood && (note.trim().length > 0 || files.length > 0);
   const picked = MOODS.find((m) => m.id === mood);
 
-  // Switch the slot every 3 seconds, but pause while the dialog is open.
+  // Opening with a chosen emoji preselects it.
   useEffect(() => {
-    if (open) return;
-    const t = window.setInterval(() => setTick((n) => n + 1), 3000);
-    return () => window.clearInterval(t);
-  }, [open]);
+    if (open && initialMood) setMood(initialMood);
+  }, [open, initialMood]);
 
   // Revoke preview URLs on unmount.
   const filesRef = useRef<Attachment[]>([]);
@@ -54,11 +58,6 @@ export function MoodBox() {
   useEffect(() => {
     return () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.url));
   }, []);
-
-  const openWith = (id: string | null) => {
-    if (id) setMood(id);
-    setOpen(true);
-  };
 
   const addFiles = (list: FileList | null, kind: "image" | "video") => {
     if (!list || list.length === 0) return;
@@ -90,51 +89,13 @@ export function MoodBox() {
     setMood(null);
     if (imageInput.current) imageInput.current.value = "";
     if (videoInput.current) videoInput.current.value = "";
-    setOpen(false);
+    onOpenChange(false);
+    onShared?.();
   };
 
   return (
-    <div className="px-3 pb-2 pt-4 border-t border-border">
-      <div className="flex items-center gap-3">
-        <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
-
-        {/* The pill stays still; only its content (the type bar or the mood emojis) slides in. */}
-        <div className="flex h-14 flex-1 min-w-0 items-center overflow-hidden rounded-full bg-muted/60">
-          {showBar ? (
-            <button
-              key={`bar-${tick}`}
-              type="button"
-              onClick={() => openWith(mood)}
-              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 cursor-text items-center gap-2 px-4 text-left`}
-            >
-              <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
-                What's your mood today?
-              </span>
-            </button>
-          ) : (
-            <div
-              key={`emojis-${tick}`}
-              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center justify-around px-3`}
-            >
-              {MOODS.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  title={m.label}
-                  aria-label={m.label}
-                  onClick={() => openWith(m.id)}
-                  className="flex items-center justify-center rounded-full px-1.5 py-0.5 text-2xl leading-none transition-transform active:scale-90"
-                >
-                  {m.emoji}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[92vw] rounded-2xl sm:max-w-md">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent overlayClassName="z-[60]" className="z-[61] max-w-[92vw] rounded-2xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>What's your mood today?</DialogTitle>
             <DialogDescription>Pick a mood, then add a note, a photo or a video.</DialogDescription>
@@ -234,7 +195,82 @@ export function MoodBox() {
             Share mood
           </button>
         </DialogContent>
-      </Dialog>
+    </Dialog>
+  );
+}
+
+// Mounted once in the app shell: the Post menu's "Mood" option dispatches `sv-open-mood` to open the popup.
+export function MoodPopupHost() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const show = () => setOpen(true);
+    window.addEventListener("sv-open-mood", show);
+    return () => window.removeEventListener("sv-open-mood", show);
+  }, []);
+  return <MoodDialog open={open} onOpenChange={setOpen} />;
+}
+
+export function MoodBox() {
+  const me = useMe();
+  const [pendingMood, setPendingMood] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const showBar = open || tick % 2 === 1;
+
+  // Switch the slot every 3 seconds, but pause while the dialog is open.
+  useEffect(() => {
+    if (open) return;
+    const t = window.setInterval(() => setTick((n) => n + 1), 3000);
+    return () => window.clearInterval(t);
+  }, [open]);
+
+  const openWith = (id: string | null) => {
+    if (id) setPendingMood(id);
+    setOpen(true);
+  };
+
+  return (
+    <div className="px-3 pb-2 pt-4 border-t border-border">
+      <div className="flex items-center gap-3">
+        <Avatar path={me?.avatar_url} alt={me?.username ?? "me"} size={46} className="shrink-0" />
+
+        {/* The pill stays still; only its content (the type bar or the mood emojis) slides in. */}
+        <div className="flex h-14 flex-1 min-w-0 items-center overflow-hidden rounded-full bg-muted/60">
+          {showBar ? (
+            <button
+              key={`bar-${tick}`}
+              type="button"
+              onClick={() => openWith(pendingMood)}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 cursor-text items-center gap-2 px-4 text-left`}
+            >
+              <span className="flex-1 min-w-0 truncate text-base text-muted-foreground">
+                What's your mood today?
+              </span>
+            </button>
+          ) : (
+            <div
+              key={`emojis-${tick}`}
+              className={`${tick > 0 ? "mood-slide-in " : ""}flex h-full flex-1 min-w-0 items-center justify-around px-3`}
+            >
+              {MOODS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  title={m.label}
+                  aria-label={m.label}
+                  onClick={() => openWith(m.id)}
+                  className="flex items-center justify-center rounded-full px-1.5 py-0.5 text-2xl leading-none transition-transform active:scale-90"
+                >
+                  {m.emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <MoodDialog open={open} onOpenChange={setOpen} initialMood={pendingMood} onShared={() => setPendingMood(null)} />
     </div>
   );
 }

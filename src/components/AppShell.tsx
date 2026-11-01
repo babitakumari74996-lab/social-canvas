@@ -1,3 +1,4 @@
+import { MoodPopupHost } from "@/components/MoodBox";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { X as CloseIcon } from "lucide-react";
@@ -608,6 +609,7 @@ export function AppShell() {
 
       {/* ------- global overlays ------- */}
       {/* Overlays are code-split and mounted after the first paint, so their JS is not on the critical path. */}
+      <MoodPopupHost />
       {overlaysReady && (
         <Suspense fallback={null}>
           <CreateModal />

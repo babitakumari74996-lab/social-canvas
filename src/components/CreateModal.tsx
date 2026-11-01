@@ -8,6 +8,7 @@ import { ui, useUI } from "@/lib/demo-store";
 import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
 import { SvSlider } from "@/components/SvSlider";
+import { MoodDialog } from "@/components/MoodBox";
 
 // Playback speeds offered by the reel editor and the camera.
 const SPEEDS = [0.5, 1, 2] as const;
@@ -476,6 +477,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [textAlign, setTextAlign] = useState<TextAlign>("center");
   const [textFont, setTextFont] = useState<TextFont>("sans");
   const [musicFromMix, setMusicFromMix] = useState(false);
+  // "Mood" tile opens the same mood popup as the feed's mood box.
+  const [moodOpen, setMoodOpen] = useState(false);
   // Reel audio: picked track, mix levels, and the optional voiceover clip.
   const [musicTrack, setMusicTrack] = useState<MusicTrack | null>(null);
   const [musicOpen, setMusicOpen] = useState(false);
@@ -1364,6 +1367,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           </div>
         )}
 
+        <MoodDialog open={moodOpen} onOpenChange={setMoodOpen} onShared={() => close()} />
         {musicOpen && step === "pick" && mode === "video" && (
           <div className="fixed inset-0 z-[90]">
             <MusicPicker
@@ -1557,7 +1561,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   { label: "Today", desc: "Post a moment from your day", icon: CalendarClock },
                   { label: "Live", desc: "Go live with your followers", icon: Radio },
                 ] as const).map((o) => (
-                  <button key={o.label} type="button" onClick={() => toast(`${o.label} is coming soon`)} className="bg-card p-8 flex flex-col items-center gap-3 hover:bg-muted">
+                  <button key={o.label} type="button" onClick={() => (o.label === "Mood" ? setMoodOpen(true) : toast(`${o.label} is coming soon`))} className="bg-card p-8 flex flex-col items-center gap-3 hover:bg-muted">
                     <o.icon className="h-10 w-10 text-primary" />
                     <span className="font-semibold">{o.label}</span>
                     <span className="text-xs text-muted-foreground">{o.desc}</span>

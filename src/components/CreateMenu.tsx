@@ -82,6 +82,7 @@ export function CreateNavButton({
   const pick = (o: Option) => {
     requestClose();
     if (o.mode) ui.openCreate(o.mode);
+    else if (o.label === "Mood") window.dispatchEvent(new Event("sv-open-mood"));
     else toast(`${o.label} is coming soon`);
   };
 
