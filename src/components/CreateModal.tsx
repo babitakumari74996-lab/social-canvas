@@ -505,6 +505,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [musicFromMix, setMusicFromMix] = useState(false);
   // "Mood" tile opens the same mood popup as the feed's mood box.
   const [moodOpen, setMoodOpen] = useState(false);
+  // Set when the camera was opened from the Effects screen: the clip then returns to that screen.
+  const effectsPending = useRef(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [drafts, setDrafts] = useState<SavedDraft[]>([]);
@@ -1392,6 +1394,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     <button
                       type="button"
                       onClick={() => {
+                        effectsPending.current = true;
                         setEffectsOpen(false);
                         setCameraOpen(true);
                       }}
@@ -1617,7 +1620,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         )}
         {cameraOpen && mode === "video" && (
           <CameraCapture
-            onClose={() => setCameraOpen(false)}
+            onClose={() => {
+              setCameraOpen(false);
+              if (effectsPending.current) {
+                effectsPending.current = false;
+                setEffectsOpen(true);
+              }
+            }}
             musicId={musicTrack?.id ?? null}
             onMusic={(t) => setMusicTrack(t)}
             initialFilter={effectPick}
@@ -1628,6 +1637,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               setVideoFilter(meta.filter);
               setCameraOpen(false);
               setStep("preview");
+              if (effectsPending.current) {
+                // The chosen effect goes with the new clip on the effects screen.
+                effectsPending.current = false;
+                setEffectsOpen(true);
+              }
             }}
           />
         )}
