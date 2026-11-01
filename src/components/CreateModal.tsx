@@ -714,7 +714,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <button type="button" aria-label="Back" onClick={() => setStep("pick")} className="p-1">
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <button type="button" onClick={() => toast("Audio coming soon")} className="flex-1 min-w-0 rounded-full bg-white/15 px-4 py-2 text-left">
+              <button type="button" onClick={() => { setMusicFromMix(false); setMusicOpen(true); }} className="flex-1 min-w-0 rounded-full bg-white/15 px-4 py-2 text-left">
                 <span className="block text-sm font-semibold">Add audio</span>
                 <span className="block text-xs text-white/70">Discover suggestions</span>
               </button>
