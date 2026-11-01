@@ -182,14 +182,16 @@ function CameraCapture({
   onClose,
   onMusic,
   musicId,
+  initialFilter,
 }: {
   onCapture: (file: File, url: string, meta: CaptureMeta) => void;
   onClose: () => void;
   onMusic: (t: MusicTrack) => void;
   musicId: string | null;
+  initialFilter?: string;
 }) {
   const [speed, setSpeed] = useState(1);
-  const [filter, setFilter] = useState("none");
+  const [filter, setFilter] = useState(initialFilter ?? "none");
   const [musicOpen, setMusicOpen] = useState(false);
   const [effectsOpen, setEffectsOpen] = useState(false);
   // Recorder callbacks are created once per recording, so they read the latest choices through refs.
@@ -1093,56 +1095,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             </div>
           )}
 
-          {effectsOpen && (
-            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
-              <video
-                src={draft.previews[0]}
-                muted
-                autoPlay
-                loop
-                playsInline
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ filter: effectPick === "none" ? undefined : effectPick, transform: mirror ? "scaleX(-1)" : undefined }}
-              />
-              <div className="relative mt-auto flex flex-col gap-5 pb-6">
-                <div className="flex gap-4 overflow-x-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {EFFECT_OPTIONS.map((f) => (
-                    <button
-                      key={f.name}
-                      type="button"
-                      aria-label={f.name}
-                      onClick={() => setEffectPick(f.css)}
-                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white" : ""}`}
-                      style={{ background: f.bg, color: f.fg }}
-                    >
-                      {f.badge}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between px-6">
-                  <button type="button" aria-label="Cancel effect" onClick={() => setEffectsOpen(false)} className="grid h-14 w-14 place-items-center rounded-full bg-zinc-800">
-                    <X className="h-7 w-7" />
-                  </button>
-                  <div className="text-center">
-                    <p className="text-lg font-bold">{EFFECT_OPTIONS.find((f) => f.css === effectPick)?.name ?? "None"}</p>
-                    <p className="text-sm text-white/70">By creators</p>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label="Apply effect"
-                    onClick={() => {
-                      setVideoFilter(effectPick);
-                      setEffectsOpen(false);
-                    }}
-                    className="grid h-14 w-14 place-items-center rounded-full bg-[#1877f2]"
-                  >
-                    <Check className="h-7 w-7" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {editorOpen && (
             <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
               <div className="flex items-center justify-between px-4 py-3">
@@ -1418,6 +1370,78 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           </div>
         )}
 
+        {effectsOpen && (
+          <div className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
+              {draft.previews[0] ? (
+                <video
+                  src={draft.previews[0]}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={{ filter: effectPick === "none" ? undefined : effectPick, transform: mirror ? "scaleX(-1)" : undefined }}
+                />
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+                  <p className="text-sm text-white/70">No video yet. Choose one from your gallery or record a new one, then pick an effect.</p>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => videoInput.current?.click()} className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-semibold">
+                      Choose video
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEffectsOpen(false);
+                        setCameraOpen(true);
+                      }}
+                      className="rounded-lg bg-[#1877f2] px-4 py-2.5 text-sm font-semibold"
+                    >
+                      Make video
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="relative mt-auto flex flex-col gap-5 pb-6">
+                <div className="flex gap-4 overflow-x-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {EFFECT_OPTIONS.map((f) => (
+                    <button
+                      key={f.name}
+                      type="button"
+                      aria-label={f.name}
+                      onClick={() => setEffectPick(f.css)}
+                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white" : ""}`}
+                      style={{ background: f.bg, color: f.fg }}
+                    >
+                      {f.badge}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between px-6">
+                  <button type="button" aria-label="Cancel effect" onClick={() => setEffectsOpen(false)} className="grid h-14 w-14 place-items-center rounded-full bg-zinc-800">
+                    <X className="h-7 w-7" />
+                  </button>
+                  <div className="text-center">
+                    <p className="text-lg font-bold">{EFFECT_OPTIONS.find((f) => f.css === effectPick)?.name ?? "None"}</p>
+                    <p className="text-sm text-white/70">By creators</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Apply effect"
+                    onClick={() => {
+                      setVideoFilter(effectPick);
+                      setEffectsOpen(false);
+                      if (!draft.previews[0]) toast("Effect saved. It will apply to your video.");
+                    }}
+                    className="grid h-14 w-14 place-items-center rounded-full bg-[#1877f2]"
+                  >
+                    <Check className="h-7 w-7" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         <MoodDialog open={moodOpen} onOpenChange={setMoodOpen} onShared={() => close()} />
 
         {templatesOpen && (
@@ -1596,6 +1620,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             onClose={() => setCameraOpen(false)}
             musicId={musicTrack?.id ?? null}
             onMusic={(t) => setMusicTrack(t)}
+            initialFilter={effectPick}
             onCapture={(file, url, meta) => {
               setDraft({ files: [file], gallery: [], previews: [url], filter: "none", zoom: 1 });
               setCover(null);
@@ -1637,9 +1662,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   label: "Effects",
                   icon: Sparkles,
                   action: () => {
-                    if (!draft.previews.length) pickGalleryVideo(DEMO_VIDEO_GALLERY[0]);
-                    setStep("preview");
+                    // No random clip: with no video the effects screen shows a black frame and offers Choose / Make video.
                     setEffectPick(videoFilter);
+                    if (draft.previews.length) setStep("preview");
                     setEffectsOpen(true);
                   },
                 },
