@@ -6,6 +6,11 @@ import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
+import { MusicPicker, MixAudioSheet, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
+
+// Playback speeds offered by the reel editor and the camera.
+const SPEEDS = [0.5, 1, 2] as const;
+type CaptureMeta = { speed: number; filter: string };
 
 // Same recipes Instagram-style filters emulate
 const FILTERS: { name: string; css: string }[] = [
@@ -131,7 +136,24 @@ function rememberCameraGranted() {
 }
 
 /* Live camera for the reel pick: asks permission first, then records a clip that goes to the edit step. */
-function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: string) => void; onClose: () => void }) {
+function CameraCapture({
+  onCapture,
+  onClose,
+  onMusic,
+  musicId,
+}: {
+  onCapture: (file: File, url: string, meta: CaptureMeta) => void;
+  onClose: () => void;
+  onMusic: (t: MusicTrack) => void;
+  musicId: string | null;
+}) {
+  const [speed, setSpeed] = useState(1);
+  const [filter, setFilter] = useState("none");
+  const [musicOpen, setMusicOpen] = useState(false);
+  const [effectsOpen, setEffectsOpen] = useState(false);
+  // Recorder callbacks are created once per recording, so they read the latest choices through refs.
+  const metaRef = useRef<CaptureMeta>({ speed: 1, filter: "none" });
+  metaRef.current = { speed, filter };
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
@@ -236,7 +258,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
       const blob = new Blob(chunksRef.current, { type });
       const ext = type.includes("mp4") ? "mp4" : "webm";
       const file = new File([blob], `camera-${Date.now()}.${ext}`, { type });
-      onCapture(file, URL.createObjectURL(blob));
+      onCapture(file, URL.createObjectURL(blob), metaRef.current);
     };
     rec.start();
     recRef.current = rec;
@@ -264,7 +286,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
         hidden
         onChange={(e) => {
           const f = e.target.files?.[0];
-          if (f) onCapture(f, URL.createObjectURL(f));
+          if (f) onCapture(f, URL.createObjectURL(f), metaRef.current);
           e.target.value = "";
         }}
       />
@@ -303,17 +325,52 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File, url: st
               <button type="button" aria-label="Close camera" onClick={close} className="p-1"><X className="h-7 w-7" /></button>
             </div>
             <div className="absolute right-4 top-16 flex flex-col items-end gap-5 text-sm font-semibold">
-              {[
-                { label: "Music", icon: Music2 },
-                { label: "Speed", icon: Gauge },
-                { label: "Effects", icon: Sparkles },
-                { label: "Green screen", icon: ScanFace },
-              ].map((t) => (
-                <button key={t.label} type="button" onClick={() => toast(`${t.label} coming soon`)} className="flex items-center gap-2 drop-shadow">
-                  {t.label} <t.icon className="h-6 w-6" />
-                </button>
-              ))}
+              <button type="button" onClick={() => setMusicOpen(true)} className="flex items-center gap-2 drop-shadow">
+                Music <Music2 className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s as (typeof SPEEDS)[number]) + 1) % SPEEDS.length])}
+                className="flex items-center gap-2 drop-shadow"
+              >
+                Speed {speed}x <Gauge className="h-6 w-6" />
+              </button>
+              <button type="button" onClick={() => setEffectsOpen((o) => !o)} className="flex items-center gap-2 drop-shadow">
+                Effects <Sparkles className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => toast("Green screen isn't available in this version")}
+                className="flex items-center gap-2 drop-shadow"
+              >
+                Green screen <ScanFace className="h-6 w-6" />
+              </button>
             </div>
+            {effectsOpen && (
+              <div className="absolute inset-x-0 bottom-4 flex gap-2 overflow-x-auto px-4 pb-1">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.name}
+                    type="button"
+                    onClick={() => setFilter(f.css)}
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${filter === f.css ? "bg-white text-black" : "bg-black/50 text-white"}`}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {musicOpen && (
+              <MusicPicker
+                selectedId={musicId}
+                onClose={() => setMusicOpen(false)}
+                onSelect={(t) => {
+                  onMusic(t);
+                  setMusicOpen(false);
+                  toast(`Music: ${t.title}`);
+                }}
+              />
+            )}
             {recording && (
               <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded bg-red-600 px-2 py-0.5 text-xs font-bold">REC</span>
             )}
@@ -385,12 +442,24 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [asReel, setAsReel] = useState(true);
   const [alsoStory, setAlsoStory] = useState(false);
   // Preview tools: bottom sheet (audio / text / stickers) and the items placed over the preview.
-  const [toolSheet, setToolSheet] = useState<null | "audio" | "text" | "stickers">(null);
+  const [toolSheet, setToolSheet] = useState<null | "text" | "stickers" | "effects" | "edit">(null);
+  // Reel audio: picked track, mix levels, and the optional voiceover clip.
+  const [musicTrack, setMusicTrack] = useState<MusicTrack | null>(null);
+  const [musicOpen, setMusicOpen] = useState(false);
+  const [mixOpen, setMixOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceUrl, setVoiceUrl] = useState<string | null>(null);
+  const [voiceVolume, setVoiceVolume] = useState(1);
+  const [originalVolume, setOriginalVolume] = useState(1);
+  const voiceRef = useRef<HTMLAudioElement | null>(null);
+  // Speed, crop and mirror shown on the reel preview.
+  const [speed, setSpeed] = useState(1);
+  const [crop, setCrop] = useState<"fit" | "fill">("fit");
+  const [mirror, setMirror] = useState(false);
   const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker"; value: string; color: string }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
-  const [audioLabel, setAudioLabel] = useState("Original sound");
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -431,6 +500,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setCover(null); setFrames([]); setCameraOpen(false);
       setTrimStart(0); setTrimEnd(0); setDuration(0); setVideoFilter("none");
       setTags(""); setAudience("everyone"); setAlsoStory(false);
+      setMusicTrack(null); setMusicOpen(false); setMixOpen(false); setVoiceOpen(false);
+      setVoiceUrl(null); setVoiceVolume(1); setOriginalVolume(1); setKeepOriginalSound(true);
+      setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
     }
   }, [open, createMode]);
 
@@ -501,7 +573,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           file: draft.gallery.length ? undefined : draft.files[0],
           galleryUrl: draft.gallery[0],
           caption,
-          music: music || null,
+          music: musicTrack ? musicTrack.title : music || null,
           edits: {
             cover: cover ?? undefined,
             trimStart: trimmed ? trimStart : undefined,
@@ -598,11 +670,30 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 ref={previewVideo}
                 key={draft.previews[0]}
                 src={draft.previews[0]}
-                className="absolute inset-0 h-full w-full object-contain"
+                className={`absolute inset-0 h-full w-full ${crop === "fill" ? "object-cover" : "object-contain"}`}
+                style={{
+                  filter: videoFilter === "none" ? undefined : videoFilter,
+                  transform: mirror ? "scaleX(-1)" : undefined,
+                }}
                 loop
                 playsInline
                 muted={previewMuted}
+                onPlay={() => {
+                  const v = previewVideo.current;
+                  if (v) v.playbackRate = speed;
+                  voiceRef.current?.play().catch(() => {});
+                }}
+                onPause={() => voiceRef.current?.pause()}
               />
+              {musicTrack && (
+                <div className="absolute left-1/2 top-3 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold">
+                  <Music2 className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{musicTrack.title}</span>
+                  <button type="button" aria-label="Remove music" onClick={() => setMusicTrack(null)} className="shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               {overlays.map((o, i) => (
                 <button
                   key={o.id}
@@ -623,6 +714,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   if (!v) return;
                   v.muted = !v.muted;
                   setPreviewMuted(v.muted);
+                  setKeepOriginalSound(!v.muted);
                 }}
                 className="absolute right-3 bottom-3 grid place-items-center h-10 w-10 rounded-full bg-black/60"
               >
@@ -636,9 +728,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <div className="min-w-0 flex-1 overflow-x-auto touch-pan-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex w-max min-w-full justify-between gap-6 px-2">
                   {[
-                    { label: "Audio", icon: Music2, action: () => setToolSheet("audio") },
-                    { label: "Edit", icon: Scissors, action: () => setStep("edit") },
-                    { label: "Effects", icon: Sparkles, action: () => setStep("edit") },
+                    { label: "Audio", icon: Music2, action: () => setMusicOpen(true) },
+                    { label: "Edit", icon: Scissors, action: () => setToolSheet("edit") },
+                    { label: "Effects", icon: Sparkles, action: () => setToolSheet("effects") },
                     { label: "Text", icon: TypeIcon, action: () => setToolSheet("text") },
                     { label: "Stickers", icon: Smile, action: () => setToolSheet("stickers") },
                   ].map((t) => (
@@ -658,43 +750,179 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <span className="text-[11px] font-medium">Next</span>
               </button>
             </div>
-          {toolSheet && (
+          {musicOpen && (
+            <MusicPicker
+              selectedId={musicTrack?.id ?? null}
+              onClose={() => setMusicOpen(false)}
+              onSelect={(t) => {
+                setMusicTrack(t);
+                setMusicOpen(false);
+                toast(`Music: ${t.title}`);
+              }}
+              onMix={() => {
+                setMusicOpen(false);
+                setMixOpen(true);
+              }}
+            />
+          )}
+          {voiceOpen && (
+            <div className="absolute inset-0 z-[95] flex flex-col justify-center bg-black text-white">
+              <VoiceoverRecorder
+                onCancel={() => setVoiceOpen(false)}
+                onDone={(url) => {
+                  setVoiceUrl(url);
+                  const a = new Audio(url);
+                  a.volume = voiceVolume;
+                  voiceRef.current = a;
+                  setVoiceOpen(false);
+                  setMixOpen(true);
+                  toast("Voiceover added");
+                }}
+              />
+            </div>
+          )}
+          {mixOpen && (
+            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setMixOpen(false)}>
+              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
+                <MixAudioSheet
+                  keepOriginal={keepOriginalSound}
+                  onToggleOriginal={() => {
+                    const on = !keepOriginalSound;
+                    setKeepOriginalSound(on);
+                    if (previewVideo.current) previewVideo.current.muted = !on;
+                    setPreviewMuted(!on);
+                  }}
+                  originalVolume={originalVolume}
+                  onOriginalVolume={(v) => {
+                    setOriginalVolume(v);
+                    if (previewVideo.current) previewVideo.current.volume = v;
+                  }}
+                  musicTitle={musicTrack?.title ?? null}
+                  voiceUrl={voiceUrl}
+                  voiceVolume={voiceVolume}
+                  onVoiceVolume={(v) => {
+                    setVoiceVolume(v);
+                    if (voiceRef.current) voiceRef.current.volume = v;
+                  }}
+                  onRemoveVoice={() => {
+                    voiceRef.current?.pause();
+                    voiceRef.current = null;
+                    setVoiceUrl(null);
+                  }}
+                  onAddMusic={() => {
+                    setMixOpen(false);
+                    setMusicOpen(true);
+                  }}
+                  onAddVoice={() => {
+                    setMixOpen(false);
+                    setVoiceOpen(true);
+                  }}
+                  onClose={() => setMixOpen(false)}
+                />
+              </div>
+            </div>
+          )}
+          {toolSheet === "edit" && (
+            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
+              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white space-y-5" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-semibold">Edit</span>
+                  <button type="button" aria-label="Close" onClick={() => setToolSheet(null)} className="p-1">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Speed</span>
+                  <div className="flex gap-2">
+                    {SPEEDS.map((sp) => (
+                      <button
+                        key={sp}
+                        type="button"
+                        onClick={() => {
+                          setSpeed(sp);
+                          if (previewVideo.current) previewVideo.current.playbackRate = sp;
+                        }}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${speed === sp ? "bg-white text-black" : "bg-white/10"}`}
+                      >
+                        {sp}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Crop</span>
+                  <div className="flex gap-2">
+                    {(["fit", "fill"] as const).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCrop(c)}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${crop === c ? "bg-white text-black" : "bg-white/10"}`}
+                      >
+                        {c === "fit" ? "Fit" : "Fill"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setMirror((m) => !m)} className={`rounded-xl py-3 text-sm font-medium ${mirror ? "bg-white text-black" : "bg-white/10"}`}>
+                    Mirror {mirror ? "on" : "off"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setToolSheet(null);
+                      setStep("edit");
+                    }}
+                    className="rounded-xl bg-white/10 py-3 text-sm font-medium"
+                  >
+                    Trim &amp; cover
+                  </button>
+                  <button type="button" onClick={() => toast("Reverse isn't available in this version")} className="rounded-xl bg-white/10 py-3 text-sm font-medium">
+                    Reverse
+                  </button>
+                  <button type="button" onClick={() => toast("Split isn't available in this version")} className="rounded-xl bg-white/10 py-3 text-sm font-medium">
+                    Split
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {toolSheet === "effects" && (
+            <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
+              <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-base font-semibold">Effects</span>
+                  <button type="button" aria-label="Done" onClick={() => setToolSheet(null)} className="grid h-8 w-8 place-items-center rounded-full bg-white text-black">
+                    <Check className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {FILTERS.map((f) => (
+                    <button
+                      key={f.name}
+                      type="button"
+                      onClick={() => setVideoFilter(f.css)}
+                      className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${videoFilter === f.css ? "bg-white text-black" : "bg-white/10"}`}
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {toolSheet && toolSheet !== "edit" && toolSheet !== "effects" && (
           <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/50" onClick={() => setToolSheet(null)}>
             <div className="rounded-t-2xl bg-zinc-900 p-5 pb-8 text-white" onClick={(e) => e.stopPropagation()}>
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-base font-semibold">
-                  {toolSheet === "audio" ? "Audio" : toolSheet === "text" ? "Text" : "Stickers"}
+                  {toolSheet === "text" ? "Text" : "Stickers"}
                 </span>
                 <button type="button" aria-label="Close" onClick={() => setToolSheet(null)} className="p-1">
                   <X className="h-5 w-5" />
                 </button>
               </div>
-
-              {toolSheet === "audio" && (
-                <div className="space-y-2">
-                  {[
-                    { id: "orig", label: "Original sound", on: true },
-                    { id: "mute", label: "Mute video", on: false },
-                  ].map((o) => (
-                    <button
-                      key={o.id}
-                      type="button"
-                      onClick={() => {
-                        setKeepOriginalSound(o.on);
-                        setAudioLabel(o.label);
-                        if (previewVideo.current) previewVideo.current.muted = !o.on;
-                        setPreviewMuted(!o.on);
-                        setToolSheet(null);
-                        toast(`Audio: ${o.label}`);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left ${audioLabel === o.label ? "bg-white/20" : "bg-white/10"}`}
-                    >
-                      <span className="text-sm font-medium">{o.label}</span>
-                      {audioLabel === o.label && <Check className="h-4 w-4" />}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {toolSheet === "text" && (
                 <div className="space-y-4">
@@ -733,6 +961,30 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               )}
 
               {toolSheet === "stickers" && (
+                <div className="space-y-4">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {["Location", "Time", "GIF", "Music", "Avatar"].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          if (c === "Time") {
+                            const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                            setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: now, color: "#ffffff" }]);
+                            setToolSheet(null);
+                          } else if (c === "Music") {
+                            setToolSheet(null);
+                            setMusicOpen(true);
+                          } else {
+                            toast(`${c} isn't available in this version`);
+                          }
+                        }}
+                        className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold"
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 <div className="grid grid-cols-6 gap-3">
                   {["😀", "😂", "😍", "🔥", "❤️", "🎉", "💪", "⭐", "😎", "🙌", "👏", "🥳"].map((e) => (
                     <button
@@ -748,6 +1000,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </button>
                   ))}
                 </div>
+                </div>
               )}
             </div>
           </div>
@@ -755,12 +1008,29 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           </div>
         )}
 
+        {musicOpen && step === "pick" && mode === "video" && (
+          <div className="fixed inset-0 z-[90]">
+            <MusicPicker
+              selectedId={musicTrack?.id ?? null}
+              onClose={() => setMusicOpen(false)}
+              onSelect={(t) => {
+                setMusicTrack(t);
+                setMusicOpen(false);
+                toast(`Music: ${t.title}`);
+              }}
+            />
+          </div>
+        )}
         {cameraOpen && mode === "video" && (
           <CameraCapture
             onClose={() => setCameraOpen(false)}
-            onCapture={(file, url) => {
+            musicId={musicTrack?.id ?? null}
+            onMusic={(t) => setMusicTrack(t)}
+            onCapture={(file, url, meta) => {
               setDraft({ files: [file], gallery: [], previews: [url], filter: "none", zoom: 1 });
               setCover(null);
+              setSpeed(meta.speed);
+              setVideoFilter(meta.filter);
               setCameraOpen(false);
               setStep("preview");
             }}
@@ -774,7 +1044,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <div className="flex w-max min-w-full justify-between gap-6 px-4">
               {[
                 { label: "Camera", icon: Camera, action: () => setCameraOpen(true) },
-                { label: "Music", icon: Music2, action: () => toast("Music coming soon") },
+                { label: "Music", icon: Music2, action: () => setMusicOpen(true) },
                 { label: "Templates", icon: LayoutTemplate, action: () => toast("Templates coming soon") },
                 { label: "Drafts", icon: FileText, action: () => toast("Drafts coming soon") },
                 { label: "Green screen", icon: ScanFace, action: () => toast("Green screen coming soon") },
