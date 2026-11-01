@@ -258,12 +258,17 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
         startedAtRef.current = true;
         vid.currentTime = at;
       }
+      // Every reel follows the one shared sound setting (mutedRef), never a per-reel choice.
+      vid.muted = mutedRef.current;
       vid.play().then(() => setPlaying(true)).catch(() => {
-        // Autoplay with sound was blocked: play silently now, and restore the user's sound choice on the next tap.
+        // Autoplay with sound was blocked: this reel plays silently for now, the shared setting stays as it is.
         vid.muted = true;
         vid.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
         const unlock = () => {
-          vid.muted = mutedRef.current;
+          // The next tap applies the shared setting to every reel on the page.
+          document.querySelectorAll<HTMLVideoElement>("video").forEach((v) => {
+            v.muted = mutedRef.current;
+          });
           document.removeEventListener("pointerdown", unlock);
         };
         document.addEventListener("pointerdown", unlock);
