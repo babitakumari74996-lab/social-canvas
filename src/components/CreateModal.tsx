@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile } from "@/lib/data";
@@ -457,6 +457,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const editorRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<null | "start" | "end">(null);
+  // Last trim range before Undo, so Redo can bring it back.
+  const trimHistory = useRef<{ start: number; end: number } | null>(null);
   const [textOpen, setTextOpen] = useState(false);
   const [textAlign, setTextAlign] = useState<TextAlign>("center");
   const [textFont, setTextFont] = useState<TextFont>("sans");
@@ -782,7 +784,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   {[
                     { label: "Audio", icon: Music2, action: () => setMixOpen(true) },
                     { label: "Edit", icon: Scissors, action: () => setEditorOpen(true) },
-                    { label: "Effects", icon: Sparkles, action: () => { setEditorPanel("filter"); setEditorOpen(true); } },
+                    { label: "Effects", icon: Sparkles, action: () => { setEditorPanel(null); setEditorOpen(true); } },
                     { label: "Text", icon: TypeIcon, action: () => setTextOpen(true) },
                     { label: "Stickers", icon: Smile, action: () => setToolSheet("stickers") },
                   ].map((t) => (
@@ -1078,17 +1080,34 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <span className="text-sm tabular-nums">
                   <span className="font-semibold">{editorTime.toFixed(1)}</span> / {duration.toFixed(1)}
                 </span>
-                <button
-                  type="button"
-                  aria-label="Reset trim"
-                  onClick={() => {
-                    setTrimStart(0);
-                    setTrimEnd(duration);
-                  }}
-                  className="p-1"
-                >
-                  <Undo2 className="h-6 w-6" />
-                </button>
+                <div className="flex items-center gap-5">
+                  <button
+                    type="button"
+                    aria-label="Undo trim"
+                    onClick={() => {
+                      trimHistory.current = { start: trimStart, end: trimEnd || duration };
+                      setTrimStart(0);
+                      setTrimEnd(duration);
+                    }}
+                    className="p-1"
+                  >
+                    <Undo2 className="h-6 w-6" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Redo trim"
+                    onClick={() => {
+                      const h = trimHistory.current;
+                      if (!h) return;
+                      setTrimStart(h.start);
+                      setTrimEnd(h.end);
+                      trimHistory.current = null;
+                    }}
+                    className="p-1"
+                  >
+                    <Redo2 className="h-6 w-6" />
+                  </button>
+                </div>
               </div>
               <div className="px-6 pt-4">
                 <div
