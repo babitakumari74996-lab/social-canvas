@@ -330,6 +330,8 @@ export function AppShell() {
   const navIndex = overlay.overlay === "search" ? -1 : activeTabIndex;
   // While a reel is being created the mobile bottom nav is hidden.
   const reelCreating = overlay.overlay === "create" && overlay.createMode === "video";
+  // The Twit composer (New Twit page) is a full page of its own: no bottom nav there either.
+  const twitCreating = overlay.overlay === "create" && overlay.createMode === "text";
   const activeKey = navIndex === 0 ? "home" : navIndex === 1 ? "reels" : navIndex === 2 ? "create"
     : navIndex === 3 ? "moods" : navIndex === 4 ? "profile" : null;
 
@@ -502,7 +504,7 @@ export function AppShell() {
       </SwipeTabs>
 
       {/* ------- mobile bottom nav ------- */}
-      {!reelCreating && (
+      {!reelCreating && !twitCreating && (
       <nav
         style={{
           transform: `translate3d(0, min(${shBar}, 56px), 0)`,

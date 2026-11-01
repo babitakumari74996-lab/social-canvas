@@ -177,13 +177,17 @@ function MoodCard({ mood }: { mood: UMood }) {
         const src = resolveVideoUrl(md.url);
         if (!src) return <div key={i} className="aspect-[4/5] w-full bg-muted" />;
         return md.kind === "video" ? (
+          // Moods videos start by themselves (muted, browsers need that) and loop when they end.
           <video
             key={i}
             src={src}
             controls
+            autoPlay
+            muted
+            loop
             playsInline
-            preload="metadata"
-            className="w-full max-h-[640px] bg-black"
+            preload="auto"
+            className="w-full h-[78vh] min-h-[460px] object-cover bg-black"
           />
         ) : (
           <img
@@ -191,7 +195,7 @@ function MoodCard({ mood }: { mood: UMood }) {
             src={src}
             alt=""
             decoding="async"
-            className="w-full max-h-[640px] object-cover bg-muted"
+            className="w-full h-[78vh] min-h-[460px] object-cover bg-muted"
           />
         );
       })}

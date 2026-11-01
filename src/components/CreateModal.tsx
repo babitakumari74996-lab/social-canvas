@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -471,11 +471,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [location, setLocation] = useState("");
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [music, setMusic] = useState("");
-  const [twitFiles, setTwitFiles] = useState<File[]>([]);
-  const twitInput = useRef<HTMLInputElement>(null);
-  const twitPreviews = useMemo(() => twitFiles.map((f) => URL.createObjectURL(f)), [twitFiles]);
   const [textPost, setTextPost] = useState("");
-  const canShareTwit = !!textPost.trim() || twitFiles.length > 0;
+  // Twit photos are picked from the gallery below the composer.
+  const [twitPhotos, setTwitPhotos] = useState<string[]>([]);
+  const canShareTwit = !!textPost.trim() || twitPhotos.length > 0;
   const [asReel, setAsReel] = useState(true);
   const [alsoStory, setAlsoStory] = useState(false);
   // Preview tools: bottom sheet (audio / text / stickers) and the items placed over the preview.
@@ -565,7 +564,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setMode(createMode);
       setStep(createMode === "text" ? "text" : "pick");
       setDraft({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
-      setCaption(""); setLocation(""); setMusic(""); setTextPost(""); setTwitFiles([]);
+      setCaption(""); setLocation(""); setMusic(""); setTextPost(""); setTwitPhotos([]);
       setCover(null); setFrames([]); setCameraOpen(false);
       setTrimStart(0); setTrimEnd(0); setDuration(0); setVideoFilter("none");
       setTags(""); setAudience("everyone"); setAlsoStory(false);
@@ -682,7 +681,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         navigate({ to: "/reels" });
       } else {
         if (!canShareTwit) return;
-        await actions.createPost({ files: twitFiles, galleryUrls: [], caption: textPost.trim(), isTwit: true });
+        await actions.createPost({ files: [], galleryUrls: twitPhotos, caption: textPost.trim(), isTwit: true });
         toast("Twit shared ✅");
         close();
         navigate({ to: "/moods" });
@@ -2239,54 +2238,19 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         )}
 
         {step === "text" && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[560px] space-y-4 p-4 md:p-6">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="shrink-0 space-y-4 p-4 md:p-6">
               <textarea
                 value={textPost}
                 onChange={(e) => setTextPost(e.target.value)}
                 placeholder="What's on your mind?"
-                rows={6}
+                rows={5}
                 autoFocus
                 className="w-full resize-none bg-transparent text-base outline-none placeholder:text-muted-foreground"
               />
-              {twitFiles.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {twitFiles.map((f, i) => (
-                    <div key={`${f.name}-${i}`} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-                      <img src={twitPreviews[i]} alt="" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        aria-label="Remove photo"
-                        onClick={() => setTwitFiles((prev) => prev.filter((_, j) => j !== i))}
-                        className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              {twitPhotos.length > 0 && (
+                <p className="text-xs text-muted-foreground">{twitPhotos.length} photo{twitPhotos.length > 1 ? "s" : ""} selected</p>
               )}
-              <div className="flex items-center justify-between border-t border-border pt-3">
-                <button
-                  type="button"
-                  onClick={() => twitInput.current?.click()}
-                  className="flex items-center gap-2 text-sm font-semibold text-primary"
-                >
-                  <ImagePlus className="h-5 w-5" /> Add photos
-                </button>
-                <input
-                  ref={twitInput}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  hidden
-                  onChange={(e) => {
-                    const picked = Array.from(e.target.files ?? []);
-                    if (picked.length) setTwitFiles((prev) => [...prev, ...picked]);
-                    e.target.value = "";
-                  }}
-                />
-              </div>
               <button
                 type="button"
                 onClick={share}
@@ -2295,6 +2259,33 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               >
                 {busy ? "Sharing…" : "Share"}
               </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto border-t border-border p-1">
+              <div className="grid grid-cols-3 gap-1">
+                {DEMO_GALLERY.map((url, i) => {
+                  const pos = twitPhotos.indexOf(url);
+                  const selected = pos >= 0;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      aria-label={selected ? "Remove photo" : "Add photo"}
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setTwitPhotos((prev) => (prev.includes(url) ? prev.filter((u) => u !== url) : [...prev, url]))
+                      }
+                      className={`relative aspect-square overflow-hidden bg-muted ${selected ? "ring-2 ring-inset ring-primary" : ""}`}
+                    >
+                      <MediaImg src={url} alt="" className="h-full w-full object-cover" />
+                      {selected && (
+                        <span className="absolute right-1 top-1 grid h-6 min-w-6 place-items-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                          {pos + 1}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
