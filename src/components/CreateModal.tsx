@@ -594,7 +594,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
   // Full-screen editor: start playing when it opens.
   useEffect(() => {
-    if (editorOpen) editorRef.current?.play().catch(() => {});
+    if (editorOpen) {
+      // Only the editor plays while it is open, so the preview underneath stays silent.
+      previewVideo.current?.pause();
+      editorRef.current?.play().catch(() => {});
+    }
   }, [editorOpen]);
 
   if (!open) return null;
@@ -611,6 +615,24 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setMusicFromMix(false);
       setMixOpen(true);
     }
+  };
+  // Play or pause the editor video. Starts inside the trimmed range, uses the chosen speed,
+  // and falls back to muted playback if the browser blocks sound.
+  const toggleEditorPlay = () => {
+    const v = editorRef.current;
+    if (!v) return;
+    if (!v.paused) {
+      v.pause();
+      return;
+    }
+    const end = trimEnd || duration;
+    if (end > trimStart + 0.1 && (v.currentTime >= end - 0.05 || v.currentTime < trimStart)) v.currentTime = trimStart;
+    v.playbackRate = speed;
+    v.play().catch(() => {
+      v.muted = true;
+      setPreviewMuted(true);
+      v.play().catch(() => {});
+    });
   };
   const closeEditor = () => {
     editorRef.current?.pause();
@@ -1138,13 +1160,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   Done
                 </button>
               </div>
-              <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+              <div
+                className="relative min-h-0 flex-1"
+                onClick={(e) => {
+                  // Tap anywhere on the video to play or pause it.
+                  if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
+                  toggleEditorPlay();
+                }}
+              >
                 <video
                   ref={editorRef}
                   src={draft.previews[0]}
                   muted={previewMuted}
                   playsInline
-                  className="aspect-[9/16] max-h-full max-w-full rounded-xl object-contain"
+                  className="absolute inset-0 h-full w-full object-contain"
                   style={filmStyle()}
                   onLoadedMetadata={(e) => {
                     const d = e.currentTarget.duration;
@@ -1159,7 +1188,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     setEditorTime(v.currentTime);
                     // Loop inside the trimmed range.
                     const end = trimEnd || duration;
-                    if (end && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
+                    if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
                   }}
                   onPlay={() => setEditorPlaying(true)}
                   onPause={() => setEditorPlaying(false)}
@@ -1169,12 +1198,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <button
                   type="button"
                   aria-label={editorPlaying ? "Pause" : "Play"}
-                  onClick={() => {
-                    const v = editorRef.current;
-                    if (!v) return;
-                    if (v.paused) v.play().catch(() => {});
-                    else v.pause();
-                  }}
+                  onClick={toggleEditorPlay}
                   className="p-1"
                 >
                   {editorPlaying ? <Pause className="h-7 w-7 fill-white" /> : <Play className="h-7 w-7 fill-white" />}
