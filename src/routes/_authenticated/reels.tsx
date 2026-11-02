@@ -326,11 +326,19 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
     const vid = videoRef.current;
     if (!vid) return;
     if (vid.paused) {
-      vid.play();
       setPaused(false);
+      vid.play().then(() => setPlaying(true)).catch(() => {
+        // Playing with sound was refused: play silently instead, and if that also fails show it paused.
+        vid.muted = true;
+        vid.play().then(() => setPlaying(true)).catch(() => {
+          setPaused(true);
+          setPlaying(false);
+        });
+      });
     } else {
       vid.pause();
       setPaused(true);
+      setPlaying(false);
     }
     setShowPlay(true);
     setTimeout(() => setShowPlay(false), 600);
@@ -402,6 +410,9 @@ function ReelItem({ reel, muted, startAt }: { reel: UReel; muted: boolean; start
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${frameReady ? "opacity-100" : "opacity-0"}`}
           // With a poster, reveal the video only once it is past its first frames (uploaded clips often
           // start black). Without a poster, show the video as soon as its first frame is ready.
+          // The icon follows the real video state (also when the browser pauses or restarts it).
+          onPlay={() => { setPlaying(true); setPaused(false); }}
+          onPause={() => { setPlaying(false); setPaused(true); }}
           onLoadedData={() => { if (!reel.poster) setFrameReady(true); }}
           onPlaying={() => { if (!reel.poster) setFrameReady(true); }}
           loop

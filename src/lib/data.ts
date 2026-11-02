@@ -308,6 +308,10 @@ export function useReels(): { reels: UReel[]; loading: boolean } {
         })),
       );
     },
+    // Signed video links last an hour: keep the same links while they are fresh, so a refetch does not
+    // swap the <video> source (which resets playback) while a reel is playing.
+    staleTime: 50 * 60 * 1000,
+    refetchOnWindowFocus: false,
     enabled: !!userId,
   });
   if (userId) return { reels: data ?? [], loading: isLoading };
