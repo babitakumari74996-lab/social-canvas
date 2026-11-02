@@ -1276,8 +1276,24 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <ChevronLeft className="h-6 w-6" />
               </button>
               <button type="button" onClick={() => { setMusicFromMix(false); setMusicOpen(true); }} className="flex-1 min-w-0 rounded-full bg-white/15 px-4 py-2 text-left">
-                <span className="block text-sm font-semibold">Add audio</span>
-                <span className="block text-xs text-white/70">Discover suggestions</span>
+                {musicTrack ? (
+                  <span className="flex items-center gap-2">
+                    {musicTrack.artwork ? (
+                      <img src={musicTrack.artwork} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
+                    ) : (
+                      <Music2 className="h-5 w-5 shrink-0" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">{musicTrack.title}</span>
+                      <span className="block truncate text-xs text-white/70">{musicTrack.artist}</span>
+                    </span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="block text-sm font-semibold">Add audio</span>
+                    <span className="block text-xs text-white/70">Discover suggestions</span>
+                  </>
+                )}
               </button>
               <button
                 type="button"
