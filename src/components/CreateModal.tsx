@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { RefreshCw, ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
+import { Minus, RefreshCw, ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile, useMe } from "@/lib/data";
@@ -582,6 +582,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Speed, crop and mirror shown on the reel preview.
   const [speed, setSpeed] = useState(1);
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
+  // Editor crop: a frame of this shape; the video is cropped to it. "original" leaves the video whole.
+  const [cropAspect, setCropAspect] = useState<string>("original");
+  const CROP_RATIOS: Record<string, string> = { "9:16": "9 / 16", "1:1": "1 / 1", "4:5": "4 / 5", "16:9": "16 / 9" };
   const [mirror, setMirror] = useState(false);
   const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number }[]>([]);
   const [overlayText, setOverlayText] = useState("");
@@ -683,7 +686,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     } else {
       setMusicCard((c) => c ?? { x: 50, y: 72 });
     }
-  }, [musicTrack?.id]);
+  }, [musicTrack]);
   // Position in the song for a given position in the video.
   const musicTarget = (videoTime: number) => {
     const a = getMusic();
@@ -713,14 +716,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setRevRunning(true);
     setEditorPlaying(true);
     const tick = (now: number) => {
-      const dt = (now - revLast.current) / 1000;
+      const dt = Math.min(0.1, (now - revLast.current) / 1000);
       revLast.current = now;
       const end = (trimEnd || duration || v.duration) as number;
       // The position is kept here, not read back from the video, so it keeps moving while seeks finish.
       let t = revPos.current - dt * speed;
       if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
       revPos.current = t;
-      v.currentTime = t;
+      // A new seek while one is pending cancels it and the frame never draws; wait for the current seek.
+      if (!v.seeking) v.currentTime = t;
       revRaf.current = requestAnimationFrame(tick);
     };
     revRaf.current = requestAnimationFrame(tick);
@@ -839,7 +843,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setTags(""); setAudience("everyone"); setAlsoStory(false);
       setMusicTrack(null); setMusicOpen(false); setMixOpen(false); setVoiceOpen(false);
       setVoiceUrl(null); setVoiceVolume(1); setOriginalVolume(1); setKeepOriginalSound(true);
-      setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
+      setSpeed(1); setCrop("fit"); setCropAspect("original"); setMirror(false); setToolSheet(null); setOverlays([]);
       setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false); setEffectsOpen(false);
       histPast.current = []; histFuture.current = []; histPrev.current = null;
       setCuts([]); setRemoved([]); setReversed(false);
@@ -978,7 +982,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     };
     const up = () => {
       cardMoved.current = moved;
-      if (moved && hot) setMusicTrack(null);
+      if (moved && hot) setMusicCard(null); // the card goes; the song stays in the audio bar
       setDragOv(null);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -1701,43 +1705,50 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   toggleEditorPlay();
                 }}
               >
-                <video
-                  ref={editorRef}
-                  src={draft.previews[0]}
-                  muted={previewMuted}
-                  playsInline
-                  className="absolute inset-0 h-full w-full object-contain"
-                  style={filmStyle()}
-                  onLoadedMetadata={(e) => {
-                    const d = e.currentTarget.duration;
-                    if (isFinite(d) && d > 0) {
-                      // The full-length trim set on load is the starting point, not an edit.
-                      histPast.current = [];
-                      histFuture.current = [];
-                      histPrev.current = { trimStart, trimEnd: trimEnd || d, videoFilter, speed, overlays, cuts, removed, reversed };
-                      setDuration(d);
-                      setTrimEnd((t) => t || d);
-                    }
-                    e.currentTarget.playbackRate = speed;
-                  }}
-                  onTimeUpdate={(e) => {
-                    const v = e.currentTarget;
-                    setEditorTime(v.currentTime);
-                    // Loop inside the trimmed range.
-                    const end = trimEnd || duration;
-                    if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
-                    skipRemoved(v);
-                  }}
-                  onPlay={(e) => {
-                    setEditorPlaying(true);
-                    syncMusic(e.currentTarget, true);
-                  }}
-                  onPause={() => {
-                    setEditorPlaying(false);
-                    musicRef.current?.pause();
-                  }}
-                />
-                {renderOverlays()}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div
+                    className="relative max-h-full max-w-full overflow-hidden"
+                    style={cropAspect === "original" ? { width: "100%", height: "100%" } : { aspectRatio: CROP_RATIOS[cropAspect], maxWidth: "100%", maxHeight: "100%", height: "100%" }}
+                  >
+                  <video
+                    ref={editorRef}
+                    src={draft.previews[0]}
+                    muted={previewMuted}
+                    playsInline
+                    className={`absolute inset-0 h-full w-full ${cropAspect === "original" ? "object-contain" : "object-cover"}`}
+                    style={filmStyle()}
+                    onLoadedMetadata={(e) => {
+                      const d = e.currentTarget.duration;
+                      if (isFinite(d) && d > 0) {
+                        // The full-length trim set on load is the starting point, not an edit.
+                        histPast.current = [];
+                        histFuture.current = [];
+                        histPrev.current = { trimStart, trimEnd: trimEnd || d, videoFilter, speed, overlays, cuts, removed, reversed };
+                        setDuration(d);
+                        setTrimEnd((t) => t || d);
+                      }
+                      e.currentTarget.playbackRate = speed;
+                    }}
+                    onTimeUpdate={(e) => {
+                      const v = e.currentTarget;
+                      setEditorTime(v.currentTime);
+                      // Loop inside the trimmed range.
+                      const end = trimEnd || duration;
+                      if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
+                      skipRemoved(v);
+                    }}
+                    onPlay={(e) => {
+                      setEditorPlaying(true);
+                      syncMusic(e.currentTarget, true);
+                    }}
+                    onPause={() => {
+                      setEditorPlaying(false);
+                      musicRef.current?.pause();
+                    }}
+                  />
+                    {renderOverlays()}
+                  </div>
+                </div>
               </div>
               <div className="flex items-center justify-between px-8 pt-2">
                 <button
@@ -1871,8 +1882,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <div className="mt-3 space-y-4 px-5 pb-1">
                   <p className="text-center text-3xl font-bold">{speed.toFixed(2)}x</p>
                   <div className="flex items-center gap-3">
-                    <button type="button" aria-label="Slower" onClick={() => applySpeed(speed - 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-semibold">
-                      -
+                    <button type="button" aria-label="Slower" onClick={() => applySpeed(speed - 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10">
+                      <Minus className="h-4 w-4" />
                     </button>
                     <input
                       type="range"
@@ -1884,8 +1895,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       onChange={(e) => applySpeed(Number(e.target.value))}
                       className="min-w-0 flex-1 accent-white"
                     />
-                    <button type="button" aria-label="Faster" onClick={() => applySpeed(speed + 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-semibold">
-                      +
+                    <button type="button" aria-label="Faster" onClick={() => applySpeed(speed + 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10">
+                      <Plus className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="flex justify-between gap-2">
@@ -1919,14 +1930,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       </button>
                     ))}
                   {editorPanel === "crop" &&
-                    (["fit", "fill"] as const).map((c) => (
+                    ["original", "9:16", "1:1", "4:5", "16:9"].map((c) => (
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setCrop(c)}
-                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${crop === c ? "bg-white text-black" : "bg-white/10"}`}
+                        onClick={() => setCropAspect(c)}
+                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${cropAspect === c ? "bg-white text-black" : "bg-white/10"}`}
                       >
-                        {c === "fit" ? "Fit" : "Fill"}
+                        {c === "original" ? "Original" : c}
                       </button>
                     ))}
                 </div>
@@ -2033,9 +2044,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </button>
                 <button
                   type="button"
-                  aria-label="Remove song"
+                  aria-label="Remove card"
                   onClick={() => {
-                    setMusicTrack(null);
+                    setMusicCard(null);
                     setCardEditOpen(false);
                   }}
                   className="grid h-10 w-10 place-items-center rounded-full bg-white/10"
