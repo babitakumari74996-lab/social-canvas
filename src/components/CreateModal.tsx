@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
-import { useActions, dataUrlToFile } from "@/lib/data";
+import { useActions, dataUrlToFile, useMe } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
 import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
@@ -26,6 +26,25 @@ const EFFECT_OPTIONS: { name: string; css: string; bg: string; fg: string; badge
   { name: "Teal", css: "hue-rotate(160deg) saturate(1.2)", bg: "linear-gradient(90deg,#0d9488,#2dd4bf)", fg: "#fff", badge: "" },
   { name: "Vintage", css: "sepia(0.55) contrast(0.9) brightness(1.05)", bg: "#a16207", fg: "#fff", badge: "VINTAGE" },
   { name: "Mono", css: "grayscale(1) contrast(1.1)", bg: "#52525b", fg: "#fff", badge: "B&W" },
+  { name: "Vivid", css: "saturate(1.6) contrast(1.1)", bg: "linear-gradient(90deg,#f43f5e,#f59e0b)", fg: "#fff", badge: "" },
+  { name: "Warm", css: "sepia(0.35) saturate(1.2) brightness(1.05)", bg: "linear-gradient(#fb923c,#fde68a)", fg: "#000", badge: "" },
+  { name: "Cool", css: "brightness(1.05) contrast(1.05) hue-rotate(-12deg) saturate(1.1)", bg: "linear-gradient(#38bdf8,#818cf8)", fg: "#fff", badge: "" },
+  { name: "Noir", css: "grayscale(1) contrast(1.35) brightness(0.95)", bg: "#18181b", fg: "#fff", badge: "NOIR" },
+  { name: "Retro", css: "sepia(0.45) hue-rotate(-20deg) saturate(1.4) contrast(0.95)", bg: "#b45309", fg: "#fff", badge: "RETRO" },
+  { name: "Faded", css: "contrast(0.8) brightness(1.12) saturate(0.7)", bg: "#d6d3d1", fg: "#000", badge: "FADE" },
+  { name: "Dreamy", css: "brightness(1.12) contrast(0.9) saturate(1.2) blur(0.4px)", bg: "linear-gradient(#f0abfc,#c4b5fd)", fg: "#fff", badge: "DREAM" },
+  { name: "Ocean", css: "saturate(1.3) hue-rotate(10deg) brightness(1.04) contrast(1.05)", bg: "linear-gradient(#0369a1,#22d3ee)", fg: "#fff", badge: "" },
+  { name: "Mint", css: "hue-rotate(60deg) saturate(0.8) brightness(1.08)", bg: "linear-gradient(#a7f3d0,#6ee7b7)", fg: "#000", badge: "" },
+  { name: "Rose", css: "sepia(0.25) hue-rotate(-30deg) saturate(1.3) brightness(1.06)", bg: "linear-gradient(#fda4af,#fb7185)", fg: "#fff", badge: "" },
+  { name: "Golden", css: "sepia(0.4) saturate(1.6) brightness(1.1) contrast(1.05)", bg: "linear-gradient(#fbbf24,#b45309)", fg: "#fff", badge: "GOLD" },
+  { name: "Cinema", css: "contrast(1.25) saturate(0.85) brightness(0.92) sepia(0.1)", bg: "#1e293b", fg: "#fff", badge: "CINE" },
+  { name: "Pop", css: "saturate(2) contrast(1.15) brightness(1.05)", bg: "linear-gradient(90deg,#ec4899,#8b5cf6,#06b6d4)", fg: "#fff", badge: "POP" },
+  { name: "Drama", css: "contrast(1.5) saturate(1.2) brightness(0.9)", bg: "#7f1d1d", fg: "#fff", badge: "DRAMA" },
+  { name: "Cyber", css: "hue-rotate(180deg) saturate(1.8) contrast(1.2)", bg: "linear-gradient(#7c3aed,#22d3ee)", fg: "#fff", badge: "CYBER" },
+  { name: "Bright", css: "brightness(1.2) contrast(1.05)", bg: "#fef9c3", fg: "#000", badge: "" },
+  { name: "Soft", css: "contrast(0.92) brightness(1.08) saturate(0.95) blur(0.3px)", bg: "#fce7f3", fg: "#000", badge: "SOFT" },
+  { name: "Fresh", css: "brightness(1.1) saturate(1.25) hue-rotate(-5deg)", bg: "linear-gradient(#86efac,#22c55e)", fg: "#fff", badge: "" },
+  { name: "Sepia", css: "sepia(0.8) contrast(1.05)", bg: "#78350f", fg: "#fff", badge: "SEPIA" },
 ];
 // Templates shown on the Create page. Picking one opens the camera with it in mind.
 const TEMPLATES = [
@@ -67,7 +86,32 @@ const FILTERS: { name: string; css: string }[] = [
   { name: "Ludwig", css: "saturate(1.05) contrast(0.9) brightness(1.05)" },
   { name: "Aden", css: "hue-rotate(-18deg) contrast(0.9) saturate(0.85) brightness(1.2)" },
   { name: "Perpetua", css: "contrast(1.1) brightness(1.08) saturate(1.1)" },
+  { name: "Vivid", css: "saturate(1.6) contrast(1.1)" },
+  { name: "Warm", css: "sepia(0.35) saturate(1.2) brightness(1.05)" },
+  { name: "Cool", css: "brightness(1.05) contrast(1.05) hue-rotate(-12deg) saturate(1.1)" },
+  { name: "Noir", css: "grayscale(1) contrast(1.35) brightness(0.95)" },
+  { name: "Sepia", css: "sepia(0.8) contrast(1.05)" },
+  { name: "Retro", css: "sepia(0.45) hue-rotate(-20deg) saturate(1.4) contrast(0.95)" },
+  { name: "Faded", css: "contrast(0.8) brightness(1.12) saturate(0.7)" },
+  { name: "Dreamy", css: "brightness(1.12) contrast(0.9) saturate(1.2) blur(0.4px)" },
+  { name: "Sunset", css: "sepia(0.3) saturate(1.5) hue-rotate(-15deg) brightness(1.08)" },
+  { name: "Ocean", css: "saturate(1.3) hue-rotate(10deg) brightness(1.04) contrast(1.05)" },
+  { name: "Mint", css: "hue-rotate(60deg) saturate(0.8) brightness(1.08)" },
+  { name: "Rose", css: "sepia(0.25) hue-rotate(-30deg) saturate(1.3) brightness(1.06)" },
+  { name: "Golden", css: "sepia(0.4) saturate(1.6) brightness(1.1) contrast(1.05)" },
+  { name: "Cinema", css: "contrast(1.25) saturate(0.85) brightness(0.92) sepia(0.1)" },
+  { name: "Pop", css: "saturate(2) contrast(1.15) brightness(1.05)" },
+  { name: "Vintage", css: "sepia(0.5) contrast(0.9) brightness(1.05) saturate(0.8)" },
+  { name: "Drama", css: "contrast(1.5) saturate(1.2) brightness(0.9)" },
+  { name: "Cyber", css: "hue-rotate(180deg) saturate(1.8) contrast(1.2)" },
+  { name: "Bright", css: "brightness(1.2) contrast(1.05)" },
+  { name: "Soft", css: "contrast(0.92) brightness(1.08) saturate(0.95) blur(0.3px)" },
+  { name: "Fresh", css: "brightness(1.1) saturate(1.25) hue-rotate(-5deg)" },
 ];
+
+const WORD_STICKERS = ["WOW", "LOL", "OMG", "YAY", "LOVE", "NEW", "HOT", "#reels", "Vibes ✨", "Happy Birthday 🎂"];
+const SHAPE_STICKERS = ["★", "♥", "●", "■", "▲", "◆", "✦", "☀", "☁", "⚡"];
+const GIF_STICKERS = ["🎉", "💃", "👏", "🥳", "💖", "⭐", "🔥", "😂"];
 
 type Mode = "photo" | "video" | "text";
 type Step = "pick" | "filter" | "edit" | "preview" | "caption" | "text";
@@ -522,7 +566,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [speed, setSpeed] = useState(1);
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
   const [mirror, setMirror] = useState(false);
-  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker"; value: string; color: string; font?: TextFont; align?: TextAlign }[]>([]);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
@@ -560,6 +604,93 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const storyInput = useRef<HTMLInputElement>(null);
+  const me = useMe();
+  const [stickerTab, setStickerTab] = useState<"trending" | "emoji" | "words" | "shapes" | "gif">("trending");
+  const [stickerQuery, setStickerQuery] = useState("");
+  const [locDraft, setLocDraft] = useState<string | null>(null);
+
+  // Chosen song: its preview plays alongside the video (the audio element follows the video's position).
+  const musicRef = useRef<HTMLAudioElement | null>(null);
+  const getMusic = () => {
+    if (!musicRef.current) musicRef.current = new Audio();
+    return musicRef.current;
+  };
+  const syncMusic = (v: HTMLVideoElement | null, playing: boolean) => {
+    if (!musicTrack?.previewUrl) return;
+    const a = getMusic();
+    if (playing) {
+      const t = v?.currentTime ?? 0;
+      if (Math.abs(a.currentTime - t) > 0.3) a.currentTime = t;
+      a.play().catch(() => {});
+    } else {
+      a.pause();
+    }
+  };
+  useEffect(() => {
+    if (!musicTrack?.previewUrl) {
+      musicRef.current?.pause();
+      return;
+    }
+    const a = getMusic();
+    a.loop = true;
+    if (a.src !== musicTrack.previewUrl) a.src = musicTrack.previewUrl;
+    const v = editorOpen ? editorRef.current : previewVideo.current;
+    if (v && !v.paused) syncMusic(v, true);
+    else a.pause();
+  }, [musicTrack]);
+  useEffect(() => {
+    if (!open) musicRef.current?.pause();
+  }, [open]);
+
+  // Undo / redo for the editor: trim, filter, speed and text/sticker overlays.
+  type EditSnap = { trimStart: number; trimEnd: number; videoFilter: string; speed: number; overlays: typeof overlays };
+  const [, setHistTick] = useState(0);
+  const histPast = useRef<EditSnap[]>([]);
+  const histFuture = useRef<EditSnap[]>([]);
+  const histPrev = useRef<EditSnap | null>(null);
+  const histRestoring = useRef(false);
+  useEffect(() => {
+    const cur: EditSnap = { trimStart, trimEnd, videoFilter, speed, overlays };
+    if (histRestoring.current) {
+      histRestoring.current = false;
+      histPrev.current = cur;
+      return;
+    }
+    const prev = histPrev.current;
+    if (prev && JSON.stringify(prev) !== JSON.stringify(cur)) {
+      histPast.current.push(prev);
+      if (histPast.current.length > 50) histPast.current.shift();
+      histFuture.current = [];
+      setHistTick((t) => t + 1);
+    }
+    histPrev.current = cur;
+  }, [trimStart, trimEnd, videoFilter, speed, overlays]);
+  const applySnap = (snap: EditSnap) => {
+    const cur = histPrev.current;
+    histRestoring.current = true;
+    setTrimStart(snap.trimStart);
+    setTrimEnd(snap.trimEnd);
+    setVideoFilter(snap.videoFilter);
+    setSpeed(snap.speed);
+    setOverlays(snap.overlays);
+    if (editorRef.current) editorRef.current.playbackRate = snap.speed;
+    setHistTick((t) => t + 1);
+    void cur;
+  };
+  const undoEdit = () => {
+    const cur = histPrev.current;
+    const prev = histPast.current.pop();
+    if (!prev || !cur) return;
+    histFuture.current.push(cur);
+    applySnap(prev);
+  };
+  const redoEdit = () => {
+    const cur = histPrev.current;
+    const next = histFuture.current.pop();
+    if (!next || !cur) return;
+    histPast.current.push(cur);
+    applySnap(next);
+  };
 
   useEffect(() => {
     if (open) {
@@ -574,6 +705,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setVoiceUrl(null); setVoiceVolume(1); setOriginalVolume(1); setKeepOriginalSound(true);
       setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
       setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false); setEffectsOpen(false);
+      histPast.current = []; histFuture.current = []; histPrev.current = null;
     }
   }, [open, createMode]);
 
@@ -600,6 +732,58 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       editorRef.current?.play().catch(() => {});
     }
   }, [editorOpen]);
+
+  // Text, sticker and image overlays. Shown on the preview and in the editor.
+  const renderOverlays = () =>
+    overlays.map((o, i) => (
+
+      <button
+                  key={o.id}
+                  type="button"
+                  aria-label="Remove"
+                  onClick={() => setOverlays((list) => list.filter((x) => x.id !== o.id))}
+                  className={`absolute whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
+                  style={{
+                    top: `${30 + ((i * 14) % 50)}%`,
+                    color: o.color,
+                    fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
+                    textAlign: o.align ?? "center",
+                    ...(o.align === "left"
+                      ? { left: "1rem", maxWidth: "80%" }
+                      : o.align === "right"
+                        ? { right: "1rem", maxWidth: "80%" }
+                        : { left: "50%", transform: "translateX(-50%)", width: "max-content", maxWidth: "90%" }),
+                  }}
+                >
+                  {o.kind === "image" ? <img src={o.value} alt="" className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
+                </button>
+    ));
+  const addSticker = (kind: "text" | "sticker" | "image", value: string) => {
+    setOverlays((list) => [...list, { id: Date.now(), kind, value, color: "#ffffff" }]);
+    setToolSheet(null);
+  };
+  const STICKER_TABS: { id: "trending" | "emoji" | "words" | "shapes" | "gif"; label: string }[] = [
+    { id: "trending", label: "Trending" },
+    { id: "emoji", label: "Emoji" },
+    { id: "words", label: "Words" },
+    { id: "shapes", label: "Shapes" },
+    { id: "gif", label: "GIF" },
+  ];
+  const stickerItems = (() => {
+    const all: { key: string; label: string; kind: "text" | "sticker" }[] = [
+      ...STICKERS.map((e) => ({ key: `e-${e}`, label: e, kind: "sticker" as const })),
+      ...WORD_STICKERS.map((w) => ({ key: `w-${w}`, label: w, kind: "text" as const })),
+      ...SHAPE_STICKERS.map((x) => ({ key: `s-${x}`, label: x, kind: "sticker" as const })),
+      ...GIF_STICKERS.map((g) => ({ key: `g-${g}`, label: g, kind: "sticker" as const })),
+    ];
+    const q = stickerQuery.trim().toLowerCase();
+    if (q) return all.filter((x) => x.label.toLowerCase().includes(q));
+    if (stickerTab === "trending") return all.filter((x) => STICKERS.slice(0, 8).includes(x.label));
+    if (stickerTab === "emoji") return all.filter((x) => x.key.startsWith("e-"));
+    if (stickerTab === "words") return all.filter((x) => x.key.startsWith("w-"));
+    if (stickerTab === "shapes") return all.filter((x) => x.key.startsWith("s-"));
+    return all.filter((x) => x.key.startsWith("g-"));
+  })();
 
   if (!open) return null;
 
@@ -631,7 +815,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     v.play().catch(() => {
       v.muted = true;
       setPreviewMuted(true);
-      v.play().catch(() => {});
+      v.play().catch(() => {
+        setEditorPlaying(false);
+        toast("Couldn't start the video. Tap play again.");
+      });
     });
   };
   const closeEditor = () => {
@@ -826,11 +1013,17 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   const v = previewVideo.current;
                   if (v) v.playbackRate = speed;
                   voiceRef.current?.play().catch(() => {});
+                  syncMusic(v, true);
                 }}
-                onPause={() => voiceRef.current?.pause()}
+                onPause={() => {
+                  voiceRef.current?.pause();
+                  musicRef.current?.pause();
+                }}
                 onTimeUpdate={(e) => {
                   const v = e.currentTarget;
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
+                  const a = musicRef.current;
+                  if (a && musicTrack?.previewUrl && !a.paused && Math.abs(a.currentTime - v.currentTime) > 0.4) a.currentTime = v.currentTime;
                 }}
               />
               {previewFlash && (
@@ -851,28 +1044,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </button>
                 </div>
               )}
-              {overlays.map((o, i) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  aria-label="Remove"
-                  onClick={() => setOverlays((list) => list.filter((x) => x.id !== o.id))}
-                  className={`absolute whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
-                  style={{
-                    top: `${30 + ((i * 14) % 50)}%`,
-                    color: o.color,
-                    fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
-                    textAlign: o.align ?? "center",
-                    ...(o.align === "left"
-                      ? { left: "1rem", maxWidth: "80%" }
-                      : o.align === "right"
-                        ? { right: "1rem", maxWidth: "80%" }
-                        : { left: "50%", transform: "translateX(-50%)", width: "max-content", maxWidth: "90%" }),
-                  }}
-                >
-                  {o.value}
-                </button>
-              ))}
+              {renderOverlays()}
               <button
                 type="button"
                 aria-label={previewMuted ? "Sound on" : "Sound off"}
@@ -1094,6 +1266,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <X className="h-6 w-6" />
                 </button>
                 <div className="flex items-center gap-4">
+                  <div className="absolute right-3 top-16 z-10 flex flex-col items-center gap-5">
                   <button
                     type="button"
                     aria-label="Text colour"
@@ -1118,6 +1291,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   >
                     {textAlign === "left" ? <AlignLeft className="h-5 w-5" /> : textAlign === "right" ? <AlignRight className="h-5 w-5" /> : <AlignCenter className="h-5 w-5" />}
                   </button>
+                  </div>
                   <button
                     type="button"
                     disabled={!overlayText.trim()}
@@ -1151,7 +1325,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           )}
 
           {editorOpen && (
-            <div className="absolute inset-0 z-[90] flex flex-col bg-black text-white">
+            <div className="absolute inset-0 z-[80] flex flex-col bg-black text-white">
               <div className="flex items-center justify-between px-4 py-3">
                 <button type="button" onClick={closeEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
                   Cancel
@@ -1178,6 +1352,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   onLoadedMetadata={(e) => {
                     const d = e.currentTarget.duration;
                     if (isFinite(d) && d > 0) {
+                      // The full-length trim set on load is the starting point, not an edit.
+                      histPast.current = [];
+                      histFuture.current = [];
+                      histPrev.current = { trimStart, trimEnd: trimEnd || d, videoFilter, speed, overlays };
                       setDuration(d);
                       setTrimEnd((t) => t || d);
                     }
@@ -1190,9 +1368,16 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     const end = trimEnd || duration;
                     if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
                   }}
-                  onPlay={() => setEditorPlaying(true)}
-                  onPause={() => setEditorPlaying(false)}
+                  onPlay={(e) => {
+                    setEditorPlaying(true);
+                    syncMusic(e.currentTarget, true);
+                  }}
+                  onPause={() => {
+                    setEditorPlaying(false);
+                    musicRef.current?.pause();
+                  }}
                 />
+                {renderOverlays()}
               </div>
               <div className="flex items-center justify-between px-8 pt-2">
                 <button
@@ -1210,26 +1395,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <button
                     type="button"
                     aria-label="Undo trim"
-                    onClick={() => {
-                      trimHistory.current = { start: trimStart, end: trimEnd || duration };
-                      setTrimStart(0);
-                      setTrimEnd(duration);
-                    }}
-                    className="p-1"
+                    onClick={undoEdit}
+                    disabled={histPast.current.length === 0}
+                    className="p-1 disabled:opacity-30"
                   >
                     <Undo2 className="h-6 w-6" />
                   </button>
                   <button
                     type="button"
                     aria-label="Redo trim"
-                    onClick={() => {
-                      const h = trimHistory.current;
-                      if (!h) return;
-                      setTrimStart(h.start);
-                      setTrimEnd(h.end);
-                      trimHistory.current = null;
-                    }}
-                    className="p-1"
+                    onClick={redoEdit}
+                    disabled={histFuture.current.length === 0}
+                    className="p-1 disabled:opacity-30"
                   >
                     <Redo2 className="h-6 w-6" />
                   </button>
@@ -1374,8 +1551,17 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
           {toolSheet === "stickers" && (
             <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/40" onClick={() => setToolSheet(null)}>
-              <div className="rounded-t-3xl bg-zinc-800 px-4 pb-8 pt-3 text-white" onClick={(e) => e.stopPropagation()}>
-                <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/40" />
+              <div className="max-h-[85%] overflow-y-auto rounded-t-3xl bg-zinc-800 px-4 pb-8 pt-3 text-white" onClick={(e) => e.stopPropagation()}>
+                <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/40" />
+                <label className="mb-4 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2">
+                  <Search className="h-4 w-4 text-white/60" />
+                  <input
+                    value={stickerQuery}
+                    onChange={(e) => setStickerQuery(e.target.value)}
+                    placeholder="Search stickers"
+                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-white/50"
+                  />
+                </label>
                 <div className="flex flex-wrap justify-center gap-2.5">
                   {[
                     { label: "Location", icon: MapPin, color: "text-sky-500" },
@@ -1389,14 +1575,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       type="button"
                       onClick={() => {
                         if (c.key === "Time") {
-                          setOverlays((list) => [...list, { id: Date.now(), kind: "text", value: c.label, color: "#ffffff" }]);
-                          setToolSheet(null);
+                          addSticker("text", `🕒 ${c.label}`);
+                        } else if (c.label === "Location") {
+                          setLocDraft("");
+                        } else if (c.label === "GIF") {
+                          setStickerTab("gif");
                         } else if (c.label === "Music") {
                           setToolSheet(null);
                           setMusicFromMix(false);
                           setMusicOpen(true);
-                        } else {
-                          toast(`${c.label} isn't available in this version`);
+                        } else if (c.label === "Avatar") {
+                          if (me?.avatar_url) addSticker("image", me.avatar_url);
+                          else toast("Add a profile photo to use Avatar");
                         }
                       }}
                       className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-zinc-900"
@@ -1406,20 +1596,55 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </button>
                   ))}
                 </div>
-                <div className="mt-5 grid max-h-[45vh] grid-cols-4 gap-2 overflow-y-auto">
-                  {STICKERS.map((e) => (
+                {locDraft !== null && (
+                  <form
+                    className="mt-4 flex gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const v = locDraft.trim();
+                      if (!v) return;
+                      addSticker("text", `📍 ${v}`);
+                      setLocDraft(null);
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      value={locDraft}
+                      onChange={(e) => setLocDraft(e.target.value)}
+                      maxLength={40}
+                      placeholder="Type a place"
+                      className="flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none placeholder:text-white/50"
+                    />
+                    <button type="submit" disabled={!locDraft.trim()} className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-40">
+                      Add
+                    </button>
+                  </form>
+                )}
+                <div className="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {STICKER_TABS.map((t) => (
                     <button
-                      key={e}
+                      key={t.id}
                       type="button"
-                      onClick={() => {
-                        setOverlays((list) => [...list, { id: Date.now(), kind: "sticker", value: e, color: "#ffffff" }]);
-                        setToolSheet(null);
-                      }}
-                      className="grid aspect-square place-items-center rounded-xl text-4xl"
+                      onClick={() => setStickerTab(t.id)}
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${stickerTab === t.id ? "bg-white text-zinc-900" : "bg-white/10"}`}
                     >
-                      {e}
+                      {t.label}
                     </button>
                   ))}
+                </div>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {stickerItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => addSticker(item.kind, item.label)}
+                      aria-label={`Add sticker ${item.label}`}
+                      className={`grid aspect-square place-items-center rounded-xl ${item.kind === "text" ? "bg-white/10 px-1 text-center text-sm font-bold" : "text-4xl"}`}
+                    >
+                      <span className={stickerTab === "gif" && item.kind === "sticker" ? "inline-block animate-bounce" : ""}>{item.label}</span>
+                    </button>
+                  ))}
+                  {stickerItems.length === 0 && <p className="col-span-4 py-6 text-center text-sm text-white/60">No stickers match.</p>}
                 </div>
               </div>
             </div>

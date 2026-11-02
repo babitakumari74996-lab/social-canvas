@@ -1,33 +1,56 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Search, Bookmark, MoreHorizontal, Music2, Mic, Square } from "lucide-react";
+import { ArrowLeft, Search, Bookmark, Music2, Mic, Square, Play, Pause, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Track list for the reel music picker. These are catalogue entries only: the app ships no
-// audio files, so picking a track puts its name on the reel (playback of the song is not included).
+// Songs come from Apple's public iTunes Search API. Each result carries a 30-second preview
+// stream. The app never downloads a song: the user listens to the preview, then taps the row
+// to put that song on the reel.
 export interface MusicTrack {
   id: string;
   title: string;
   artist: string;
-  plays: number;
+  plays?: number;
+  previewUrl?: string;
+  artwork?: string;
 }
 
-export const MUSIC_TRACKS: MusicTrack[] = [
-  { id: "t1", title: "Meri Zindagi Hai Tu", artist: "Jubin Nautiyal, Neeti Mohan", plays: 2100000 },
-  { id: "t2", title: "Chalray Chalray Waal", artist: "Ravzz Musica", plays: 1300000 },
-  { id: "t3", title: "सफलता को रफ़्तार", artist: "Media For The Masses", plays: 105000 },
-  { id: "t4", title: "Happy Birthday Ki Dua", artist: "Vicky D Parekh", plays: 671000 },
-  { id: "t5", title: "Happy Birthday To You Aaj", artist: "Ajit Shree", plays: 87000 },
-  { id: "t6", title: "Happy Birthday Song Che", artist: "Ajit Shree", plays: 53000 },
-  { id: "t7", title: "I love u baby", artist: "Mahaveer Desai", plays: 191000 },
-  { id: "t8", title: "भटक गए हम राहो मे", artist: "Rangeela Rajasthan", plays: 113000 },
-  { id: "t9", title: "Nature Love", artist: "Prince K Singh", plays: 1100000 },
-  { id: "t10", title: "KGF 3 Theme", artist: "Tajmeel Sherif", plays: 800000 },
-  { id: "t11", title: "काम क्या करते हो कौन हम", artist: "Bharat Kumar", plays: 201000 },
+// Regions shown as chips. Each one searches the iTunes catalogue for that country's store.
+const MUSIC_REGIONS: { id: string; label: string; country: string; term: string }[] = [
+  { id: "world", label: "World", country: "US", term: "top hits" },
+  { id: "in", label: "India", country: "IN", term: "bollywood hits" },
+  { id: "us", label: "US", country: "US", term: "pop hits" },
+  { id: "uk", label: "UK", country: "GB", term: "uk top hits" },
+  { id: "kr", label: "Korea", country: "KR", term: "k-pop" },
+  { id: "jp", label: "Japan", country: "JP", term: "j-pop" },
+  { id: "latam", label: "Latin", country: "MX", term: "reggaeton" },
+  { id: "br", label: "Brazil", country: "BR", term: "funk brasil" },
+  { id: "afro", label: "Africa", country: "NG", term: "afrobeats" },
+  { id: "es", label: "Spain", country: "ES", term: "spanish pop" },
+  { id: "fr", label: "France", country: "FR", term: "french pop" },
+  { id: "de", label: "Germany", country: "DE", term: "german pop" },
+  { id: "tr", label: "Turkey", country: "TR", term: "turkish pop" },
+  { id: "ru", label: "Russia", country: "RU", term: "russian pop" },
+  { id: "arab", label: "Arabic", country: "AE", term: "arabic pop" },
 ];
 
-const fmtPlays = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`);
+async function searchSongs(term: string, country: string, signal: AbortSignal): Promise<MusicTrack[]> {
+  const url = `https://itunes.apple.com/search?media=music&entity=song&limit=40&country=${country}&term=${encodeURIComponent(term)}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error("search failed");
+  const json = (await res.json()) as { results: { trackId: number; trackName: string; artistName: string; previewUrl?: string; artworkUrl100?: string }[] };
+  return json.results
+    .filter((r) => r.previewUrl)
+    .map((r) => ({
+      id: String(r.trackId),
+      title: r.trackName,
+      artist: r.artistName,
+      previewUrl: r.previewUrl,
+      artwork: r.artworkUrl100?.replace("100x100", "300x300"),
+    }));
+}
 
-// Full-screen music list: search, For you / Trending tabs, rows with a play (use) button.
+// Full-screen music list: region chips, search, and rows. The round button previews a song;
+// tapping the row uses it.
 export function MusicPicker({
   selectedId,
   onSelect,
@@ -37,17 +60,75 @@ export function MusicPicker({
   onSelect: (t: MusicTrack) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"forYou" | "trending">("forYou");
+  const [region, setRegion] = useState(MUSIC_REGIONS[0].id);
   const [query, setQuery] = useState("");
-  const [menuId, setMenuId] = useState<string | null>(null);
-  const q = query.trim().toLowerCase();
-  let list = MUSIC_TRACKS.filter((t) => !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
-  if (tab === "trending") list = [...list].sort((a, b) => b.plays - a.plays);
+  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load songs for the chosen region, or the typed search (debounced).
+  useEffect(() => {
+    const r = MUSIC_REGIONS.find((x) => x.id === region) ?? MUSIC_REGIONS[0];
+    const term = query.trim() || r.term;
+    const ctrl = new AbortController();
+    setLoading(true);
+    setFailed(false);
+    const timer = window.setTimeout(() => {
+      searchSongs(term, r.country, ctrl.signal)
+        .then((list) => setTracks(list))
+        .catch((e) => {
+          if (ctrl.signal.aborted) return;
+          setTracks([]);
+          setFailed(true);
+        })
+        .finally(() => {
+          if (!ctrl.signal.aborted) setLoading(false);
+        });
+    }, query.trim() ? 350 : 0);
+    return () => {
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
+  }, [region, query]);
+
+  // Stop any preview when the list closes.
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+    };
+  }, []);
+
+  const togglePreview = (t: MusicTrack) => {
+    if (!t.previewUrl) return;
+    if (!audioRef.current) audioRef.current = new Audio();
+    const a = audioRef.current;
+    if (playingId === t.id) {
+      a.pause();
+      setPlayingId(null);
+      return;
+    }
+    a.src = t.previewUrl;
+    a.onended = () => setPlayingId(null);
+    a.play().then(
+      () => setPlayingId(t.id),
+      () => toast("This preview can't play right now"),
+    );
+  };
 
   return (
     <div className="absolute inset-0 z-[95] flex flex-col bg-zinc-900 text-white">
       <div className="flex items-center gap-3 px-3 pt-4 pb-3">
-        <button type="button" aria-label="Back" onClick={onClose} className="p-1">
+        <button
+          type="button"
+          aria-label="Back"
+          onClick={() => {
+            audioRef.current?.pause();
+            onClose();
+          }}
+          className="p-1"
+        >
           <ArrowLeft className="h-6 w-6" />
         </button>
         <label className="flex flex-1 items-center gap-2 rounded-full bg-white/10 px-4 py-2.5">
@@ -55,7 +136,7 @@ export function MusicPicker({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search music"
+            placeholder="Search any song or artist"
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-white/50"
           />
         </label>
@@ -63,48 +144,50 @@ export function MusicPicker({
           <Bookmark className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex gap-2 px-4 pb-3">
-        {(["forYou", "trending"] as const).map((k) => (
+      <div className="flex gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {MUSIC_REGIONS.map((r) => (
           <button
-            key={k}
+            key={r.id}
             type="button"
-            onClick={() => setTab(k)}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === k ? "bg-[#1877f2]/25 text-[#60a5fa]" : "text-white/80"}`}
+            onClick={() => {
+              setQuery("");
+              setRegion(r.id);
+            }}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold ${region === r.id && !query.trim() ? "bg-[#1877f2]/25 text-[#60a5fa]" : "bg-white/5 text-white/80"}`}
           >
-            {k === "forYou" ? "For you" : "Trending"}
+            {r.label}
           </button>
         ))}
       </div>
       <ul className="flex-1 overflow-y-auto px-3 pb-4">
-        {list.length === 0 && <li className="p-6 text-center text-sm text-white/60">No songs match “{query}”.</li>}
-        {list.map((t) => (
+        {loading && (
+          <li className="flex items-center justify-center gap-2 p-6 text-sm text-white/60">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading songs…
+          </li>
+        )}
+        {!loading && failed && <li className="p-6 text-center text-sm text-white/60">Couldn’t load songs. Check your internet connection and try again.</li>}
+        {!loading && !failed && tracks.length === 0 && <li className="p-6 text-center text-sm text-white/60">No songs found{query.trim() ? ` for “${query}”` : ""}.</li>}
+        {tracks.map((t) => (
           <li key={t.id} className="flex items-center gap-3 py-2">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-md bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-300">
-              <Music2 className="h-6 w-6 text-white/90" />
-            </span>
+            {t.artwork ? (
+              <img src={t.artwork} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
+            ) : (
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-md bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-300">
+                <Music2 className="h-6 w-6 text-white/90" />
+              </span>
+            )}
             <button type="button" onClick={() => onSelect(t)} className="min-w-0 flex-1 text-left">
               <p className={`truncate text-[15px] font-semibold ${selectedId === t.id ? "text-emerald-300" : ""}`}>{t.title}</p>
-              <p className="truncate text-xs text-white/60">
-                {t.artist} · {fmtPlays(t.plays)}
-              </p>
+              <p className="truncate text-xs text-white/60">{t.artist}</p>
             </button>
-            <div className="flex items-center gap-1">
-              {menuId === t.id && (
-                <button type="button" onClick={() => onSelect(t)} className="rounded-full bg-[#1877f2] px-3 py-1 text-xs font-semibold">
-                  Use
-                </button>
-              )}
-              <button type="button" aria-label={`More options for ${t.title}`} onClick={() => setMenuId(menuId === t.id ? null : t.id)} className="p-2 text-white/80">
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
-            </div>
+            {selectedId === t.id && <Check className="h-5 w-5 shrink-0 text-emerald-300" aria-label="Selected" />}
             <button
               type="button"
-              aria-label={`Use ${t.title}`}
-              onClick={() => onSelect(t)}
+              aria-label={playingId === t.id ? `Pause preview of ${t.title}` : `Preview ${t.title}`}
+              onClick={() => togglePreview(t)}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-white/25"
             >
-              <span className="ml-0.5 h-0 w-0 border-y-[6px] border-l-[9px] border-y-transparent border-l-white" />
+              {playingId === t.id ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
             </button>
           </li>
         ))}
