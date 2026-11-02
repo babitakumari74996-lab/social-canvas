@@ -218,53 +218,7 @@ export function AppShell() {
     document.documentElement.style.setProperty("--feed-opacity", "1");
     document.documentElement.dataset.swiping = swiping ? "1" : "0";
   }, [barHide, swiping, swipeP, swipeAmt]);
-  // Home: scrolling down hides the top bars and the bottom bar; scrolling back up brings them back.
-  // Only the transform changes here (the page padding does not), so the content never jumps.
-  // The amount hidden follows the scroll distance 1:1 (scroll down 30px = 30px of bar slides away, scroll up
-  // brings it back by the same amount). Written as CSS variables on <html>, so no re-render per scroll event.
-  useEffect(() => {
-    const root = document.documentElement;
-    const reset = () => {
-      root.style.setProperty("--sh-top", "0px");
-      root.style.setProperty("--sh-bar", "0px");
-    };
-    if (pathname !== "/feed" && pathname !== "/moods") {
-      reset();
-      return;
-    }
-    let last = window.scrollY;
-    let hidden = 0; // px hidden so far (0..96); the nav uses the same value, capped at its own 56px
-    let timer = 0;
-    const write = () => {
-      // Whole pixels only: fractional offsets make the fixed bars shimmer while they move.
-      const px = Math.round(hidden);
-      root.style.setProperty("--sh-top", `${pathname === "/feed" ? px : 0}px`);
-      root.style.setProperty("--sh-bar", `${px}px`);
-    };
-    const onScroll = () => {
-      const y = window.scrollY;
-      const d = y - last;
-      last = y;
-      // During a swipe between tabs the scroll amount is kept as it is: a small vertical wobble of the finger
-      // must not move the bars, and the bars must not jump when the swipe starts.
-      if (y <= 8) hidden = 0; // back at the top: always shown, even mid-swipe
-      else if (document.documentElement.dataset.swiping !== "1") hidden = Math.min(96, Math.max(0, hidden + d));
-      // Written right here: scroll events already arrive once per frame, before that frame is painted.
-      // Deferring to requestAnimationFrame would show the bars one frame behind the page.
-      write();
-      // While the scroll is moving, bars must follow the finger without a transition lag.
-      root.dataset.sh = "1";
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => { delete root.dataset.sh; }, 120);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.clearTimeout(timer);
-      delete root.dataset.sh;
-      reset();
-    };
-  }, [pathname]);
+  // Top bars stay fixed on Home: they do not hide on scroll (the offset stays 0).
   // The scroll amount applies during a swipe too, so the bars stay where the scroll left them.
   // Home: the offset is the value the scroll handler writes to --sh-top (no CSS animation, so no lag or jitter).
   const shTop = "var(--sh-top, 0px)";
