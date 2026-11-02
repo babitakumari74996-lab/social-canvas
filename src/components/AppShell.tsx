@@ -267,7 +267,8 @@ export function AppShell() {
   }, [pathname]);
   // The scroll amount applies during a swipe too, so the bars stay where the scroll left them.
   // Home: the scroll offset comes from a CSS scroll-driven animation on the bar container (no JS lag).
-  const shTop = pathname === "/feed" ? "0px" : "var(--sh-top, 0px)";
+  // Home and Moods both use the same finger-tracked offset (--sh-top), so the bar slides back in with the swipe.
+  const shTop = "var(--sh-top, 0px)";
   const shBar = "var(--sh-bar, 0px)";
   useLayoutEffect(() => {
     // A post opens at its top. Done here (same commit as the page change, before the first paint) so the
@@ -453,8 +454,8 @@ export function AppShell() {
         </div>
       </nav>
 
-      {/* ------- mobile top bars (one container: on Home it moves with the page via a scroll-driven animation) ------- */}
-      <div className={`md:hidden fixed top-0 inset-x-0 z-40 pointer-events-none ${pathname === "/feed" ? "sv-scroll-bars" : ""}`}>
+      {/* ------- mobile top bars (one container; the offset follows the scroll distance, see the effect above) ------- */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 pointer-events-none">
       {/* ------- mobile top bar ------- */}
       <header data-bar="" style={barStyle} className="pointer-events-auto md:hidden h-12 flex items-center justify-between px-4 bg-background border-b border-border">
         <Link to="/feed" className="flex items-center gap-2 cursor-default">
