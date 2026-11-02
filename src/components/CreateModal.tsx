@@ -833,8 +833,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   }, [editorOpen]);
 
   // Text, sticker and image overlays. Shown on the preview and in the editor.
-  const renderOverlays = () =>
-    overlays.map((o, i) => (
+  const renderOverlays = () => (
+    <>
+    {overlays.map((o, i) => (
       <button
         key={o.id}
         type="button"
@@ -862,7 +863,19 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       >
         {o.kind === "image" ? <img src={o.value} alt="" draggable={false} className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
       </button>
-    ));
+    ))}
+    {dragOv && (
+      <div
+        aria-hidden
+        className={`pointer-events-none absolute bottom-4 left-1/2 z-50 grid -translate-x-1/2 place-items-center rounded-full transition-transform ${dragOv.hot ? "h-20 w-20 scale-110 bg-red-600" : "h-16 w-16 bg-black/60"}`}
+      >
+        <Trash2 className="h-7 w-7 text-white" />
+      </div>
+    )}
+    </>
+  );
+  // Set while a text or sticker is being dragged: shows the trash zone and whether it is over it.
+  const [dragOv, setDragOv] = useState<{ id: number; hot: boolean } | null>(null);
   // Drag a text or sticker anywhere on the video. Position is stored as a percentage of the video frame.
   const overlayMoved = useRef(false);
   const startOverlayDrag = (e: React.PointerEvent<HTMLButtonElement>, o: (typeof overlays)[number], i: number) => {
@@ -874,17 +887,27 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     const sx = e.clientX;
     const sy = e.clientY;
     let moved = false;
+    let hot = false;
     const move = (ev: PointerEvent) => {
       const dx = ev.clientX - sx;
       const dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 6) return;
+      if (!moved) setDragOv({ id: o.id, hot: false });
       moved = true;
+      // Over the trash zone: bottom fifth of the frame, centre.
+      const nowHot = ev.clientY > r.bottom - r.height * 0.22 && Math.abs(ev.clientX - (r.left + r.width / 2)) < r.width * 0.2;
+      if (nowHot !== hot) {
+        hot = nowHot;
+        setDragOv({ id: o.id, hot });
+      }
       const nx = Math.min(100, Math.max(0, ox + (dx / r.width) * 100));
       const ny = Math.min(100, Math.max(0, oy + (dy / r.height) * 100));
       setOverlays((list) => list.map((x) => (x.id === o.id ? { ...x, x: nx, y: ny } : x)));
     };
     const up = () => {
       overlayMoved.current = moved;
+      if (moved && hot) setOverlays((list) => list.filter((x) => x.id !== o.id));
+      setDragOv(null);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
