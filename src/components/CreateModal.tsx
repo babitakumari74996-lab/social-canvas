@@ -537,6 +537,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Full-screen reel tools (match the Facebook reel editor screens).
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop">(null);
+  const [editorAddOpen, setEditorAddOpen] = useState(false);
+  const editorVideoInput = useRef<HTMLInputElement>(null);
+  // Editor speed choices (the camera keeps its own SPEEDS list).
+  const EDITOR_SPEEDS = [1, 1.25, 1.5, 2, 3] as const;
   const [editorPlaying, setEditorPlaying] = useState(false);
   const [editorTime, setEditorTime] = useState(0);
   const editorRef = useRef<HTMLVideoElement>(null);
@@ -1122,6 +1126,22 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setEditorPanel(null);
   };
   const togglePanel = (p: "filter" | "speed" | "crop") => setEditorPanel((cur) => (cur === p ? null : p));
+  // Set the editor speed (0.25x to 3x, quarter steps) and apply it to both players.
+  const applySpeed = (v: number) => {
+    const sp = Math.min(3, Math.max(0.25, Math.round(v * 4) / 4));
+    setSpeed(sp);
+    if (editorRef.current) editorRef.current.playbackRate = sp;
+    if (previewVideo.current) previewVideo.current.playbackRate = sp;
+  };
+  // Gallery in the editor: replace the clip. Cuts, removed parts and reverse belong to the old clip, so they reset.
+  const replaceClipFromEditor = (files: FileList | null) => {
+    if (!files?.length) return;
+    pickVideo(files);
+    setCuts([]);
+    setRemoved([]);
+    setReversed(false);
+    toast("Clip replaced");
+  };
 
   const pickImages = (files: FileList | null) => {
     if (!files?.length) return;
@@ -1799,11 +1819,30 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   )}
                 </div>
                 <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => setMixOpen(true)} className="flex-1 truncate rounded-md border border-dashed border-white/40 py-2 text-xs text-white/80">
-                    {musicTrack ? `♪ ${musicTrack.title}` : "+ Audio"}
+                  <button type="button" onClick={() => setMixOpen(true)} className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-dashed border-white/40 px-2 py-2 text-left text-xs text-white/80">
+                    {musicTrack ? (
+                      <>
+                        {musicTrack.artwork ? (
+                          <img src={musicTrack.artwork} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
+                        ) : (
+                          <Music2 className="h-4 w-4 shrink-0" />
+                        )}
+                        <span className="min-w-0 break-words leading-tight">
+                          <span className="font-semibold">{musicTrack.title}</span>
+                          <span className="block text-[10px] text-white/60">{musicTrack.artist}</span>
+                        </span>
+                      </>
+                    ) : (
+                      <span className="w-full text-center">+ Audio</span>
+                    )}
                   </button>
-                  <button type="button" onClick={() => setTextOpen(true)} className="flex-1 rounded-md border border-dashed border-white/40 py-2 text-xs text-white/80">
-                    + Text
+                  <button type="button" onClick={() => setTextOpen(true)} className="flex min-w-0 flex-1 items-center justify-center rounded-md border border-dashed border-white/40 px-2 py-2 text-center text-xs text-white/80">
+                    <span className="max-w-full whitespace-pre-line break-words leading-tight">
+                      {(() => {
+                        const lastText = [...overlays].reverse().find((o) => o.kind === "text");
+                        return lastText ? lastText.value : "+ Text";
+                      })()}
+                    </span>
                   </button>
                   {cuts.length > 0 && (
                     <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
@@ -1812,7 +1851,45 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   )}
                 </div>
               </div>
-              {editorPanel && (
+              {editorPanel === "speed" && (
+                <div className="mt-3 space-y-4 px-5 pb-1">
+                  <p className="text-center text-3xl font-bold">{speed.toFixed(2)}x</p>
+                  <div className="flex items-center gap-3">
+                    <button type="button" aria-label="Slower" onClick={() => applySpeed(speed - 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-semibold">
+                      -
+                    </button>
+                    <input
+                      type="range"
+                      min={0.25}
+                      max={3}
+                      step={0.25}
+                      value={speed}
+                      aria-label="Playback speed"
+                      onChange={(e) => applySpeed(Number(e.target.value))}
+                      className="min-w-0 flex-1 accent-white"
+                    />
+                    <button type="button" aria-label="Faster" onClick={() => applySpeed(speed + 0.25)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-lg font-semibold">
+                      +
+                    </button>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    {EDITOR_SPEEDS.map((sp) => (
+                      <div key={sp} className="flex flex-col items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => applySpeed(sp)}
+                          className={`relative rounded-full px-3 py-2 text-sm font-semibold ${speed === sp ? "bg-white text-black" : "bg-white/10"}`}
+                        >
+                          {Number.isInteger(sp) ? sp.toFixed(1) : String(sp)}
+                          {sp === 3 && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded bg-red-600 text-[9px] font-bold">P</span>}
+                        </button>
+                        {sp === 1 && <span className="text-[10px] text-white/60">Normal</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {editorPanel && editorPanel !== "speed" && (
                 <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
                   {editorPanel === "filter" &&
                     FILTERS.map((f) => (
@@ -1823,21 +1900,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                         className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${videoFilter === f.css ? "bg-white text-black" : "bg-white/10"}`}
                       >
                         {f.name}
-                      </button>
-                    ))}
-                  {editorPanel === "speed" &&
-                    SPEEDS.map((sp) => (
-                      <button
-                        key={sp}
-                        type="button"
-                        onClick={() => {
-                          setSpeed(sp);
-                          if (editorRef.current) editorRef.current.playbackRate = sp;
-                          if (previewVideo.current) previewVideo.current.playbackRate = sp;
-                        }}
-                        className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${speed === sp ? "bg-white text-black" : "bg-white/10"}`}
-                      >
-                        {sp}x
                       </button>
                     ))}
                   {editorPanel === "crop" &&
@@ -1855,7 +1917,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               )}
               <div className="mt-4 flex gap-6 overflow-x-auto px-5 pb-6 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {[
-                  { label: "Add", icon: Plus, on: false, action: () => toast("Adding more clips isn't available in this version") },
+                  { label: "Add", icon: Plus, on: false, action: () => setEditorAddOpen(true) },
                   {
                     label: "Reshoot",
                     icon: Video,
@@ -1895,6 +1957,46 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </button>
                 ))}
               </div>
+              {editorAddOpen && (
+                <div className="absolute inset-0 z-[85] flex flex-col justify-end bg-black/60" onClick={() => setEditorAddOpen(false)}>
+                  <div className="space-y-3 rounded-t-2xl bg-zinc-900 px-5 pb-8 pt-4" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-center text-base font-semibold">Add to reel</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorAddOpen(false);
+                        closeEditor();
+                        editorVideoInput.current?.click();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-left"
+                    >
+                      <ImagePlus className="h-5 w-5 shrink-0" />
+                      <span>
+                        <span className="block font-semibold">Gallery</span>
+                        <span className="block text-xs text-white/60">Replace the clip with a video from your phone</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditorAddOpen(false);
+                        closeEditor();
+                        setCameraOpen(true);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-left"
+                    >
+                      <Camera className="h-5 w-5 shrink-0" />
+                      <span>
+                        <span className="block font-semibold">Camera</span>
+                        <span className="block text-xs text-white/60">Record a new clip</span>
+                      </span>
+                    </button>
+                    <button type="button" onClick={() => setEditorAddOpen(false)} className="w-full rounded-lg bg-white/10 py-3 text-sm font-semibold">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2427,6 +2529,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             }}
           />
         )}
+
+        <input ref={editorVideoInput} type="file" accept="video/*" hidden onChange={(e) => { replaceClipFromEditor(e.target.files); e.target.value = ""; }} />
 
         {/* body */}
         {step === "pick" && mode === "video" && (
