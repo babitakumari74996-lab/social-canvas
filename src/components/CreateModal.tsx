@@ -1962,12 +1962,22 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
         {step === "edit" && mode === "video" && (
           <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden">
-            <div className="flex-1 grid place-items-center bg-black/90 p-4 min-h-[300px]">
+            <div
+              className="relative shrink-0 md:flex-1 grid place-items-center bg-black/90 md:p-4 md:min-h-[300px] h-[calc(100dvh-3.5rem)] md:h-auto"
+              onClick={(e) => {
+                // Tap anywhere on the video to play or pause it.
+                if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
+                const v = editVideo.current;
+                if (!v) return;
+                if (v.paused) v.play().catch(() => {});
+                else v.pause();
+              }}
+            >
               <video
                 ref={editVideo}
                 src={draft.previews[0]}
                 style={{ filter: videoFilter === "none" ? undefined : videoFilter }}
-                className="max-h-[70vh] max-w-full aspect-[9/16] object-contain rounded-lg"
+                className="absolute inset-0 h-full w-full md:static md:h-auto md:max-h-[70vh] md:w-auto md:max-w-full md:aspect-[9/16] object-contain md:rounded-lg"
                 autoPlay
                 muted
                 loop
