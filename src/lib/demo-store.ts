@@ -190,33 +190,44 @@ export function subscribeDemo(cb: () => void): () => void {
 }
 const listeners = new Set<() => void>();
 
+/**
+ * Saves the demo state to localStorage. Photo posts keep their image as a data URL, which can fill the
+ * browser's ~5 MB storage quickly. When the full save does not fit, the save is retried without those big
+ * photo posts/stories, so reels, moods, likes and comments still survive a refresh (before, the whole save
+ * failed silently and every new item was lost on reload).
+ */
 function persist() {
-  try {
-    const small = <T extends { media_urls?: string[]; media_url?: string; video_url?: string }>(arr: T[]): T[] =>
-      // don't persist huge dataURL blobs
-      arr.filter((x) => {
-        const s = x.media_urls?.[0] ?? x.media_url ?? x.video_url ?? "";
-        return !s.startsWith("data:") || s.length < 1_500_000;
-      });
-    const data: Persisted = {
-      liked: state.liked,
-      saved: state.saved,
-      following: state.following,
-      requestsHandled: state.requestsHandled,
-      viewedStories: state.viewedStories,
-      edits: state.edits,
-      myPosts: small(state.posts.filter((p) => p.user_id === DEMO_ME_ID && !seedIds().has(p.id))),
-      myStories: small(state.stories.filter((s) => s.user_id === DEMO_ME_ID)),
-      myReels: small(state.reels.filter((r) => r.user_id === DEMO_ME_ID && !seedIds().has(r.id))),
-      myComments: state.comments.filter((c) => c.user_id === DEMO_ME_ID),
-      myMessages: state.messages.slice(-100),
-      myMoods: state.moods.filter((m) => m.user_id === DEMO_ME_ID && !seedIds().has(m.id)),
-      myMoodComments: state.moodComments.filter((c) => c.user_id === DEMO_ME_ID),
-    };
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-  } catch {
-    /* quota — ignore */
+  const isDataUrl = (x: { media_urls?: string[]; media_url?: string; video_url?: string }) =>
+    (x.media_urls?.[0] ?? x.media_url ?? x.video_url ?? "").startsWith("data:");
+  // Keep smaller data URLs; drop huge ones.
+  const small = <T extends { media_urls?: string[]; media_url?: string; video_url?: string }>(arr: T[]): T[] =>
+    arr.filter((x) => !isDataUrl(x) || (x.media_urls?.[0] ?? x.media_url ?? x.video_url ?? "").length < 1_500_000);
+  const build = (lightOnly: boolean): Persisted => ({
+    liked: state.liked,
+    saved: state.saved,
+    following: state.following,
+    requestsHandled: state.requestsHandled,
+    viewedStories: state.viewedStories,
+    edits: state.edits,
+    myPosts: (lightOnly ? state.posts.filter((p) => !isDataUrl(p)) : small(state.posts))
+      .filter((p) => p.user_id === DEMO_ME_ID && !seedIds().has(p.id)),
+    myStories: (lightOnly ? state.stories.filter((s) => !isDataUrl(s)) : small(state.stories))
+      .filter((s) => s.user_id === DEMO_ME_ID),
+    myReels: small(state.reels.filter((r) => r.user_id === DEMO_ME_ID && !seedIds().has(r.id))),
+    myComments: state.comments.filter((c) => c.user_id === DEMO_ME_ID),
+    myMessages: state.messages.slice(-100),
+    myMoods: state.moods.filter((m) => m.user_id === DEMO_ME_ID && !seedIds().has(m.id)),
+    myMoodComments: state.moodComments.filter((c) => c.user_id === DEMO_ME_ID),
+  });
+  for (const lightOnly of [false, true]) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(build(lightOnly)));
+      return;
+    } catch {
+      /* storage full: try again without the big photo posts */
+    }
   }
+  console.warn("Demo data could not be saved: browser storage is full.");
 }
 
 function set(patch: (s: DemoState) => DemoState) {
@@ -260,7 +271,7 @@ export const demoActions = {
     set((s) => {
       const isOn = !!s.liked[id];
       const liked = { ...s.liked, [id]: !isOn };
-      if (!isOn) delete liked[id];
+      if (isOn) delete liked[id]; // unliked: forget it; liked: keep it so it survives a reload
       return {
         ...s,
         liked,
