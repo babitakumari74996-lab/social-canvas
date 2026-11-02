@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile, useMe } from "@/lib/data";
@@ -9,6 +9,7 @@ import { DEMO_GALLERY, DEMO_VIDEO_GALLERY } from "@/lib/demo-data";
 import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/ReelTools";
 import { SvSlider } from "@/components/SvSlider";
 import { MoodDialog } from "@/components/MoodBox";
+import { EFFECT_REGIONS, WORLD_EFFECTS, worldEffectBg, type EffectRegion } from "@/lib/effect-catalog";
 
 // Playback speeds offered by the reel editor and the camera.
 const SPEEDS = [0.5, 1, 2] as const;
@@ -607,6 +608,16 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const me = useMe();
   const [stickerTab, setStickerTab] = useState<"trending" | "emoji" | "words" | "shapes" | "gif">("trending");
   const [stickerQuery, setStickerQuery] = useState("");
+  // Effects picker: built-in looks are ready; world looks are downloaded once, then used.
+  const [effectRegion, setEffectRegion] = useState<"All" | EffectRegion>("All");
+  const [downloadedFx, setDownloadedFx] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("sv-effects-downloaded") || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [downloadingFx, setDownloadingFx] = useState<string | null>(null);
   const [locDraft, setLocDraft] = useState<string | null>(null);
 
   // Chosen song: its preview plays alongside the video (the audio element follows the video's position).
@@ -784,6 +795,32 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (stickerTab === "shapes") return all.filter((x) => x.key.startsWith("s-"));
     return all.filter((x) => x.key.startsWith("g-"));
   })();
+
+  const effectList = [
+    ...EFFECT_OPTIONS.map((f) => ({ name: f.name, css: f.css, bg: f.bg, fg: f.fg, badge: f.badge, region: "Built in" as const, builtIn: true })),
+    ...WORLD_EFFECTS.map((w, i) => ({ name: w.name, css: w.css, bg: worldEffectBg(i), fg: "#fff", badge: w.name.slice(0, 2).toUpperCase(), region: w.region, builtIn: false })),
+  ];
+  const effectTiles = effectList.filter((e) => e.builtIn || effectRegion === "All" || e.region === effectRegion);
+  const tapEffect = (e: (typeof effectList)[number]) => {
+    if (e.builtIn || downloadedFx.includes(e.name)) {
+      setEffectPick(e.css);
+      return;
+    }
+    if (downloadingFx) return;
+    setDownloadingFx(e.name);
+    window.setTimeout(() => {
+      const next = [...downloadedFx, e.name];
+      setDownloadedFx(next);
+      try {
+        localStorage.setItem("sv-effects-downloaded", JSON.stringify(next));
+      } catch {
+        /* storage full: the effect still works for this session */
+      }
+      setDownloadingFx(null);
+      setEffectPick(e.css);
+      toast(`${e.name} downloaded`);
+    }, 900);
+  };
 
   if (!open) return null;
 
@@ -1686,27 +1723,53 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </div>
               )}
               <div className="relative mt-auto flex flex-col gap-5 pb-6">
-                <div className="flex gap-4 overflow-x-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {EFFECT_OPTIONS.map((f) => (
+                <div className="flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {(["All", ...EFFECT_REGIONS] as const).map((r) => (
                     <button
-                      key={f.name}
+                      key={r}
                       type="button"
-                      aria-label={f.name}
-                      onClick={() => setEffectPick(f.css)}
-                      className={`grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white" : ""}`}
-                      style={{ background: f.bg, color: f.fg }}
+                      onClick={() => setEffectRegion(r)}
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${effectRegion === r ? "bg-white text-black" : "bg-white/10 text-white"}`}
                     >
-                      {f.badge}
+                      {r}
                     </button>
                   ))}
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-4 pt-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {effectTiles.map((f) => {
+                    const ready = f.builtIn || downloadedFx.includes(f.name);
+                    return (
+                      <button
+                        key={f.name}
+                        type="button"
+                        aria-label={f.name}
+                        onClick={() => tapEffect(f)}
+                        className={`relative grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white ring-offset-2 ring-offset-black" : ""}`}
+                        style={{ background: f.bg, color: f.fg }}
+                      >
+                        {f.badge}
+                        {!ready && (
+                          <span className="absolute -bottom-0.5 -right-0.5 grid h-6 w-6 place-items-center rounded-full bg-black/80">
+                            {downloadingFx === f.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="flex items-center justify-between px-6">
                   <button type="button" aria-label="Cancel effect" onClick={() => setEffectsOpen(false)} className="grid h-14 w-14 place-items-center rounded-full bg-zinc-800">
                     <X className="h-7 w-7" />
                   </button>
                   <div className="text-center">
-                    <p className="text-lg font-bold">{EFFECT_OPTIONS.find((f) => f.css === effectPick)?.name ?? "None"}</p>
-                    <p className="text-sm text-white/70">By creators</p>
+                    <p className="text-lg font-bold">{effectList.find((f) => f.css === effectPick)?.name ?? "None"}</p>
+                    <p className="text-sm text-white/70">
+                      {(() => {
+                        const cur = effectList.find((f) => f.css === effectPick);
+                        if (!cur || cur.builtIn) return "Built in";
+                        return downloadedFx.includes(cur.name) ? cur.region : `Tap to download · ${cur.region}`;
+                      })()}
+                    </p>
                   </div>
                   <button
                     type="button"

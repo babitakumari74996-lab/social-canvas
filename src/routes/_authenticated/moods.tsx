@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Heart, MessageCircle } from "lucide-react";
 import { Avatar } from "@/components/Avatar";
 import { MediaImg } from "@/components/PostCard";
@@ -16,13 +16,47 @@ export const Route = createFileRoute("/_authenticated/moods")({
 const isVideoUrl = (u: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 
 // Twit: a text post, optionally with photos. Twits are not shown on the home feed.
+// The Moods/Twits switcher is pinned to the top of the screen. Scrolling down slides it up out of view;
+// scrolling up brings it back down, following the finger. It is moved with a transform written
+// straight to the element on each scroll event: no React state and no layout change, so nothing jitters.
+function useSwitcherSlide(ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Scroll anchoring would correct the scroll position while the switcher moves: turn it off here.
+    const root = document.documentElement;
+    const oldAnchor = root.style.overflowAnchor;
+    root.style.overflowAnchor = "none";
+    let last = window.scrollY;
+    let hidden = 0;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const d = y - last;
+      last = y;
+      const height = el.offsetHeight || 64;
+      if (y <= 8) hidden = 0;
+      else if (d > 0) hidden = Math.min(height, hidden + d); // swipe up: slides away
+      else if (d < 0) hidden = Math.max(0, hidden + d); // swipe down: comes back with the finger
+      el.style.transform = hidden > 0 ? `translate3d(0, ${-Math.round(hidden)}px, 0)` : "";
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      el.style.transform = "";
+      root.style.overflowAnchor = oldAnchor;
+    };
+  }, [ref]);
+}
+
 function MoodsPage() {
   const { moods } = useMoods();
   const { posts: twit } = useTwits();
   const [tab, setTab] = useState<0 | 1>(0);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  useSwitcherSlide(switcherRef);
   return (
     <div className="max-w-[520px] mx-auto pb-10">
-      <div className="px-4 pt-4 pb-3 border-b border-border">
+      <div ref={switcherRef} className="sticky top-0 z-30 bg-background px-4 pt-4 pb-3 border-b border-border will-change-transform">
         {/* Pill switcher: a sliding thumb marks the active side (no underline). */}
         <div className="relative flex rounded-full bg-muted p-1">
           <span
