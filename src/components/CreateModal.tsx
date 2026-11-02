@@ -533,6 +533,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Playback progress of the reel preview, shown on the thin bar under the video.
   const [previewProgress, setPreviewProgress] = useState(0);
   const previewVideo = useRef<HTMLVideoElement>(null);
+  const mixVideo = useRef<HTMLVideoElement>(null);
   const [previewFlash, setPreviewFlash] = useState<"play" | "pause" | null>(null);
   // Preview plays the clip's own sound. If the browser blocks sound, fall back to muted playback.
   useEffect(() => {
@@ -916,14 +917,25 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   Done
                 </button>
               </div>
-              <div className="grid min-h-0 flex-1 place-items-center px-6">
+              <div
+                className="relative min-h-0 flex-1"
+                onClick={(e) => {
+                  // Tapping anywhere on the video plays or pauses it.
+                  if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
+                  const v = mixVideo.current;
+                  if (!v) return;
+                  if (v.paused) v.play().catch(() => {});
+                  else v.pause();
+                }}
+              >
                 <video
+                  ref={mixVideo}
                   src={draft.previews[0]}
                   muted
                   autoPlay
                   loop
                   playsInline
-                  className="aspect-[9/16] max-h-[42vh] max-w-full rounded-xl object-contain"
+                  className="absolute inset-0 h-full w-full object-contain"
                   style={filmStyle()}
                 />
               </div>
