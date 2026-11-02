@@ -10,7 +10,7 @@ import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/Re
 import { SvSlider } from "@/components/SvSlider";
 import { MoodDialog } from "@/components/MoodBox";
 import { EFFECT_REGIONS, WORLD_EFFECTS, worldEffectBg, type EffectRegion } from "@/lib/effect-catalog";
-import { STICKER_CATEGORIES, STICKER_LIBRARY } from "@/lib/sticker-catalog";
+import { STICKER_CATEGORIES, STICKER_LIBRARY, STICKER_EMOJI, twemojiUrl } from "@/lib/sticker-catalog";
 
 // Playback speeds offered by the reel editor and the camera.
 const SPEEDS = [0.5, 1, 2] as const;
@@ -765,7 +765,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       return;
     }
     setCuts((c) => [...c, Math.round(t * 100) / 100]);
-    toast("Split added. Remove a part with the Remove part button.");
+    toast(`Split at ${(Math.round(t * 10) / 10).toFixed(1)}s: ${cuts.length + 2} parts. Use Remove part to drop one.`);
   };
   const togglePartRemoved = () => {
     const pts = segmentPoints(duration);
@@ -905,7 +905,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           maxWidth: "90%",
         }}
       >
-        {o.kind === "image" ? <img src={o.value} alt="" draggable={false} className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
+        {o.kind === "sticker" && STICKER_EMOJI.has(o.value) ? <img src={twemojiUrl(o.value)} alt="" draggable={false} className="h-24 w-24 select-none" /> : o.kind === "image" ? <img src={o.value} alt="" draggable={false} className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
       </button>
     ))}
     {musicTrack && musicCard && (
@@ -1936,8 +1936,17 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     icon: Repeat2,
                     on: reversed,
                     action: () => {
-                      setReversed((r) => !r);
-                      toast(reversed ? "Normal playback" : "Reverse playback");
+                      const next = !reversed;
+                      setReversed(next);
+                      const v = editorRef.current;
+                      if (v) {
+                        if (next) startReverse(v);
+                        else {
+                          stopReverse();
+                          v.play().catch(() => {});
+                        }
+                      }
+                      toast(next ? "Reverse playback" : "Normal playback");
                     },
                   },
                   { label: "Split", icon: Scissors, on: cuts.length > 0, action: splitAtPlayhead },
@@ -2214,10 +2223,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       aria-label={`Add sticker ${item.label}`}
                       className={`grid aspect-square place-items-center rounded-xl ${item.kind === "text" ? "bg-white/10 px-1 text-center text-sm font-bold" : "text-4xl"}`}
                     >
-                      <span className={stickerTab === "GIF" && !stickerQuery && item.kind === "sticker" ? "inline-block animate-bounce" : ""}>{item.label}</span>
+                      <span className={stickerTab === "GIF" && !stickerQuery && item.kind === "sticker" ? "inline-block animate-bounce" : ""}>{item.kind === "sticker" && STICKER_EMOJI.has(item.label) ? <img src={twemojiUrl(item.label)} alt="" draggable={false} className="h-12 w-12 select-none" /> : item.label}</span>
                     </button>
                   ))}
                   {stickerItems.length === 0 && <p className="col-span-4 py-6 text-center text-sm text-white/60">No stickers match.</p>}
+                  <p className="col-span-4 pt-2 text-center text-[10px] text-white/40">Artwork: Twemoji, CC-BY 4.0</p>
                 </div>
               </div>
             </div>
@@ -2851,6 +2861,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   if (end && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
                 }}
               />
+              <div data-no-tap className="absolute inset-x-0 bottom-0 z-10 flex gap-1.5 overflow-x-auto bg-gradient-to-t from-black/85 to-transparent px-3 pb-3 pt-12 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <span className="self-center pr-1 text-[11px] font-semibold text-white">Cover</span>
+                {frames.map((f, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setCover(f); setCoverIdx(i); }}
+                    aria-label={`Cover frame ${i + 1} (mobile)`}
+                    className={`h-16 w-10 shrink-0 overflow-hidden rounded border-2 ${coverIdx === i ? "border-white" : "border-transparent"}`}
+                  >
+                    <img src={f} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border p-4 space-y-5 overflow-y-auto">
               <div>

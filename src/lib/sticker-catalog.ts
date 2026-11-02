@@ -29,3 +29,12 @@ export const STICKER_LIBRARY: StickerItem[] = RAW.flatMap(([cat, list]) =>
     return { emoji: entry.slice(0, sp), keys: entry.slice(sp + 1), cat };
   }),
 );
+
+/** Every emoji in the library, for telling sticker artwork apart from plain text. */
+export const STICKER_EMOJI: Set<string> = new Set(STICKER_LIBRARY.map((s) => s.emoji));
+
+/** Twemoji artwork (CC-BY 4.0), copied into public/stickers/twemoji by name: hex code points joined by "-", without FE0F. */
+export function twemojiUrl(emoji: string): string {
+  const name = [...emoji].map((c) => c.codePointAt(0)!.toString(16)).filter((h) => h !== "fe0f").join("-");
+  return `/stickers/twemoji/${name}.svg`;
+}

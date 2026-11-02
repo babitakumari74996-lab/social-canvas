@@ -1,0 +1,4 @@
+Sticker artwork: Twemoji by Twitter/X, Inc. and contributors.
+License: CC-BY 4.0 (attribution required). Source: https://github.com/jdecked/twemoji (npm @twemoji/svg).
+
+(no LICENSE file in package)
