@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
+import { RefreshCw, ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile, useMe } from "@/lib/data";
@@ -10,14 +10,26 @@ import { MusicPicker, VoiceoverRecorder, type MusicTrack } from "@/components/Re
 import { SvSlider } from "@/components/SvSlider";
 import { MoodDialog } from "@/components/MoodBox";
 import { EFFECT_REGIONS, WORLD_EFFECTS, worldEffectBg, type EffectRegion } from "@/lib/effect-catalog";
+import { STICKER_CATEGORIES, STICKER_LIBRARY } from "@/lib/sticker-catalog";
 
 // Playback speeds offered by the reel editor and the camera.
 const SPEEDS = [0.5, 1, 2] as const;
 type CaptureMeta = { speed: number; filter: string };
 const TEXT_COLOURS = ["#ffffff", "#000000", "#facc15", "#f472b6", "#38bdf8", "#22c55e"];
-type TextFont = "sans" | "serif" | "mono";
+type TextFont = "sans" | "serif" | "mono" | "display" | "script" | "rounded" | "slab" | "comic";
+const TEXT_FONT_KEYS: TextFont[] = ["sans", "serif", "mono", "display", "script", "rounded", "slab", "comic"];
+const TEXT_FONT_LABELS: Record<TextFont, string> = { sans: "Classic", serif: "Serif", mono: "Typewriter", display: "Bold", script: "Script", rounded: "Rounded", slab: "Slab", comic: "Comic" };
 type TextAlign = "left" | "center" | "right";
-const TEXT_FONTS: Record<TextFont, string> = { sans: "system-ui, sans-serif", serif: "Georgia, serif", mono: "ui-monospace, monospace" };
+const TEXT_FONTS: Record<TextFont, string> = {
+  sans: "system-ui, sans-serif",
+  serif: "Georgia, serif",
+  mono: "ui-monospace, monospace",
+  display: "Impact, 'Arial Black', sans-serif",
+  script: "'Brush Script MT', 'Segoe Script', cursive",
+  rounded: "'Trebuchet MS', system-ui, sans-serif",
+  slab: "Rockwell, 'Courier New', serif",
+  comic: "'Comic Sans MS', 'Comic Neue', cursive",
+};
 // Effects picker entries: the css is applied to the preview; badge is the circle label.
 const EFFECT_OPTIONS: { name: string; css: string; bg: string; fg: string; badge: string }[] = [
   { name: "None", css: "none", bg: "#3f3f46", fg: "#fff", badge: "⊘" },
@@ -71,7 +83,6 @@ function writeDrafts(list: SavedDraft[]) {
   localStorage.setItem(DRAFTS_KEY, JSON.stringify(list));
 }
 
-const STICKERS = ["❤️", "😂", "😍", "🔥", "🎉", "💯", "🥳", "😎", "🌟", "🌈", "🎵", "🙌", "💕", "😜", "🍀", "🌸"];
 
 // Same recipes Instagram-style filters emulate
 const FILTERS: { name: string; css: string }[] = [
@@ -112,7 +123,6 @@ const FILTERS: { name: string; css: string }[] = [
 
 const WORD_STICKERS = ["WOW", "LOL", "OMG", "YAY", "LOVE", "NEW", "HOT", "#reels", "Vibes ✨", "Happy Birthday 🎂"];
 const SHAPE_STICKERS = ["★", "♥", "●", "■", "▲", "◆", "✦", "☀", "☁", "⚡"];
-const GIF_STICKERS = ["🎉", "💃", "👏", "🥳", "💖", "⭐", "🔥", "😂"];
 
 type Mode = "photo" | "video" | "text";
 type Step = "pick" | "filter" | "edit" | "preview" | "caption" | "text";
@@ -540,6 +550,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [effectPick, setEffectPick] = useState("none");
   const [textAlign, setTextAlign] = useState<TextAlign>("center");
   const [textFont, setTextFont] = useState<TextFont>("sans");
+  // Text overlay being edited (tap a text on the video to edit it); null when adding new text.
+  const [editingOverlayId, setEditingOverlayId] = useState<number | null>(null);
   const [musicFromMix, setMusicFromMix] = useState(false);
   // "Mood" tile opens the same mood popup as the feed's mood box.
   const [moodOpen, setMoodOpen] = useState(false);
@@ -606,7 +618,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const videoInput = useRef<HTMLInputElement>(null);
   const storyInput = useRef<HTMLInputElement>(null);
   const me = useMe();
-  const [stickerTab, setStickerTab] = useState<"trending" | "emoji" | "words" | "shapes" | "gif">("trending");
+  const [stickerTab, setStickerTab] = useState<string>("Trending");
   const [stickerQuery, setStickerQuery] = useState("");
   // Effects picker: built-in looks are ready; world looks are downloaded once, then used.
   const [effectRegion, setEffectRegion] = useState<"All" | EffectRegion>("All");
@@ -630,7 +642,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!musicTrack?.previewUrl) return;
     const a = getMusic();
     if (playing) {
-      const t = v?.currentTime ?? 0;
+      const t = musicTarget(v?.currentTime ?? 0);
       if (Math.abs(a.currentTime - t) > 0.3) a.currentTime = t;
       a.play().catch(() => {});
     } else {
@@ -652,6 +664,28 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   useEffect(() => {
     if (!open) musicRef.current?.pause();
   }, [open]);
+  // Song card on the video: shown when a song is chosen; drag it, tap it to edit, drop it on the bin to remove.
+  const [musicCard, setMusicCard] = useState<{ x: number; y: number } | null>(null);
+  const [cardEditOpen, setCardEditOpen] = useState(false);
+  const [cardStyle, setCardStyle] = useState(0);
+  const [musicStart, setMusicStart] = useState(0); // where in the song the reel's audio starts (seconds)
+  const [cardPlaying, setCardPlaying] = useState(false);
+  const cardMoved = useRef(false);
+  useEffect(() => {
+    if (!musicTrack) {
+      setMusicCard(null);
+      setCardEditOpen(false);
+      setMusicStart(0);
+    } else {
+      setMusicCard((c) => c ?? { x: 50, y: 72 });
+    }
+  }, [musicTrack?.id]);
+  // Position in the song for a given position in the video.
+  const musicTarget = (videoTime: number) => {
+    const a = getMusic();
+    const len = isFinite(a.duration) && a.duration > 0 ? a.duration : 30;
+    return (musicStart + videoTime) % len;
+  };
 
   // Reverse playback, split cuts and removed parts (edited on the timeline).
   const [reversed, setReversed] = useState(false);
@@ -842,12 +876,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         aria-label="Remove"
         onPointerDown={(e) => startOverlayDrag(e, o, i)}
         onClick={() => {
-          // A drag ends with a click; that must not remove the overlay.
+          // A drag ends with a click; that must not open anything.
           if (overlayMoved.current) {
             overlayMoved.current = false;
             return;
           }
-          setOverlays((list) => list.filter((x) => x.id !== o.id));
+          if (o.kind !== "text") return;
+          setEditingOverlayId(o.id);
+          setOverlayText(o.value);
+          setOverlayColor(o.color);
+          setTextFont(o.font ?? "sans");
+          setTextAlign(o.align ?? "center");
+          setTextOpen(true);
         }}
         className={`absolute touch-none whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
         style={{
@@ -864,6 +904,36 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         {o.kind === "image" ? <img src={o.value} alt="" draggable={false} className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
       </button>
     ))}
+    {musicTrack && musicCard && (
+      <div
+        role="button"
+        aria-label={`Song ${musicTrack.title}. Tap to edit`}
+        onPointerDown={startCardDrag}
+        onClick={() => {
+          if (cardMoved.current) {
+            cardMoved.current = false;
+            return;
+          }
+          setCardEditOpen(true);
+        }}
+        className={`absolute touch-none w-[38%] max-w-[170px] overflow-hidden rounded-md shadow-xl ${cardStyle === 1 ? "bg-zinc-900 text-white" : cardStyle === 2 ? "bg-gradient-to-br from-fuchsia-600 to-indigo-700 text-white" : "bg-white text-zinc-900"}`}
+        style={{ left: `${musicCard.x}%`, top: `${musicCard.y}%`, transform: "translate(-50%, -50%)" }}
+      >
+        {musicTrack.artwork ? (
+          <img src={musicTrack.artwork} alt="" draggable={false} className="aspect-square w-full object-cover" />
+        ) : (
+          <span className="grid aspect-square w-full place-items-center bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-300">
+            <Music2 className="h-10 w-10 text-white/90" />
+          </span>
+        )}
+        {cardStyle !== 3 && (
+          <div className="px-2 py-2 text-center">
+            <p className="truncate text-sm font-bold uppercase tracking-wide">{musicTrack.title}</p>
+            <p className="truncate text-[10px] opacity-70">♫ {musicTrack.artist}</p>
+          </div>
+        )}
+      </div>
+    )}
     {dragOv && (
       <div
         aria-hidden
@@ -874,6 +944,46 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     )}
     </>
   );
+  // Drag the song card. Dropping it on the bin removes the song from the reel.
+  const startCardDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const frame = e.currentTarget.parentElement;
+    if (!frame || !musicCard) return;
+    cardMoved.current = false; // a stale flag from an earlier drag must not swallow this tap
+    const r = frame.getBoundingClientRect();
+    const ox = musicCard.x;
+    const oy = musicCard.y;
+    const sx = e.clientX;
+    const sy = e.clientY;
+    let moved = false;
+    let hot = false;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      if (!moved) setDragOv({ id: -1, hot: false });
+      moved = true;
+      const nowHot = ev.clientY > r.bottom - r.height * 0.22 && Math.abs(ev.clientX - (r.left + r.width / 2)) < r.width * 0.2;
+      if (nowHot !== hot) {
+        hot = nowHot;
+        setDragOv({ id: -1, hot });
+      }
+      setMusicCard({
+        x: Math.min(100, Math.max(0, ox + (dx / r.width) * 100)),
+        y: Math.min(100, Math.max(0, oy + (dy / r.height) * 100)),
+      });
+    };
+    const up = () => {
+      cardMoved.current = moved;
+      if (moved && hot) setMusicTrack(null);
+      setDragOv(null);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
   // Set while a text or sticker is being dragged: shows the trash zone and whether it is over it.
   const [dragOv, setDragOv] = useState<{ id: number; hot: boolean } | null>(null);
   // Drag a text or sticker anywhere on the video. Position is stored as a percentage of the video frame.
@@ -881,6 +991,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const startOverlayDrag = (e: React.PointerEvent<HTMLButtonElement>, o: (typeof overlays)[number], i: number) => {
     const frame = e.currentTarget.parentElement;
     if (!frame) return;
+    overlayMoved.current = false; // a stale flag from an earlier drag must not swallow this tap
     const r = frame.getBoundingClientRect();
     const ox = o.x ?? 50;
     const oy = o.y ?? 30 + ((i * 14) % 50);
@@ -920,27 +1031,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setOverlays((list) => [...list, { id: Date.now(), kind, value, color: "#ffffff" }]);
     setToolSheet(null);
   };
-  const STICKER_TABS: { id: "trending" | "emoji" | "words" | "shapes" | "gif"; label: string }[] = [
-    { id: "trending", label: "Trending" },
-    { id: "emoji", label: "Emoji" },
-    { id: "words", label: "Words" },
-    { id: "shapes", label: "Shapes" },
-    { id: "gif", label: "GIF" },
+  // Tabs: the emoji categories, then word and shape stickers, then animated (GIF) stickers.
+  const STICKER_TABS: { id: string; label: string }[] = [
+    ...STICKER_CATEGORIES.map((c) => ({ id: c, label: c })),
+    { id: "Words", label: "Words" },
+    { id: "Shapes", label: "Shapes" },
+    { id: "GIF", label: "GIF" },
   ];
+  // Every sticker in the library, filtered by the search box (keywords and names) or by tab.
   const stickerItems = (() => {
-    const all: { key: string; label: string; kind: "text" | "sticker" }[] = [
-      ...STICKERS.map((e) => ({ key: `e-${e}`, label: e, kind: "sticker" as const })),
-      ...WORD_STICKERS.map((w) => ({ key: `w-${w}`, label: w, kind: "text" as const })),
-      ...SHAPE_STICKERS.map((x) => ({ key: `s-${x}`, label: x, kind: "sticker" as const })),
-      ...GIF_STICKERS.map((g) => ({ key: `g-${g}`, label: g, kind: "sticker" as const })),
-    ];
+    type Item = { key: string; label: string; kind: "text" | "sticker"; cat: string; keys: string };
+    const emoji: Item[] = STICKER_LIBRARY.map((x, i) => ({ key: `e-${i}`, label: x.emoji, kind: "sticker", cat: x.cat, keys: x.keys.toLowerCase() }));
+    const words: Item[] = WORD_STICKERS.map((w) => ({ key: `w-${w}`, label: w, kind: "text", cat: "Words", keys: w.toLowerCase() }));
+    const shapes: Item[] = SHAPE_STICKERS.map((x) => ({ key: `s-${x}`, label: x, kind: "sticker", cat: "Shapes", keys: "shape " + x }));
     const q = stickerQuery.trim().toLowerCase();
-    if (q) return all.filter((x) => x.label.toLowerCase().includes(q));
-    if (stickerTab === "trending") return all.filter((x) => STICKERS.slice(0, 8).includes(x.label));
-    if (stickerTab === "emoji") return all.filter((x) => x.key.startsWith("e-"));
-    if (stickerTab === "words") return all.filter((x) => x.key.startsWith("w-"));
-    if (stickerTab === "shapes") return all.filter((x) => x.key.startsWith("s-"));
-    return all.filter((x) => x.key.startsWith("g-"));
+    if (q) return [...emoji, ...words, ...shapes].filter((x) => x.keys.includes(q) || x.label.toLowerCase().includes(q));
+    if (stickerTab === "GIF") return emoji.filter((x) => x.cat === "Trending").slice(0, 24);
+    return [...emoji, ...words, ...shapes].filter((x) => x.cat === stickerTab);
   })();
 
   const effectList = [
@@ -1217,7 +1324,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   const v = e.currentTarget;
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
                   const a = musicRef.current;
-                  if (a && musicTrack?.previewUrl && !a.paused && Math.abs(a.currentTime - v.currentTime) > 0.4) a.currentTime = v.currentTime;
+                  if (a && musicTrack?.previewUrl && !a.paused) {
+                    const tt = musicTarget(v.currentTime);
+                    if (Math.abs(a.currentTime - tt) > 0.4) a.currentTime = tt;
+                  }
                   skipRemoved(v);
                 }}
               />
@@ -1453,6 +1563,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   type="button"
                   aria-label="Close text"
                   onClick={() => {
+                    setEditingOverlayId(null);
                     setTextOpen(false);
                     setOverlayText("");
                   }}
@@ -1472,7 +1583,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <button
                     type="button"
                     aria-label="Text font"
-                    onClick={() => setTextFont((f) => (f === "sans" ? "serif" : f === "serif" ? "mono" : "sans"))}
+                    onClick={() => setTextFont((f) => TEXT_FONT_KEYS[(TEXT_FONT_KEYS.indexOf(f) + 1) % TEXT_FONT_KEYS.length])}
                     className="grid h-7 w-7 place-items-center rounded border-2 border-white text-xs font-bold"
                     style={{ fontFamily: TEXT_FONTS[textFont] }}
                   >
@@ -1491,10 +1602,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     type="button"
                     disabled={!overlayText.trim()}
                     onClick={() => {
-                      setOverlays((list) => [
-                        ...list,
-                        { id: Date.now(), kind: "text", value: overlayText.trim(), color: overlayColor, font: textFont, align: textAlign },
-                      ]);
+                      const value = overlayText.trim();
+                      if (editingOverlayId !== null) {
+                        setOverlays((list) => list.map((x) => (x.id === editingOverlayId ? { ...x, value, color: overlayColor, font: textFont, align: textAlign } : x)));
+                      } else {
+                        setOverlays((list) => [...list, { id: Date.now(), kind: "text", value, color: overlayColor, font: textFont, align: textAlign }]);
+                      }
+                      setEditingOverlayId(null);
                       setOverlayText("");
                       setTextOpen(false);
                     }}
@@ -1515,6 +1629,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   className="w-full resize-none bg-transparent text-3xl font-bold outline-none placeholder:text-white/60"
                   style={{ color: overlayColor, fontFamily: TEXT_FONTS[textFont], textAlign }}
                 />
+              </div>
+              <div className="absolute inset-x-0 bottom-6 flex gap-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {TEXT_FONT_KEYS.map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-label={`Font ${TEXT_FONT_LABELS[k]}`}
+                    onClick={() => setTextFont(k)}
+                    className={`grid h-12 w-12 shrink-0 place-items-center rounded-full text-lg font-bold ${textFont === k ? "bg-white text-black" : "bg-white/15 text-white"}`}
+                    style={{ fontFamily: TEXT_FONTS[k] }}
+                  >
+                    Aa
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -1770,6 +1898,125 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             </div>
           )}
 
+          {musicTrack && cardEditOpen && (
+            <div className="absolute inset-0 z-[92] flex flex-col bg-black/90 text-white">
+              <div className="flex items-center justify-between px-4 py-3">
+                <button type="button" onClick={() => setCardEditOpen(false)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  aria-label="Remove song"
+                  onClick={() => {
+                    setMusicTrack(null);
+                    setCardEditOpen(false);
+                  }}
+                  className="grid h-10 w-10 place-items-center rounded-full bg-white/10"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+                <button type="button" onClick={() => setCardEditOpen(false)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                  Done
+                </button>
+              </div>
+              <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
+                <div className={`w-56 overflow-hidden rounded-md shadow-xl ${cardStyle === 1 ? "bg-zinc-900 text-white" : cardStyle === 2 ? "bg-gradient-to-br from-fuchsia-600 to-indigo-700 text-white" : "bg-white text-zinc-900"}`}>
+                  {musicTrack.artwork ? (
+                    <img src={musicTrack.artwork} alt="" className="aspect-square w-full object-cover" />
+                  ) : (
+                    <span className="grid aspect-square w-full place-items-center bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-300">
+                      <Music2 className="h-12 w-12 text-white/90" />
+                    </span>
+                  )}
+                  {cardStyle !== 3 && (
+                    <div className="px-3 py-3 text-center">
+                      <p className="truncate text-base font-bold uppercase tracking-wide">{musicTrack.title}</p>
+                      <p className="truncate text-xs opacity-70">♫ {musicTrack.artist}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {["Classic", "Dark", "Colour", "Cover"].map((name, i) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setCardStyle(i)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${cardStyle === i ? "bg-white text-black" : "bg-white/10"}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <div className="w-full max-w-xs">
+                  <div className="mb-1 flex justify-between text-xs text-white/70">
+                    <span>Start from</span>
+                    <span>{musicStart.toFixed(1)}s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={25}
+                    step={0.5}
+                    value={musicStart}
+                    aria-label="Song start"
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setMusicStart(v);
+                      const a = getMusic();
+                      if (!a.paused) a.currentTime = v;
+                    }}
+                    className="w-full accent-[#1877f2]"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 bg-zinc-900 px-4 py-4">
+                <button
+                  type="button"
+                  aria-label="Change song"
+                  onClick={() => {
+                    setCardEditOpen(false);
+                    setMusicFromMix(false);
+                    setMusicOpen(true);
+                  }}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#1877f2]"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCardEditOpen(false);
+                    setMusicFromMix(false);
+                    setMusicOpen(true);
+                  }}
+                  className="min-w-0 flex-1 text-center"
+                >
+                  <p className="truncate font-semibold">{musicTrack.title}</p>
+                  <p className="truncate text-sm text-white/70">{musicTrack.artist} · Tap to change</p>
+                </button>
+                <button
+                  type="button"
+                  aria-label={cardPlaying ? "Pause song" : "Play song"}
+                  onClick={() => {
+                    const a = getMusic();
+                    if (!a.paused) {
+                      a.pause();
+                      setCardPlaying(false);
+                      return;
+                    }
+                    if (a.src !== musicTrack.previewUrl && musicTrack.previewUrl) a.src = musicTrack.previewUrl;
+                    a.currentTime = musicStart;
+                    a.loop = true;
+                    a.play().then(() => setCardPlaying(true), () => toast("This song can't play right now"));
+                  }}
+                  className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-white/10"
+                >
+                  {cardPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
           {toolSheet === "stickers" && (
             <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-black/40" onClick={() => setToolSheet(null)}>
               <div className="max-h-[85%] overflow-y-auto rounded-t-3xl bg-zinc-800 px-4 pb-8 pt-3 text-white" onClick={(e) => e.stopPropagation()}>
@@ -1846,14 +2093,17 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setStickerTab(t.id)}
+                      onClick={() => {
+                        setStickerTab(t.id);
+                        setStickerQuery("");
+                      }}
                       className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${stickerTab === t.id ? "bg-white text-zinc-900" : "bg-white/10"}`}
                     >
                       {t.label}
                     </button>
                   ))}
                 </div>
-                <div className="mt-4 grid grid-cols-4 gap-2">
+                <div className="mt-4 grid max-h-[42vh] grid-cols-4 gap-2 overflow-y-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {stickerItems.map((item) => (
                     <button
                       key={item.key}
@@ -1862,7 +2112,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       aria-label={`Add sticker ${item.label}`}
                       className={`grid aspect-square place-items-center rounded-xl ${item.kind === "text" ? "bg-white/10 px-1 text-center text-sm font-bold" : "text-4xl"}`}
                     >
-                      <span className={stickerTab === "gif" && item.kind === "sticker" ? "inline-block animate-bounce" : ""}>{item.label}</span>
+                      <span className={stickerTab === "GIF" && !stickerQuery && item.kind === "sticker" ? "inline-block animate-bounce" : ""}>{item.label}</span>
                     </button>
                   ))}
                   {stickerItems.length === 0 && <p className="col-span-4 py-6 text-center text-sm text-white/60">No stickers match.</p>}
@@ -1922,21 +2172,26 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <div className="flex gap-4 overflow-x-auto px-4 pt-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {effectTiles.map((f) => {
                     const ready = f.builtIn || downloadedFx.includes(f.name);
+                    const selected = effectPick === f.css;
+                    // Use the clip's first frame when it is loaded, otherwise a local demo photo.
+                    const thumb = frames[0] ?? "/demo/feed/p10.jpg";
                     return (
                       <button
                         key={f.name}
                         type="button"
                         aria-label={f.name}
                         onClick={() => tapEffect(f)}
-                        className={`relative grid h-16 w-16 shrink-0 place-items-center whitespace-pre-line rounded-full text-center text-[9px] font-extrabold leading-tight ${effectPick === f.css ? "ring-[3px] ring-white ring-offset-2 ring-offset-black" : ""}`}
-                        style={{ background: f.bg, color: f.fg }}
+                        className="flex w-[68px] shrink-0 flex-col items-center gap-1.5 p-1"
                       >
-                        {f.badge}
-                        {!ready && (
-                          <span className="absolute -bottom-0.5 -right-0.5 grid h-6 w-6 place-items-center rounded-full bg-black/80">
-                            {downloadingFx === f.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                          </span>
-                        )}
+                        <span className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-full ${selected ? "ring-[3px] ring-white ring-offset-2 ring-offset-black" : ""}`}>
+                          <img src={thumb} alt="" draggable={false} className="h-full w-full object-cover" style={{ filter: f.css === "none" ? undefined : f.css }} />
+                          {!ready && (
+                            <span className="absolute -bottom-0.5 -right-0.5 grid h-6 w-6 place-items-center rounded-full bg-black/80">
+                              {downloadingFx === f.name ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                            </span>
+                          )}
+                        </span>
+                        <span className={`w-full truncate text-center text-[10px] font-semibold ${selected ? "text-white" : "text-white/70"}`}>{f.name}</span>
                       </button>
                     );
                   })}
