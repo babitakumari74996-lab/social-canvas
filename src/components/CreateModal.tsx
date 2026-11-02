@@ -567,7 +567,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [speed, setSpeed] = useState(1);
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
   const [mirror, setMirror] = useState(false);
-  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign }[]>([]);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
@@ -653,15 +653,99 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!open) musicRef.current?.pause();
   }, [open]);
 
-  // Undo / redo for the editor: trim, filter, speed and text/sticker overlays.
-  type EditSnap = { trimStart: number; trimEnd: number; videoFilter: string; speed: number; overlays: typeof overlays };
+  // Reverse playback, split cuts and removed parts (edited on the timeline).
+  const [reversed, setReversed] = useState(false);
+  const [revRunning, setRevRunning] = useState(false);
+  const [cuts, setCuts] = useState<number[]>([]);
+  const [removed, setRemoved] = useState<number[]>([]); // segment start times in hundredths of a second
+  const revRaf = useRef<number | null>(null);
+  const revLast = useRef(0);
+  const revPos = useRef(0);
+  const stopReverse = () => {
+    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
+    revRaf.current = null;
+    setRevRunning(false);
+    setEditorPlaying(false);
+  };
+  // Plays the clip backwards by stepping its position each frame (browsers can't play video in reverse).
+  const startReverse = (v: HTMLVideoElement) => {
+    v.pause();
+    revLast.current = performance.now();
+    revPos.current = v.currentTime;
+    setRevRunning(true);
+    setEditorPlaying(true);
+    const tick = (now: number) => {
+      const dt = (now - revLast.current) / 1000;
+      revLast.current = now;
+      const end = (trimEnd || duration || v.duration) as number;
+      // The position is kept here, not read back from the video, so it keeps moving while seeks finish.
+      let t = revPos.current - dt * speed;
+      if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
+      revPos.current = t;
+      v.currentTime = t;
+      revRaf.current = requestAnimationFrame(tick);
+    };
+    revRaf.current = requestAnimationFrame(tick);
+  };
+  const toggleReverse = (v: HTMLVideoElement) => {
+    if (revRaf.current !== null) stopReverse();
+    else startReverse(v);
+  };
+  useEffect(() => {
+    if (!reversed || !editorOpen) stopReverse();
+  }, [reversed, editorOpen]);
+  useEffect(() => () => {
+    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
+  }, []);
+  // Timeline pieces: the trimmed clip cut at each split point.
+  const segmentPoints = (dur: number) => {
+    const end = trimEnd || dur;
+    const inner = cuts.filter((c) => c > trimStart + 0.05 && c < end - 0.05).sort((a, b) => a - b);
+    return [trimStart, ...inner, end];
+  };
+  const segmentIndexAt = (pts: number[], t: number) => {
+    for (let i = 0; i < pts.length - 1; i++) if (t >= pts[i] && t < pts[i + 1]) return i;
+    return -1;
+  };
+  const isRemovedSeg = (pts: number[], i: number) => removed.includes(Math.round(pts[i] * 100));
+  // While playing, jump over parts the user removed.
+  const skipRemoved = (v: HTMLVideoElement) => {
+    if (cuts.length === 0 || removed.length === 0) return;
+    const pts = segmentPoints(duration || v.duration);
+    const i = segmentIndexAt(pts, v.currentTime);
+    if (i < 0 || !isRemovedSeg(pts, i)) return;
+    let j = i + 1;
+    while (j < pts.length - 1 && isRemovedSeg(pts, j)) j++;
+    v.currentTime = j < pts.length - 1 ? pts[j] : trimStart;
+  };
+  const splitAtPlayhead = () => {
+    const v = editorRef.current;
+    const t = v?.currentTime ?? editorTime;
+    const end = trimEnd || duration;
+    if (t <= trimStart + 0.1 || t >= end - 0.1) {
+      toast("Move the playhead inside the clip to split");
+      return;
+    }
+    setCuts((c) => [...c, Math.round(t * 100) / 100]);
+    toast("Split added. Remove a part with the Remove part button.");
+  };
+  const togglePartRemoved = () => {
+    const pts = segmentPoints(duration);
+    const i = segmentIndexAt(pts, editorTime);
+    if (i < 0) return;
+    const key = Math.round(pts[i] * 100);
+    setRemoved((r) => (r.includes(key) ? r.filter((x) => x !== key) : [...r, key]));
+  };
+
+  // Undo / redo for the editor: trim, filter, speed, cuts, removed parts, reverse and text/sticker overlays.
+  type EditSnap = { trimStart: number; trimEnd: number; videoFilter: string; speed: number; overlays: typeof overlays; cuts: number[]; removed: number[]; reversed: boolean };
   const [, setHistTick] = useState(0);
   const histPast = useRef<EditSnap[]>([]);
   const histFuture = useRef<EditSnap[]>([]);
   const histPrev = useRef<EditSnap | null>(null);
   const histRestoring = useRef(false);
   useEffect(() => {
-    const cur: EditSnap = { trimStart, trimEnd, videoFilter, speed, overlays };
+    const cur: EditSnap = { trimStart, trimEnd, videoFilter, speed, overlays, cuts, removed, reversed };
     if (histRestoring.current) {
       histRestoring.current = false;
       histPrev.current = cur;
@@ -675,7 +759,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setHistTick((t) => t + 1);
     }
     histPrev.current = cur;
-  }, [trimStart, trimEnd, videoFilter, speed, overlays]);
+  }, [trimStart, trimEnd, videoFilter, speed, overlays, cuts, removed, reversed]);
   const applySnap = (snap: EditSnap) => {
     const cur = histPrev.current;
     histRestoring.current = true;
@@ -684,6 +768,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setVideoFilter(snap.videoFilter);
     setSpeed(snap.speed);
     setOverlays(snap.overlays);
+    setCuts(snap.cuts);
+    setRemoved(snap.removed);
+    setReversed(snap.reversed);
     if (editorRef.current) editorRef.current.playbackRate = snap.speed;
     setHistTick((t) => t + 1);
     void cur;
@@ -717,6 +804,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setSpeed(1); setCrop("fit"); setMirror(false); setToolSheet(null); setOverlays([]);
       setEditorOpen(false); setEditorPanel(null); setTextOpen(false); setMusicFromMix(false); setEffectsOpen(false);
       histPast.current = []; histFuture.current = []; histPrev.current = null;
+      setCuts([]); setRemoved([]); setReversed(false);
     }
   }, [open, createMode]);
 
@@ -747,28 +835,64 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Text, sticker and image overlays. Shown on the preview and in the editor.
   const renderOverlays = () =>
     overlays.map((o, i) => (
-
       <button
-                  key={o.id}
-                  type="button"
-                  aria-label="Remove"
-                  onClick={() => setOverlays((list) => list.filter((x) => x.id !== o.id))}
-                  className={`absolute whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
-                  style={{
-                    top: `${30 + ((i * 14) % 50)}%`,
-                    color: o.color,
-                    fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
-                    textAlign: o.align ?? "center",
-                    ...(o.align === "left"
-                      ? { left: "1rem", maxWidth: "80%" }
-                      : o.align === "right"
-                        ? { right: "1rem", maxWidth: "80%" }
-                        : { left: "50%", transform: "translateX(-50%)", width: "max-content", maxWidth: "90%" }),
-                  }}
-                >
-                  {o.kind === "image" ? <img src={o.value} alt="" className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
-                </button>
+        key={o.id}
+        type="button"
+        aria-label="Remove"
+        onPointerDown={(e) => startOverlayDrag(e, o, i)}
+        onClick={() => {
+          // A drag ends with a click; that must not remove the overlay.
+          if (overlayMoved.current) {
+            overlayMoved.current = false;
+            return;
+          }
+          setOverlays((list) => list.filter((x) => x.id !== o.id));
+        }}
+        className={`absolute touch-none whitespace-pre-wrap font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] ${o.kind === "sticker" ? "text-5xl" : "text-2xl px-2"}`}
+        style={{
+          left: `${o.x ?? 50}%`,
+          top: `${o.y ?? 30 + ((i * 14) % 50)}%`,
+          transform: "translate(-50%, -50%)",
+          color: o.color,
+          fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
+          textAlign: o.align ?? "center",
+          width: "max-content",
+          maxWidth: "90%",
+        }}
+      >
+        {o.kind === "image" ? <img src={o.value} alt="" draggable={false} className="h-28 w-28 rounded-full border-4 border-white object-cover" /> : o.value}
+      </button>
     ));
+  // Drag a text or sticker anywhere on the video. Position is stored as a percentage of the video frame.
+  const overlayMoved = useRef(false);
+  const startOverlayDrag = (e: React.PointerEvent<HTMLButtonElement>, o: (typeof overlays)[number], i: number) => {
+    const frame = e.currentTarget.parentElement;
+    if (!frame) return;
+    const r = frame.getBoundingClientRect();
+    const ox = o.x ?? 50;
+    const oy = o.y ?? 30 + ((i * 14) % 50);
+    const sx = e.clientX;
+    const sy = e.clientY;
+    let moved = false;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      moved = true;
+      const nx = Math.min(100, Math.max(0, ox + (dx / r.width) * 100));
+      const ny = Math.min(100, Math.max(0, oy + (dy / r.height) * 100));
+      setOverlays((list) => list.map((x) => (x.id === o.id ? { ...x, x: nx, y: ny } : x)));
+    };
+    const up = () => {
+      overlayMoved.current = moved;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
   const addSticker = (kind: "text" | "sticker" | "image", value: string) => {
     setOverlays((list) => [...list, { id: Date.now(), kind, value, color: "#ffffff" }]);
     setToolSheet(null);
@@ -842,6 +966,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const toggleEditorPlay = () => {
     const v = editorRef.current;
     if (!v) return;
+    if (reversed) {
+      toggleReverse(v);
+      return;
+    }
     if (!v.paused) {
       v.pause();
       return;
@@ -1023,6 +1151,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
                 const v = previewVideo.current;
                 if (!v) return;
+                if (reversed) {
+                  toggleReverse(v);
+                  setPreviewFlash(revRaf.current !== null ? "play" : "pause");
+                  window.setTimeout(() => setPreviewFlash(null), 600);
+                  return;
+                }
                 if (v.paused) {
                   v.play().catch(() => {});
                   setPreviewFlash("play");
@@ -1061,6 +1195,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
                   const a = musicRef.current;
                   if (a && musicTrack?.previewUrl && !a.paused && Math.abs(a.currentTime - v.currentTime) > 0.4) a.currentTime = v.currentTime;
+                  skipRemoved(v);
                 }}
               />
               {previewFlash && (
@@ -1392,7 +1527,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       // The full-length trim set on load is the starting point, not an edit.
                       histPast.current = [];
                       histFuture.current = [];
-                      histPrev.current = { trimStart, trimEnd: trimEnd || d, videoFilter, speed, overlays };
+                      histPrev.current = { trimStart, trimEnd: trimEnd || d, videoFilter, speed, overlays, cuts, removed, reversed };
                       setDuration(d);
                       setTrimEnd((t) => t || d);
                     }
@@ -1404,6 +1539,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     // Loop inside the trimmed range.
                     const end = trimEnd || duration;
                     if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
+                    skipRemoved(v);
                   }}
                   onPlay={(e) => {
                     setEditorPlaying(true);
@@ -1495,6 +1631,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                         <span className="absolute inset-y-0 left-0 w-3 rounded-l-md bg-yellow-400" />
                         <span className="absolute inset-y-0 right-0 w-3 rounded-r-md bg-yellow-400" />
                       </div>
+                      {cuts.map((c) => (
+                        <div key={c} className="absolute inset-y-0 w-0.5 bg-cyan-300" style={{ left: `${(c / duration) * 100}%` }} />
+                      ))}
+                      {segmentPoints(duration).slice(0, -1).map((p, i, arr) =>
+                        isRemovedSeg(segmentPoints(duration), i) ? (
+                          <div
+                            key={`rm-${p}`}
+                            className="absolute inset-y-0 bg-black/70"
+                            style={{ left: `${(p / duration) * 100}%`, width: `${((arr[i + 1] ?? p) - p) / duration * 100}%` }}
+                          />
+                        ) : null,
+                      )}
                       <div className="absolute inset-y-0 w-0.5 bg-white" style={{ left: `${(editorTime / duration) * 100}%` }} />
                     </>
                   )}
@@ -1506,6 +1654,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   <button type="button" onClick={() => setTextOpen(true)} className="flex-1 rounded-md border border-dashed border-white/40 py-2 text-xs text-white/80">
                     + Text
                   </button>
+                  {cuts.length > 0 && (
+                    <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
+                      {removed.includes(Math.round((segmentPoints(duration)[Math.max(0, segmentIndexAt(segmentPoints(duration), editorTime))] ?? 0) * 100)) ? "Restore part" : "Remove part"}
+                    </button>
+                  )}
                 </div>
               </div>
               {editorPanel && (
@@ -1565,8 +1718,16 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   { label: "Speed", icon: Gauge, on: editorPanel === "speed", action: () => togglePanel("speed") },
                   { label: "Crop", icon: Crop, on: editorPanel === "crop", action: () => togglePanel("crop") },
                   { label: "Mirror", icon: FlipHorizontal2, on: mirror, action: () => setMirror((m) => !m) },
-                  { label: "Reverse", icon: Repeat2, on: false, action: () => toast("Reverse isn't available in this version") },
-                  { label: "Split", icon: Scissors, on: false, action: () => toast("Split isn't available in this version") },
+                  {
+                    label: "Reverse",
+                    icon: Repeat2,
+                    on: reversed,
+                    action: () => {
+                      setReversed((r) => !r);
+                      toast(reversed ? "Normal playback" : "Reverse playback");
+                    },
+                  },
+                  { label: "Split", icon: Scissors, on: cuts.length > 0, action: splitAtPlayhead },
                   {
                     label: "Cover",
                     icon: ImagePlus,
