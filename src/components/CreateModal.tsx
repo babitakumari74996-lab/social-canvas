@@ -533,6 +533,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Playback progress of the reel preview, shown on the thin bar under the video.
   const [previewProgress, setPreviewProgress] = useState(0);
   const previewVideo = useRef<HTMLVideoElement>(null);
+  const [previewFlash, setPreviewFlash] = useState<"play" | "pause" | null>(null);
   // Preview plays the clip's own sound. If the browser blocks sound, fall back to muted playback.
   useEffect(() => {
     if (step !== "preview" || !draft.previews[0]) return;
@@ -768,7 +769,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 <MoreHorizontal className="h-6 w-6" />
               </button>
             </div>
-            <div className="relative flex-1 min-h-0">
+            <div
+              className="relative flex-1 min-h-0"
+              onClick={(e) => {
+                // Tapping the video anywhere plays or pauses it (the buttons on top keep their own clicks).
+                if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
+                const v = previewVideo.current;
+                if (!v) return;
+                if (v.paused) {
+                  v.play().catch(() => {});
+                  setPreviewFlash("play");
+                } else {
+                  v.pause();
+                  setPreviewFlash("pause");
+                }
+                window.setTimeout(() => setPreviewFlash(null), 600);
+              }}
+            >
               {greenScene && <img src={greenScene} alt="" className="absolute inset-0 h-full w-full object-cover" />}
               <video
                 ref={previewVideo}
@@ -793,6 +810,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
                 }}
               />
+              {previewFlash && (
+                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                  {previewFlash === "play" ? (
+                    <Play className="h-16 w-16 text-white/90 fill-white/90" />
+                  ) : (
+                    <Pause className="h-16 w-16 text-white/90 fill-white/90" />
+                  )}
+                </div>
+              )}
               {musicTrack && (
                 <div className="absolute left-1/2 top-3 flex max-w-[80%] -translate-x-1/2 items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold">
                   <Music2 className="h-3.5 w-3.5 shrink-0" />
