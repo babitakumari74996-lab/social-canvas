@@ -594,6 +594,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [splitPending, setSplitPending] = useState<number | null>(null);
   const [cardScale, setCardScale] = useState(1);
   const [cardRot, setCardRot] = useState(0);
+  const [splitMode, setSplitMode] = useState<"split" | "remove">("split");
+  const [audioRange, setAudioRange] = useState<{ start: number; end: number }>({ start: 0, end: Number.POSITIVE_INFINITY });
+  const [previewTime, setPreviewTime] = useState(0);
+  const barMoved = useRef(false);
   const CROP_RATIOS: Record<string, number> = { "9:16": 9 / 16, "1:1": 1, "4:5": 4 / 5, "16:9": 16 / 9 };
   // Largest frame of the given shape inside the video box (container units keep the shape exact).
   const cropFrameStyle = (a: string): React.CSSProperties => {
@@ -601,7 +605,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     return { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: `min(100cqw, calc(100cqh * ${r}))`, height: `min(100cqh, calc(100cqw / ${r}))` };
   };
   const [mirror, setMirror] = useState(false);
-  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number; scale?: number; rot?: number }[]>([]);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number; scale?: number; rot?: number; start?: number; end?: number }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
@@ -669,11 +673,30 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!musicTrack?.previewUrl) return;
     const a = getMusic();
     if (playing) {
+      if (v && (v.currentTime < audioRange.start - 0.05 || v.currentTime > audioRange.end + 0.05)) {
+        a.pause();
+        return;
+      }
       const t = musicTarget(v?.currentTime ?? 0);
       if (Math.abs(a.currentTime - t) > 0.3) a.currentTime = t;
       a.play().catch(() => {});
     } else {
       a.pause();
+    }
+  };
+  // Keeps the song in step with the video: only inside the song's time range, at the right position.
+  const followMusic = (v: HTMLVideoElement) => {
+    const a = musicRef.current;
+    if (!a || !musicTrack?.previewUrl) return;
+    const inside = v.currentTime >= audioRange.start - 0.05 && v.currentTime <= audioRange.end + 0.05;
+    if (!inside || v.paused) {
+      if (!a.paused) a.pause();
+      return;
+    }
+    if (a.paused) syncMusic(v, true);
+    else {
+      const tt = musicTarget(v.currentTime);
+      if (Math.abs(a.currentTime - tt) > 0.4) a.currentTime = tt;
     }
   };
   useEffect(() => {
@@ -695,8 +718,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // overlay (Mix, Effects, Editor) opens or closes, so the sound comes back afterwards.
   useEffect(() => {
     const v = previewVideo.current;
+    const m = mixVideo.current;
+    if (m) {
+      m.volume = originalVolume;
+      m.muted = true; // visual copy only; the preview video carries the sound
+    }
     if (v) {
       v.volume = originalVolume;
+      // While the Mix sheet is open its (visible) video carries the sound; the preview stays silent behind it.
       v.muted = !keepOriginalSound;
       setPreviewMuted(!keepOriginalSound);
       // A song that was playing with the clip keeps playing when the overlay closes.
@@ -725,7 +754,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const musicTarget = (videoTime: number) => {
     const a = getMusic();
     const len = isFinite(a.duration) && a.duration > 0 ? a.duration : 30;
-    return (musicStart + videoTime) % len;
+    return (musicStart + Math.max(0, videoTime - audioRange.start)) % len;
   };
 
   // Reverse playback, split cuts and removed parts (edited on the timeline).
@@ -733,50 +762,133 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [revRunning, setRevRunning] = useState(false);
   const [cuts, setCuts] = useState<number[]>([]);
   const [removed, setRemoved] = useState<number[]>([]); // segment start times in hundredths of a second
-  // Reverse playback: browsers can't play a video backwards, so the position is stepped back one seek at a
-  // time. The next step waits for the previous seek to land (a seek that is cut off never draws its frame),
-  // with a timer as a fallback so playback can't stall.
-  const revRaf = useRef<number | null>(null); // non-null while reverse playback is running
-  const revTimer = useRef<number | null>(null);
-  const revSeekCleanup = useRef<(() => void) | null>(null);
-  const revLast = useRef(0);
-  const revPos = useRef(0);
+  // Reverse, Facebook style: the clip is decoded once into a reversed sequence of frames (a loader shows
+  // meanwhile), then played from those frames. Seeking backwards frame by frame is what made it stall.
+  const revRaf = useRef<number | null>(null);
+  const revCache = useRef<{ key: string; frames: string[]; imgs: HTMLImageElement[]; times: number[] } | null>(null);
+  const revCanvas = useRef<HTMLCanvasElement>(null);
+  const [revBusy, setRevBusy] = useState<number | null>(null);
+  const seekTo = (vid: HTMLVideoElement, t: number) =>
+    new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        vid.removeEventListener("seeked", finish);
+        resolve();
+      };
+      vid.addEventListener("seeked", finish);
+      vid.currentTime = t;
+      window.setTimeout(finish, 1500);
+    });
+  const loadVideo = (src: string) =>
+    new Promise<HTMLVideoElement>((resolve, reject) => {
+      const w = document.createElement("video");
+      w.muted = true;
+      w.playsInline = true;
+      w.preload = "auto";
+      w.onloadeddata = () => resolve(w);
+      w.onerror = () => reject(new Error("load"));
+      w.src = src;
+    });
   const stopReverse = () => {
-    if (revTimer.current !== null) window.clearTimeout(revTimer.current);
-    revTimer.current = null;
-    revSeekCleanup.current?.();
-    revSeekCleanup.current = null;
+    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
     revRaf.current = null;
     setRevRunning(false);
     setEditorPlaying(false);
   };
-  const startReverse = (v: HTMLVideoElement) => {
+  const buildReverse = async (): Promise<boolean> => {
+    if (trimEndT - trimStart > 30.5) {
+      toast("Reverse works for clips up to 30 seconds");
+      return false;
+    }
+    const pts = segmentPoints(duration);
+    const key = `${draft.previews[0]}|${pts.join(",")}|${removed.join(",")}`;
+    if (revCache.current?.key === key) return true;
+    // Kept parts, last first, each played backwards at 12 frames a second.
+    const times: number[] = [];
+    for (let i = pts.length - 2; i >= 0; i--) {
+      if (isRemovedSeg(pts, i)) continue;
+      const a = pts[i];
+      const b = pts[i + 1];
+      const n = Math.max(1, Math.round((b - a) * 12));
+      for (let k = n - 1; k >= 0; k--) times.push(a + ((k + 0.5) / n) * (b - a));
+    }
+    if (times.length === 0) {
+      toast("Nothing left to play");
+      return false;
+    }
+    setRevBusy(0);
+    try {
+      const work = await loadVideo(draft.previews[0]);
+      const W = 360;
+      const H = Math.round(W * ((work.videoHeight || 1) / (work.videoWidth || 1)));
+      const c = document.createElement("canvas");
+      c.width = W;
+      c.height = H;
+      const ctx = c.getContext("2d");
+      if (!ctx) return false;
+      const frames: string[] = [];
+      for (let i = 0; i < times.length; i++) {
+        await seekTo(work, times[i]);
+        ctx.drawImage(work, 0, 0, W, H);
+        const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.8));
+        frames.push(blob ? URL.createObjectURL(blob) : "");
+        if (i % 4 === 0) setRevBusy(Math.round((i / times.length) * 100));
+      }
+      const imgs = await Promise.all(
+        frames.map(
+          (u) =>
+            new Promise<HTMLImageElement>((res) => {
+              const im = new Image();
+              im.onload = () => res(im);
+              im.onerror = () => res(im);
+              im.src = u;
+            }),
+        ),
+      );
+      revCache.current?.frames.forEach((u) => u && URL.revokeObjectURL(u));
+      revCache.current = { key, frames, imgs, times };
+      return true;
+    } catch {
+      toast("Couldn't reverse this clip");
+      return false;
+    } finally {
+      setRevBusy(null);
+    }
+  };
+  const startReverse = async (v: HTMLVideoElement) => {
     v.pause();
-    revLast.current = performance.now();
-    revPos.current = v.currentTime;
+    musicRef.current?.pause();
+    setReversed(true);
+    const ok = await buildReverse();
+    if (!ok) {
+      setReversed(false);
+      return;
+    }
+    const cache = revCache.current;
+    const c = revCanvas.current;
+    if (!cache || !c) return;
+    const ctx = c.getContext("2d");
+    const n = cache.imgs.length;
+    if (!ctx || n === 0) return;
+    c.width = cache.imgs[0].naturalWidth || 360;
+    c.height = cache.imgs[0].naturalHeight || 640;
+    const t0 = performance.now();
+    let last = -1;
     setRevRunning(true);
     setEditorPlaying(true);
-    revRaf.current = 1;
-    const step = () => {
-      if (revRaf.current === null) return;
-      const now = performance.now();
-      const dt = Math.min(0.25, (now - revLast.current) / 1000);
-      revLast.current = now;
-      // A pending seek is left alone: setting currentTime again cancels it, and the frame never draws.
-      if (!v.seeking) {
-        const end = (trimEnd || duration || v.duration) as number;
-        let t = revPos.current - dt * speed;
-        if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
-        revPos.current = t;
-        v.currentTime = t;
+    const tick = () => {
+      const k = Math.floor(((performance.now() - t0) / 1000) * 12 * speed) % n;
+      if (k !== last) {
+        last = k;
+        const im = cache.imgs[k];
+        if (im && im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, c.width, c.height);
+        setEditorTime(cache.times[k]);
       }
-      if (revTimer.current !== null) window.clearTimeout(revTimer.current);
-      revTimer.current = window.setTimeout(step, 400);
+      revRaf.current = requestAnimationFrame(tick);
     };
-    const onSeeked = () => step();
-    v.addEventListener("seeked", onSeeked);
-    revSeekCleanup.current = () => v.removeEventListener("seeked", onSeeked);
-    step();
+    revRaf.current = requestAnimationFrame(tick);
   };
   const toggleReverse = (v: HTMLVideoElement) => {
     if (revRaf.current !== null) stopReverse();
@@ -786,9 +898,57 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!reversed || !editorOpen) stopReverse();
   }, [reversed, editorOpen]);
   useEffect(() => () => {
-    if (revTimer.current !== null) window.clearTimeout(revTimer.current);
-    revSeekCleanup.current?.();
+    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
   }, []);
+  // Auto trim: the 15 seconds with the most movement in the clip.
+  const autoTrim = async () => {
+    const d = duration;
+    if (!(d > 0)) return;
+    const win = Math.min(15, d);
+    if (d <= win + 0.05) {
+      toast("This clip is already 15 seconds or shorter");
+      return;
+    }
+    toast("Finding the best 15 seconds…");
+    try {
+      const work = await loadVideo(draft.previews[0]);
+      const c = document.createElement("canvas");
+      c.width = 32;
+      c.height = 18;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      const steps = Math.min(60, Math.max(4, Math.ceil(d * 2)));
+      const per = d / steps;
+      let prev: Uint8ClampedArray | null = null;
+      const motion: number[] = [];
+      for (let k = 0; k < steps; k++) {
+        await seekTo(work, (k + 0.5) * per);
+        ctx.drawImage(work, 0, 0, 32, 18);
+        const px = ctx.getImageData(0, 0, 32, 18).data;
+        let m = 0;
+        if (prev) for (let q = 0; q < px.length; q += 4) m += Math.abs(px[q] - prev[q]) + Math.abs(px[q + 1] - prev[q + 1]) + Math.abs(px[q + 2] - prev[q + 2]);
+        motion.push(m);
+        prev = px;
+      }
+      const w = Math.max(1, Math.round(win / per));
+      let cur = motion.slice(0, w).reduce((a, b) => a + b, 0);
+      let best = cur;
+      let bestI = 0;
+      for (let k = 1; k + w <= motion.length; k++) {
+        cur += motion[k + w - 1] - motion[k - 1];
+        if (cur > best) {
+          best = cur;
+          bestI = k;
+        }
+      }
+      const st = Math.round(bestI * per * 10) / 10;
+      setTrimStart(st);
+      setTrimEnd(Math.min(d, Math.round((st + win) * 10) / 10));
+      toast(`Auto trim: ${st.toFixed(1)}s to ${(st + win).toFixed(1)}s`);
+    } catch {
+      toast("Auto trim failed");
+    }
+  };
   // Timeline pieces: the trimmed clip cut at each split point.
   const segmentPoints = (dur: number) => {
     const end = trimEnd || dur;
@@ -810,24 +970,80 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     while (j < pts.length - 1 && isRemovedSeg(pts, j)) j++;
     v.currentTime = j < pts.length - 1 ? pts[j] : trimStart;
   };
-  // Split: tap two points on the strip; the part between them is removed from the reel.
+  // Split: a tap on the strip cuts the clip there. In Remove mode, tapping a slice removes it (tap again to restore).
   const splitTap = (t: number) => {
-    if (splitPending === null) {
-      setSplitPending(t);
+    const ct = Math.round(t * 100) / 100;
+    if (ct <= trimStart + 0.1 || ct >= trimEndT - 0.1) {
+      toast("Tap inside the clip to split");
       return;
     }
-    const a = Math.min(splitPending, t);
-    const b = Math.max(splitPending, t);
-    setSplitPending(null);
-    if (b - a < 0.2) {
-      toast("Tap two different points");
-      return;
-    }
-    const ra = Math.round(a * 100) / 100;
-    const rb = Math.round(b * 100) / 100;
-    setCuts((c) => [...c, ra, rb]);
-    setRemoved((r) => [...r, Math.round(ra * 100)]);
-    toast(`Removed ${(rb - ra).toFixed(1)}s`);
+    if (cuts.some((c) => Math.abs(c - ct) < 0.1)) return;
+    const pts = segmentPoints(duration);
+    const idx = segmentIndexAt(pts, ct);
+    const inRemoved = idx >= 0 && isRemovedSeg(pts, idx);
+    setCuts((c) => [...c, ct]);
+    // Cutting inside a removed slice keeps both halves removed.
+    if (inRemoved) setRemoved((r) => [...r, Math.round(ct * 100)]);
+    toast(`Split at ${ct.toFixed(1)}s`);
+  };
+  const toggleSlide = (i: number) => {
+    const pts = segmentPoints(duration);
+    const key = Math.round(pts[i] * 100);
+    setRemoved((r) => (r.includes(key) ? r.filter((x) => x !== key) : [...r, key]));
+  };
+  // A timeline bar (audio or text): drag it to move, drag its ends to change its start or end.
+  const startBarDrag = (ev: React.PointerEvent<HTMLElement>, mode: "move" | "start" | "end", s0: number, e0: number, set: (a: number, b: number) => void) => {
+    ev.stopPropagation();
+    const track = ev.currentTarget.closest("[data-timeline-track]") as HTMLElement | null;
+    if (!track) return;
+    const r = track.getBoundingClientRect();
+    const span = Math.max(0.01, trimEndT - trimStart);
+    const sx = ev.clientX;
+    barMoved.current = false;
+    const move = (m: PointerEvent) => {
+      const dx = m.clientX - sx;
+      if (Math.abs(dx) > 3) barMoved.current = true;
+      const dt = (dx / r.width) * span;
+      const len = e0 - s0;
+      if (mode === "move") {
+        const ns = Math.max(trimStart, Math.min(trimEndT - len, s0 + dt));
+        set(ns, ns + len);
+      } else if (mode === "start") set(Math.max(trimStart, Math.min(e0 - 0.3, s0 + dt)), e0);
+      else set(s0, Math.min(trimEndT, Math.max(s0 + 0.3, e0 + dt)));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void) => {
+    const span = Math.max(0.01, trimEndT - trimStart);
+    const left = ((s - trimStart) / span) * 100;
+    const width = ((Math.min(e, trimEndT) - s) / span) * 100;
+    return (
+      <div key={key} data-timeline-track className="relative h-8 min-w-0 flex-1 rounded-md bg-white/10">
+        <div
+          className={`absolute top-0 flex h-full touch-none select-none items-center overflow-hidden rounded-md ${color}`}
+          style={{ left: `${left}%`, width: `${Math.max(4, width)}%` }}
+          onPointerDown={(ev) => startBarDrag(ev, "move", s, e, set)}
+          onClick={() => {
+            if (barMoved.current) {
+              barMoved.current = false;
+              return;
+            }
+            onTap?.();
+          }}
+        >
+          <span onPointerDown={(ev) => startBarDrag(ev, "start", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-white/50" />
+          <span className="min-w-0 flex-1 truncate px-2 text-[11px] font-semibold">{label}</span>
+          <span onPointerDown={(ev) => startBarDrag(ev, "end", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-white/50" />
+        </div>
+      </div>
+    );
   };
   // Dragging the trim handles of the Adjust clip strip.
   const startTrimDrag = (e: React.PointerEvent<HTMLElement>, which: "start" | "end") => {
@@ -955,6 +1171,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   }, [editorOpen]);
 
   // Text, sticker and image overlays. Shown on the preview and in the editor.
+  // Text and stickers with a time range show only while the reel plays through that range.
+  const overlayVisible = (o: (typeof overlays)[number]) => {
+    if (editorOpen && !editorPlaying) return true;
+    const t = editorOpen ? editorTime : previewTime;
+    if (o.start !== undefined && t < o.start - 0.05) return false;
+    if (o.end !== undefined && t > o.end + 0.05) return false;
+    return true;
+  };
   // Two-finger pinch on a sticker, text or the song card scales and rotates it.
   const ptrs = useRef(new Map<number, { x: number; y: number; target: string }>());
   const pinchRef = useRef<{ id: string; base: { d: number; a: number; s: number; r: number } } | null>(null);
@@ -1002,7 +1226,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   }, []);
   const renderOverlays = () => (
     <>
-    {overlays.map((o, i) => (
+    {overlays.map((o, i) => !overlayVisible(o) ? null : (
       <button
         key={o.id}
         type="button"
@@ -1496,11 +1720,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   const m = mixVideo.current;
                   if (m && Math.abs(m.currentTime - v.currentTime) > 0.3) m.currentTime = v.currentTime;
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
-                  const a = musicRef.current;
-                  if (a && musicTrack?.previewUrl && !a.paused) {
-                    const tt = musicTarget(v.currentTime);
-                    if (Math.abs(a.currentTime - tt) > 0.4) a.currentTime = tt;
-                  }
+                  setPreviewTime(v.currentTime);
+                  followMusic(v);
                   skipRemoved(v);
                 }}
               />
@@ -1572,6 +1793,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               selectedId={musicTrack?.id ?? null}
               onClose={leaveMusic}
               onSelect={(t) => {
+                // Tapping a song is a user gesture: unlock the song's audio element so it can play later.
+                const a = getMusic();
+                a.src = t.previewUrl ?? "";
+                a.play().then(() => a.pause()).catch(() => {});
                 setMusicTrack(t);
                 toast(`Music: ${t.title}`);
                 leaveMusic();
@@ -1621,7 +1846,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     <SvSlider value={originalVolume} min={0} max={1} step={0.05} thickness={4} ariaLabel="Original sound volume" onChange={(v) => {
                       setOriginalVolume(v);
                       if (previewVideo.current) previewVideo.current.volume = v;
-                      if (v > 0 && !keepOriginalSound) setKeepOriginalSound(true);
+                      setKeepOriginalSound(v > 0);
                     }} />
                   </div>
                   <button
@@ -1629,7 +1854,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     onClick={() => {
                       const on = !keepOriginalSound;
                       setKeepOriginalSound(on);
-                      if (previewVideo.current) previewVideo.current.muted = !on;
+                      // "On" after the slider was dragged to 0 must bring the sound back, not stay silent.
+                      if (on && originalVolume === 0) setOriginalVolume(1);
                       setPreviewMuted(!on);
                     }}
                     className="w-14 text-right text-sm font-semibold text-[#60a5fa]"
@@ -1873,7 +2099,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     src={draft.previews[0]}
                     muted={previewMuted}
                     playsInline
-                    className={`absolute inset-0 h-full w-full ${cropAspect === "original" ? "object-contain" : "object-cover"}`}
+                    className={`absolute inset-0 h-full w-full ${reversed ? "invisible" : ""} ${cropAspect === "original" ? "object-contain" : "object-cover"}`}
                     style={filmStyle()}
                     onLoadedMetadata={(e) => {
                       const d = e.currentTarget.duration;
@@ -1890,6 +2116,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     onTimeUpdate={(e) => {
                       const v = e.currentTarget;
                       setEditorTime(v.currentTime);
+                      followMusic(v);
                       // Loop inside the trimmed range.
                       const end = trimEnd || duration;
                       if (end > trimStart + 0.1 && (v.currentTime >= end || v.currentTime < trimStart)) v.currentTime = trimStart;
@@ -1904,6 +2131,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       musicRef.current?.pause();
                     }}
                   />
+                    <canvas ref={revCanvas} className={`absolute inset-0 h-full w-full object-contain ${reversed ? "" : "hidden"}`} />
+                    {revBusy !== null && (
+                      <div className="absolute inset-0 z-10 grid place-items-center bg-black/70">
+                        <p className="text-sm font-semibold">Reversing video… {revBusy}%</p>
+                      </div>
+                    )}
                     {renderOverlays()}
                   </div>
                 </div>
@@ -2074,35 +2307,97 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                 </div>
               )}
+              <div className="space-y-2 px-4 pt-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-12 shrink-0 text-[11px] text-white/70">Audio</span>
+                  {musicTrack ? (
+                    timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]")
+                  ) : (
+                    <button type="button" onClick={() => setMusicOpen(true)} className="h-8 flex-1 rounded-md border border-dashed border-white/30 text-xs text-white/70">
+                      + Audio
+                    </button>
+                  )}
+                </div>
+                {overlays.filter((o) => o.kind === "text").length === 0 ? (
+                  <div className="flex items-center gap-2">
+                    <span className="w-12 shrink-0 text-[11px] text-white/70">Text</span>
+                    <button type="button" onClick={() => setTextOpen(true)} className="h-8 flex-1 rounded-md border border-dashed border-white/30 text-xs text-white/70">
+                      + Text
+                    </button>
+                  </div>
+                ) : (
+                  overlays
+                    .filter((o) => o.kind === "text")
+                    .map((o) => (
+                      <div key={`tt${o.id}`} className="flex items-center gap-2">
+                        <span className="w-12 shrink-0 text-[11px] text-white/70">Text</span>
+                        {timelineBar(
+                          `t${o.id}`,
+                          o.value,
+                          o.start ?? trimStart,
+                          Math.min(o.end ?? trimEndT, trimEndT),
+                          (a, b) => setOverlays((list) => list.map((x) => (x.id === o.id ? { ...x, start: a, end: b } : x))),
+                          "bg-[#7c3aed]",
+                          () => {
+                            setEditingOverlayId(o.id);
+                            setOverlayText(o.value);
+                            setOverlayColor(o.color);
+                            setTextFont(o.font ?? "sans");
+                            setTextAlign(o.align ?? "center");
+                            setTextOpen(true);
+                          },
+                        )}
+                      </div>
+                    ))
+                )}
+              </div>
               {editorPanel === "split" && (
                 <div className="mt-3 px-5">
-                  <p className="mb-2 text-center text-xs text-white/70">
-                    {splitPending === null ? "Tap two points on the clip. The part between them is removed." : `Now tap the second point (first at ${splitPending.toFixed(1)}s)`}
+                  <div className="mb-2 flex justify-center gap-2">
+                    {(["split", "remove"] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setSplitMode(m)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-semibold ${splitMode === m ? "bg-white text-black" : "bg-white/10"}`}
+                      >
+                        {m === "split" ? "Split here" : "Remove slice"}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mb-2 text-center text-xs text-white/60">
+                    {splitMode === "split" ? "Tap the clip where you want to cut it." : "Tap a slice to remove it. Tap it again to bring it back."}
                   </p>
                   <div
-                    className="relative h-14 cursor-pointer overflow-hidden rounded-md border-2 border-[#facc15] bg-zinc-700"
+                    className="relative flex h-14 overflow-hidden rounded-md border-2 border-[#facc15] bg-zinc-700"
                     onClick={(e) => {
+                      if (splitMode !== "split") return;
                       const r = e.currentTarget.getBoundingClientRect();
-                      const span = trimEndT - trimStart;
-                      if (span <= 0) return;
-                      splitTap(trimStart + ((e.clientX - r.left) / r.width) * span);
+                      splitTap(trimStart + ((e.clientX - r.left) / r.width) * Math.max(0.01, trimEndT - trimStart));
                     }}
                   >
                     {(() => {
                       const pts = segmentPoints(duration);
-                      const span = trimEndT - trimStart;
-                      return pts.slice(0, -1).map((p, i) =>
-                        isRemovedSeg(pts, i) ? (
-                          <div key={`rm${i}`} className="absolute inset-y-0 bg-black/75" style={{ left: `${((p - trimStart) / span) * 100}%`, width: `${((pts[i + 1] - p) / span) * 100}%` }} />
-                        ) : null,
-                      );
+                      const span = Math.max(0.01, trimEndT - trimStart);
+                      return pts.slice(0, -1).map((p, i) => {
+                        const gone = isRemovedSeg(pts, i);
+                        return (
+                          <button
+                            key={`s${p}`}
+                            type="button"
+                            onClick={(e) => {
+                              if (splitMode !== "remove") return;
+                              e.stopPropagation();
+                              toggleSlide(i);
+                            }}
+                            style={{ width: `${((pts[i + 1] - p) / span) * 100}%` }}
+                            className={`relative h-full shrink-0 border-r-2 border-[#facc15]/80 ${gone ? "bg-black" : "bg-zinc-600"}`}
+                          >
+                            {gone && <span className="absolute inset-0 grid place-items-center text-[10px] text-white/50">Removed</span>}
+                          </button>
+                        );
+                      });
                     })()}
-                    {cuts.map((c) => (
-                      <div key={`cut${c}`} className="absolute inset-y-0 w-0.5 bg-white" style={{ left: `${((c - trimStart) / (trimEndT - trimStart)) * 100}%` }} />
-                    ))}
-                    {splitPending !== null && (
-                      <div className="absolute inset-y-0 w-1 bg-[#60a5fa]" style={{ left: `${((splitPending - trimStart) / (trimEndT - trimStart)) * 100}%` }} />
-                    )}
                   </div>
                   <div className="mt-2 flex justify-between text-[11px] text-white/60">
                     <span>{trimStart.toFixed(1)}s</span>
@@ -2224,7 +2519,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </button>
                   </div>
                   <div className="flex min-h-0 flex-1 items-center justify-center px-6">
-                    <div className="relative aspect-[9/16] max-h-full overflow-hidden rounded-xl bg-black">
+                    <div className="relative h-[46vh] max-h-[520px] aspect-[9/16] overflow-hidden rounded-xl bg-black">
                       <video
                         src={draft.previews[0]}
                         muted
@@ -2237,6 +2532,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                           if (trimEndT > trimStart && (v.currentTime >= trimEndT || v.currentTime < trimStart)) v.currentTime = trimStart;
                         }}
                       />
+                      {renderOverlays()}
                     </div>
                   </div>
                   <p className="text-center text-base font-semibold">Adjust clip</p>
@@ -2267,7 +2563,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                   <p className="px-8 text-center text-sm text-white/60">Focus on the part of your clip you want included in your reel.</p>
                   <div className="mt-auto flex justify-between px-8 pb-8 pt-6 text-sm">
-                    <button type="button" onClick={() => { setTrimStart(0); setTrimEnd(Math.min(duration, 15)); }} className="flex flex-col items-center gap-1.5">
+                    <button type="button" onClick={() => autoTrim()} className="flex flex-col items-center gap-1.5">
                       <Scissors className="h-6 w-6" />
                       Auto trim
                     </button>
@@ -2301,7 +2597,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       <Check className="h-5 w-5" />
                     </button>
                   </div>
-                  <div className="relative min-h-0 flex-1">
+                  <div className="relative h-[50vh] shrink-0">
                     <div className="absolute inset-0" style={{ containerType: "size" }}>
                       <div className="absolute overflow-hidden bg-black" style={cropAspect === "original" ? { inset: 0 } : cropFrameStyle(cropAspect)}>
                         <video
@@ -2319,6 +2615,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                           ))}
                         </div>
                         <div className="pointer-events-none absolute inset-0 border-2 border-white" />
+                        {renderOverlays()}
                       </div>
                     </div>
                   </div>
@@ -2647,6 +2944,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                 </div>
               )}
+              {renderOverlays()}
               <div className="relative mt-auto flex flex-col gap-5 pb-6">
                 <div className="flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {(["All", ...EFFECT_REGIONS] as const).map((r) => (
