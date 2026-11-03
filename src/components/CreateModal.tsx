@@ -768,6 +768,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const revRaf = useRef<number | null>(null);
   const revCache = useRef<{ key: string; frames: string[]; imgs: HTMLImageElement[]; times: number[] } | null>(null);
   const revCanvas = useRef<HTMLCanvasElement>(null);
+  const revPreviewCanvas = useRef<HTMLCanvasElement>(null); // the reversed frames on the Add audio screen
   const [revBusy, setRevBusy] = useState<number | null>(null);
   const seekTo = (vid: HTMLVideoElement, t: number) =>
     new Promise<void>((resolve) => {
@@ -868,23 +869,27 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       return;
     }
     const cache = revCache.current;
-    const c = revCanvas.current;
-    if (!cache || !c) return;
-    const ctx = c.getContext("2d");
+    if (!cache || cache.imgs.length === 0) return;
     const n = cache.imgs.length;
-    if (!ctx || n === 0) return;
-    c.width = cache.imgs[0].naturalWidth || 360;
-    c.height = cache.imgs[0].naturalHeight || 640;
     const t0 = performance.now();
     let last = -1;
+    let shown: HTMLCanvasElement | null = null;
     setRevRunning(true);
     setEditorPlaying(true);
     const tick = () => {
+      // Draw to the editor's canvas, or to the Add audio screen's canvas when the editor is closed.
+      const c = revCanvas.current ?? revPreviewCanvas.current;
+      if (c && c !== shown) {
+        shown = c;
+        c.width = cache.imgs[0].naturalWidth || 360;
+        c.height = cache.imgs[0].naturalHeight || 640;
+        last = -1;
+      }
       const k = Math.floor(((performance.now() - t0) / 1000) * 12 * speed) % n;
       if (k !== last) {
         last = k;
         const im = cache.imgs[k];
-        if (im && im.complete && im.naturalWidth) ctx.drawImage(im, 0, 0, c.width, c.height);
+        if (c && im && im.complete && im.naturalWidth) c.getContext("2d")?.drawImage(im, 0, 0, c.width, c.height);
         setEditorTime(cache.times[k]);
       }
       revRaf.current = requestAnimationFrame(tick);
@@ -896,8 +901,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     else startReverse(v);
   };
   useEffect(() => {
-    if (!reversed || !editorOpen) stopReverse();
-  }, [reversed, editorOpen]);
+    if (!reversed || !open) stopReverse();
+  }, [reversed, open]);
   useEffect(() => () => {
     if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
   }, []);
@@ -1740,11 +1745,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               }}
             >
               {greenScene && <img src={greenScene} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+              <canvas ref={revPreviewCanvas} className={`pointer-events-none absolute inset-0 h-full w-full object-contain ${reversed ? "" : "hidden"}`} />
               <video
                 ref={previewVideo}
                 key={draft.previews[0]}
                 src={draft.previews[0]}
-                className={`absolute inset-0 h-full w-full ${crop === "fill" ? "object-cover" : "object-contain"}`}
+                className={`absolute inset-0 h-full w-full ${reversed ? "invisible" : ""} ${crop === "fill" ? "object-cover" : "object-contain"}`}
                 style={{
                   filter: videoFilter === "none" ? undefined : videoFilter,
                   transform: mirror ? "scaleX(-1)" : undefined,
