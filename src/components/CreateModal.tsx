@@ -2613,7 +2613,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       <Check className="h-5 w-5" />
                     </button>
                   </div>
-                  <div className="relative h-[50vh] shrink-0">
+                  <div className="relative min-h-0 flex-1">
                     <div className="absolute inset-0" style={{ containerType: "size" }}>
                       <div className="absolute overflow-hidden bg-black" style={cropAspect === "original" ? { inset: 0 } : cropFrameStyle(cropAspect)}>
                         <video
