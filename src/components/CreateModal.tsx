@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { Minus, RefreshCw, ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -2589,8 +2590,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                 </div>
               )}
-              {cropOpen && (
-                <div className="absolute inset-0 z-[86] flex flex-col bg-black text-white">
+              {cropOpen && createPortal(
+                <div className="fixed inset-0 z-[120] flex flex-col bg-black text-white">
                   <div className="flex items-center justify-between px-4 py-3">
                     <button
                       type="button"
@@ -2656,7 +2657,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </div>
                   </div>
                 </div>
-              )}
+              , document.body)}
               {editorAddOpen && (
                 <div className="absolute inset-0 z-[85] flex flex-col justify-end bg-black/60" onClick={() => setEditorAddOpen(false)}>
                   <div className="space-y-3 rounded-t-2xl bg-zinc-900 px-5 pb-8 pt-4" onClick={(e) => e.stopPropagation()}>
