@@ -595,6 +595,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
+  const [musicVolume, setMusicVolume] = useState(1);
+  const [musicMuted, setMusicMuted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [cover, setCover] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -676,6 +678,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   useEffect(() => {
     if (!open) musicRef.current?.pause();
   }, [open]);
+  // One place decides what is audible: the clip's own sound and the song. It is re-applied whenever an
+  // overlay (Mix, Effects, Editor) opens or closes, so the sound comes back afterwards.
+  useEffect(() => {
+    const v = previewVideo.current;
+    if (v) {
+      v.volume = originalVolume;
+      v.muted = !keepOriginalSound;
+      setPreviewMuted(!keepOriginalSound);
+      // A song that was playing with the clip keeps playing when the overlay closes.
+      if (!v.paused && musicTrack?.previewUrl && musicRef.current?.paused) syncMusic(v, true);
+    }
+    const a = musicRef.current;
+    if (a) a.volume = musicMuted ? 0 : musicVolume;
+  }, [mixOpen, effectsOpen, editorOpen, step, keepOriginalSound, originalVolume, musicVolume, musicMuted]);
   // Song card on the video: shown when a song is chosen; drag it, tap it to edit, drop it on the bin to remove.
   const [musicCard, setMusicCard] = useState<{ x: number; y: number } | null>(null);
   const [cardEditOpen, setCardEditOpen] = useState(false);
@@ -733,13 +749,16 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       const now = performance.now();
       const dt = Math.min(0.25, (now - revLast.current) / 1000);
       revLast.current = now;
-      const end = (trimEnd || duration || v.duration) as number;
-      let t = revPos.current - dt * speed;
-      if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
-      revPos.current = t;
-      v.currentTime = t;
+      // A pending seek is left alone: setting currentTime again cancels it, and the frame never draws.
+      if (!v.seeking) {
+        const end = (trimEnd || duration || v.duration) as number;
+        let t = revPos.current - dt * speed;
+        if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
+        revPos.current = t;
+        v.currentTime = t;
+      }
       if (revTimer.current !== null) window.clearTimeout(revTimer.current);
-      revTimer.current = window.setTimeout(step, 200);
+      revTimer.current = window.setTimeout(step, 400);
     };
     const onSeeked = () => step();
     v.addEventListener("seeked", onSeeked);
@@ -1372,14 +1391,18 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   const v = previewVideo.current;
                   if (v) v.playbackRate = speed;
                   voiceRef.current?.play().catch(() => {});
+                  mixVideo.current?.play().catch(() => {});
                   syncMusic(v, true);
                 }}
                 onPause={() => {
                   voiceRef.current?.pause();
+                  mixVideo.current?.pause();
                   musicRef.current?.pause();
                 }}
                 onTimeUpdate={(e) => {
                   const v = e.currentTarget;
+                  const m = mixVideo.current;
+                  if (m && Math.abs(m.currentTime - v.currentTime) > 0.3) m.currentTime = v.currentTime;
                   setPreviewProgress(v.duration > 0 && isFinite(v.duration) ? v.currentTime / v.duration : 0);
                   const a = musicRef.current;
                   if (a && musicTrack?.previewUrl && !a.paused) {
@@ -1479,7 +1502,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 onClick={(e) => {
                   // Tapping anywhere on the video plays or pauses it.
                   if ((e.target as HTMLElement).closest("button, input, textarea, [data-no-tap]")) return;
-                  const v = mixVideo.current;
+                  // The preview video carries the sound; the mix video only mirrors it.
+                  const v = previewVideo.current;
                   if (!v) return;
                   if (v.paused) v.play().catch(() => {});
                   else v.pause();
@@ -1489,7 +1513,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   ref={mixVideo}
                   src={draft.previews[0]}
                   muted
-                  autoPlay
                   loop
                   playsInline
                   className="absolute inset-0 h-full w-full object-contain"
@@ -1506,6 +1529,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     <SvSlider value={originalVolume} min={0} max={1} step={0.05} thickness={4} ariaLabel="Original sound volume" onChange={(v) => {
                       setOriginalVolume(v);
                       if (previewVideo.current) previewVideo.current.volume = v;
+                      if (v > 0 && !keepOriginalSound) setKeepOriginalSound(true);
                     }} />
                   </div>
                   <button
@@ -1552,6 +1576,30 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     {voiceUrl ? "Remove" : "Add"}
                   </button>
                 </div>
+                {musicTrack && (
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">
+                      {musicMuted ? <VolumeX className="h-5 w-5" /> : <Music2 className="h-5 w-5" />}
+                    </span>
+                    <div className="flex-1">
+                      <SvSlider value={musicVolume} min={0} max={1} step={0.05} thickness={4} ariaLabel="Song volume" onChange={(v) => {
+                        setMusicVolume(v);
+                        if (musicRef.current) musicRef.current.volume = v;
+                      }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const on = musicMuted;
+                        setMusicMuted(!on);
+                        if (musicRef.current) musicRef.current.volume = on ? musicVolume : 0;
+                      }}
+                      className="w-14 text-right text-sm font-semibold text-[#60a5fa]"
+                    >
+                      {musicMuted ? "On" : "Mute"}
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-3">
                   <button
                     type="button"
