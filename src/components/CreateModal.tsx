@@ -584,7 +584,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
   // Editor crop: a frame of this shape; the video is cropped to it. "original" leaves the video whole.
   const [cropAspect, setCropAspect] = useState<string>("original");
-  const CROP_RATIOS: Record<string, string> = { "9:16": "9 / 16", "1:1": "1 / 1", "4:5": "4 / 5", "16:9": "16 / 9" };
+  const CROP_RATIOS: Record<string, number> = { "9:16": 9 / 16, "1:1": 1, "4:5": 4 / 5, "16:9": 16 / 9 };
+  // Largest frame of the given shape inside the video box (container units keep the shape exact).
+  const cropFrameStyle = (a: string): React.CSSProperties => {
+    const r = CROP_RATIOS[a];
+    return { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: `min(100cqw, calc(100cqh * ${r}))`, height: `min(100cqh, calc(100cqw / ${r}))` };
+  };
   const [mirror, setMirror] = useState(false);
   const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number }[]>([]);
   const [overlayText, setOverlayText] = useState("");
@@ -699,35 +704,47 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [revRunning, setRevRunning] = useState(false);
   const [cuts, setCuts] = useState<number[]>([]);
   const [removed, setRemoved] = useState<number[]>([]); // segment start times in hundredths of a second
-  const revRaf = useRef<number | null>(null);
+  // Reverse playback: browsers can't play a video backwards, so the position is stepped back one seek at a
+  // time. The next step waits for the previous seek to land (a seek that is cut off never draws its frame),
+  // with a timer as a fallback so playback can't stall.
+  const revRaf = useRef<number | null>(null); // non-null while reverse playback is running
+  const revTimer = useRef<number | null>(null);
+  const revSeekCleanup = useRef<(() => void) | null>(null);
   const revLast = useRef(0);
   const revPos = useRef(0);
   const stopReverse = () => {
-    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
+    if (revTimer.current !== null) window.clearTimeout(revTimer.current);
+    revTimer.current = null;
+    revSeekCleanup.current?.();
+    revSeekCleanup.current = null;
     revRaf.current = null;
     setRevRunning(false);
     setEditorPlaying(false);
   };
-  // Plays the clip backwards by stepping its position each frame (browsers can't play video in reverse).
   const startReverse = (v: HTMLVideoElement) => {
     v.pause();
     revLast.current = performance.now();
     revPos.current = v.currentTime;
     setRevRunning(true);
     setEditorPlaying(true);
-    const tick = (now: number) => {
-      const dt = Math.min(0.1, (now - revLast.current) / 1000);
+    revRaf.current = 1;
+    const step = () => {
+      if (revRaf.current === null) return;
+      const now = performance.now();
+      const dt = Math.min(0.25, (now - revLast.current) / 1000);
       revLast.current = now;
       const end = (trimEnd || duration || v.duration) as number;
-      // The position is kept here, not read back from the video, so it keeps moving while seeks finish.
       let t = revPos.current - dt * speed;
       if (t <= trimStart) t = Math.max(trimStart, end - 0.05);
       revPos.current = t;
-      // A new seek while one is pending cancels it and the frame never draws; wait for the current seek.
-      if (!v.seeking) v.currentTime = t;
-      revRaf.current = requestAnimationFrame(tick);
+      v.currentTime = t;
+      if (revTimer.current !== null) window.clearTimeout(revTimer.current);
+      revTimer.current = window.setTimeout(step, 200);
     };
-    revRaf.current = requestAnimationFrame(tick);
+    const onSeeked = () => step();
+    v.addEventListener("seeked", onSeeked);
+    revSeekCleanup.current = () => v.removeEventListener("seeked", onSeeked);
+    step();
   };
   const toggleReverse = (v: HTMLVideoElement) => {
     if (revRaf.current !== null) stopReverse();
@@ -737,7 +754,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     if (!reversed || !editorOpen) stopReverse();
   }, [reversed, editorOpen]);
   useEffect(() => () => {
-    if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
+    if (revTimer.current !== null) window.clearTimeout(revTimer.current);
+    revSeekCleanup.current?.();
   }, []);
   // Timeline pieces: the trimmed clip cut at each split point.
   const segmentPoints = (dur: number) => {
@@ -1705,10 +1723,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   toggleEditorPlay();
                 }}
               >
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0" style={{ containerType: "size" }}>
                   <div
-                    className="relative max-h-full max-w-full overflow-hidden"
-                    style={cropAspect === "original" ? { width: "100%", height: "100%" } : { aspectRatio: CROP_RATIOS[cropAspect], maxWidth: "100%", maxHeight: "100%", height: "100%" }}
+                    className="absolute overflow-hidden"
+                    style={cropAspect === "original" ? { inset: 0 } : cropFrameStyle(cropAspect)}
                   >
                   <video
                     ref={editorRef}
