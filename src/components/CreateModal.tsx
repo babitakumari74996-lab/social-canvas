@@ -1020,7 +1020,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
-  const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void) => {
+  const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void, artwork?: string) => {
     const span = Math.max(0.01, trimEndT - trimStart);
     const left = ((s - trimStart) / span) * 100;
     const width = ((Math.min(e, trimEndT) - s) / span) * 100;
@@ -1038,9 +1038,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             onTap?.();
           }}
         >
-          <span onPointerDown={(ev) => startBarDrag(ev, "start", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-white/50" />
+          <span onPointerDown={(ev) => startBarDrag(ev, "start", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-black/70" />
+          {artwork && <img src={artwork} alt="" className="my-0.5 h-[calc(100%-4px)] aspect-square shrink-0 rounded object-cover" />}
           <span className="min-w-0 flex-1 truncate px-2 text-[11px] font-semibold">{label}</span>
-          <span onPointerDown={(ev) => startBarDrag(ev, "end", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-white/50" />
+          <span onPointerDown={(ev) => startBarDrag(ev, "end", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-black/70" />
         </div>
       </div>
     );
@@ -2284,9 +2285,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               )}
               <div className="space-y-2 px-4 pt-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-12 shrink-0 text-[11px] text-white/70">Audio</span>
                   {musicTrack ? (
-                    timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]")
+                    timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]", undefined, musicTrack.artwork)
                   ) : (
                     <button type="button" onClick={() => setMusicOpen(true)} className="h-8 flex-1 rounded-md border border-dashed border-white/30 text-xs text-white/70">
                       + Audio
@@ -2295,7 +2295,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </div>
                 {overlays.filter((o) => o.kind === "text").length === 0 ? (
                   <div className="flex items-center gap-2">
-                    <span className="w-12 shrink-0 text-[11px] text-white/70">Text</span>
                     <button type="button" onClick={() => setTextOpen(true)} className="h-8 flex-1 rounded-md border border-dashed border-white/30 text-xs text-white/70">
                       + Text
                     </button>
@@ -2305,14 +2304,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     .filter((o) => o.kind === "text")
                     .map((o) => (
                       <div key={`tt${o.id}`} className="flex items-center gap-2">
-                        <span className="w-12 shrink-0 text-[11px] text-white/70">Text</span>
                         {timelineBar(
                           `t${o.id}`,
                           o.value,
                           o.start ?? trimStart,
                           Math.min(o.end ?? trimEndT, trimEndT),
                           (a, b) => setOverlays((list) => list.map((x) => (x.id === o.id ? { ...x, start: a, end: b } : x))),
-                          "bg-[#7c3aed]",
+                          "bg-[#1877f2]",
                           () => {
                             setEditingOverlayId(o.id);
                             setOverlayText(o.value);
