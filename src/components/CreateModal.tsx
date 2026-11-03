@@ -2236,38 +2236,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </>
                   )}
                 </div>
-                <div className="mt-2 flex gap-2">
-                  <button type="button" onClick={() => setMixOpen(true)} className="flex min-w-0 flex-1 items-center gap-2 rounded-md border border-dashed border-white/40 px-2 py-2 text-left text-xs text-white/80">
-                    {musicTrack ? (
-                      <>
-                        {musicTrack.artwork ? (
-                          <img src={musicTrack.artwork} alt="" className="h-8 w-8 shrink-0 rounded object-cover" />
-                        ) : (
-                          <Music2 className="h-4 w-4 shrink-0" />
-                        )}
-                        <span className="min-w-0 break-words leading-tight">
-                          <span className="font-semibold">{musicTrack.title}</span>
-                          <span className="block text-[10px] text-white/60">{musicTrack.artist}</span>
-                        </span>
-                      </>
-                    ) : (
-                      <span className="w-full text-center">+ Audio</span>
-                    )}
-                  </button>
-                  <button type="button" onClick={() => setTextOpen(true)} className="flex min-w-0 flex-1 items-center justify-center rounded-md border border-dashed border-white/40 px-2 py-2 text-center text-xs text-white/80">
-                    <span className="max-w-full whitespace-pre-line break-words leading-tight">
-                      {(() => {
-                        const lastText = [...overlays].reverse().find((o) => o.kind === "text");
-                        return lastText ? lastText.value : "+ Text";
-                      })()}
-                    </span>
-                  </button>
-                  {cuts.length > 0 && (
+                {cuts.length > 0 && (
+                  <div className="mt-2 flex gap-2">
                     <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
                       {removed.includes(Math.round((segmentPoints(duration)[Math.max(0, segmentIndexAt(segmentPoints(duration), editorTime))] ?? 0) * 100)) ? "Restore part" : "Remove part"}
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
               {editorPanel === "speed" && (
                 <div className="mt-3 space-y-4 px-5 pb-1">
