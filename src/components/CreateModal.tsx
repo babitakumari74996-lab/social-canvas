@@ -1020,6 +1020,36 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
+  // Width of the visible video slide in the editor, so the timeline bars match it.
+  const editorAreaRef = useRef<HTMLDivElement>(null);
+  const [clipBoxW, setClipBoxW] = useState<number | null>(null);
+  const [clipMetaTick, setClipMetaTick] = useState(0);
+  useEffect(() => {
+    if (!editorOpen) return;
+    const measure = () => {
+      const area = editorAreaRef.current;
+      if (!area) return;
+      const r = area.getBoundingClientRect();
+      let w = r.width;
+      if (cropAspect === "original") {
+        const v = editorRef.current;
+        if (v && v.videoWidth && v.videoHeight) w = Math.min(r.width, r.height * (v.videoWidth / v.videoHeight));
+      } else {
+        const frame = area.firstElementChild?.firstElementChild as HTMLElement | null | undefined;
+        if (frame) w = frame.getBoundingClientRect().width;
+      }
+      const next = Math.round(w);
+      setClipBoxW((prev) => (prev === next ? prev : next));
+    };
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" && editorAreaRef.current ? new ResizeObserver(measure) : null;
+    if (ro && editorAreaRef.current) ro.observe(editorAreaRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [editorOpen, cropAspect, reversed, duration, clipMetaTick]);
   const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void, artwork?: string, onRemove?: () => void) => {
     const span = Math.max(0.01, trimEndT - trimStart);
     const left = ((s - trimStart) / span) * 100;
@@ -2097,6 +2127,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 </button>
               </div>
               <div
+                ref={editorAreaRef}
                 className="relative min-h-0 flex-1"
                 onClick={(e) => {
                   // Tap anywhere on the video to play or pause it.
@@ -2117,6 +2148,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     className={`absolute inset-0 h-full w-full ${reversed ? "invisible" : ""} ${cropAspect === "original" ? "object-contain" : "object-cover"}`}
                     style={filmStyle()}
                     onLoadedMetadata={(e) => {
+                      setClipMetaTick((t) => t + 1);
                       const d = e.currentTarget.duration;
                       if (isFinite(d) && d > 0) {
                         // The full-length trim set on load is the starting point, not an edit.
@@ -2297,7 +2329,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                 </div>
               )}
-              <div className="space-y-2 px-4 pt-3">
+              <div
+                className={`mx-auto space-y-2 pt-3 ${clipBoxW ? "" : "px-4"}`}
+                style={clipBoxW ? { width: `${clipBoxW}px`, maxWidth: "100%" } : undefined}
+              >
                 <div className="flex items-center gap-2">
                   {musicTrack ? (
                     timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]", undefined, musicTrack.artwork, () => setMusicTrack(null))
