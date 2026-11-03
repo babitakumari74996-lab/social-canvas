@@ -766,6 +766,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   // Reverse, Facebook style: the clip is decoded once into a reversed sequence of frames (a loader shows
   // meanwhile), then played from those frames. Seeking backwards frame by frame is what made it stall.
   const revRaf = useRef<number | null>(null);
+  const revGen = useRef(0); // bumped on every start and stop, so an older build or loop can't take over
   const revCache = useRef<{ key: string; frames: string[]; imgs: HTMLImageElement[]; times: number[] } | null>(null);
   const revCanvas = useRef<HTMLCanvasElement>(null);
   const revPreviewCanvas = useRef<HTMLCanvasElement>(null); // the reversed frames on the Add audio screen
@@ -794,6 +795,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       w.src = src;
     });
   const stopReverse = () => {
+    revGen.current++;
     if (revRaf.current !== null) cancelAnimationFrame(revRaf.current);
     revRaf.current = null;
     setRevRunning(false);
@@ -860,10 +862,16 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     }
   };
   const startReverse = async (v: HTMLVideoElement) => {
+    const gen = ++revGen.current;
+    if (revRaf.current !== null) {
+      cancelAnimationFrame(revRaf.current);
+      revRaf.current = null;
+    }
     v.pause();
     musicRef.current?.pause();
     setReversed(true);
     const ok = await buildReverse();
+    if (gen !== revGen.current) return; // a newer start or a stop happened while building
     if (!ok) {
       setReversed(false);
       return;
