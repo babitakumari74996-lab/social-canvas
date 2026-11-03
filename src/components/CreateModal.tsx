@@ -2366,6 +2366,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       placePin(trimStart + ((e.clientX - r.left) / r.width) * Math.max(0.01, trimEndT - trimStart));
                     }}
                   >
+                    {frames.length > 0 && duration > 0 && (
+                      // The frames cover the whole clip; this layer shows only the trimmed range.
+                      <div className="pointer-events-none absolute inset-y-0" style={{ left: `${-(trimStart / Math.max(0.01, trimEndT - trimStart)) * 100}%`, width: `${(duration / Math.max(0.01, trimEndT - trimStart)) * 100}%` }}>
+                        {frames.map((f, i) => (
+                          <img key={`fr${i}`} src={f} alt="" draggable={false} className="absolute inset-y-0 h-full object-cover" style={{ left: `${(i / frames.length) * 100}%`, width: `${100 / frames.length}%` }} />
+                        ))}
+                      </div>
+                    )}
                     {(() => {
                       const pts = segmentPoints(duration);
                       const span = Math.max(0.01, trimEndT - trimStart);
@@ -2381,7 +2389,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                               toggleSlide(i);
                             }}
                             style={{ width: `${((pts[i + 1] - p) / span) * 100}%` }}
-                            className={`relative h-full shrink-0 border-r-2 border-[#facc15]/80 ${gone ? "bg-black" : "bg-zinc-600"}`}
+                            className={`relative h-full shrink-0 border-r-2 border-[#facc15]/80 ${gone ? "bg-black" : "bg-transparent"}`}
                           >
                             {gone && <span className="absolute inset-0 grid place-items-center text-[10px] text-white/50">Removed</span>}
                           </button>
