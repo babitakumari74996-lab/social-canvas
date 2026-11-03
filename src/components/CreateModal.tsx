@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { useNavigate } from "@tanstack/react-router";
 import { Minus, RefreshCw, ChevronLeft, ImagePlus, ListVideo, Type as TypeIcon, X, Music2, MapPin, Smile, CalendarClock, Radio, Camera, Check, ChevronDown, Settings, LayoutTemplate, FileText, ScanFace, Sparkles, SwitchCamera, Square, Gauge, Scissors, ArrowRight, MoreHorizontal, Volume2, VolumeX, ChevronRight, Globe, Tag, PlusCircle, Share2, Hash, FlaskConical, Save, Coins, Pause, Play, Plus, Video, SlidersHorizontal, Undo2, Redo2, Repeat2, FlipHorizontal2, AlignLeft, AlignCenter, AlignRight, Clock, Mic, Crop, Search, Trash2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { MediaImg } from "@/components/PostCard";
 import { useActions, dataUrlToFile, useMe } from "@/lib/data";
 import { ui, useUI } from "@/lib/demo-store";
@@ -536,7 +537,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [toolSheet, setToolSheet] = useState<null | "stickers">(null);
   // Full-screen reel tools (match the Facebook reel editor screens).
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop">(null);
+  const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop" | "split">(null);
   const [editorAddOpen, setEditorAddOpen] = useState(false);
   const editorVideoInput = useRef<HTMLInputElement>(null);
   // Editor speed choices (the camera keeps its own SPEEDS list).
@@ -584,6 +585,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [crop, setCrop] = useState<"fit" | "fill">("fit");
   // Editor crop: a frame of this shape; the video is cropped to it. "original" leaves the video whole.
   const [cropAspect, setCropAspect] = useState<string>("original");
+  const [cropRot, setCropRot] = useState(0);
+  const [cropOpen, setCropOpen] = useState(false);
+  const cropSnap = useRef<{ rot: number; aspect: string } | null>(null);
+  const [trimOpen, setTrimOpen] = useState(false);
+  const trimSnap = useRef<{ trimStart: number; trimEnd: number } | null>(null);
+  const trimStripRef = useRef<HTMLDivElement>(null);
+  const [splitPending, setSplitPending] = useState<number | null>(null);
+  const [cardScale, setCardScale] = useState(1);
+  const [cardRot, setCardRot] = useState(0);
   const CROP_RATIOS: Record<string, number> = { "9:16": 9 / 16, "1:1": 1, "4:5": 4 / 5, "16:9": 16 / 9 };
   // Largest frame of the given shape inside the video box (container units keep the shape exact).
   const cropFrameStyle = (a: string): React.CSSProperties => {
@@ -591,7 +601,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     return { left: "50%", top: "50%", transform: "translate(-50%, -50%)", width: `min(100cqw, calc(100cqh * ${r}))`, height: `min(100cqh, calc(100cqw / ${r}))` };
   };
   const [mirror, setMirror] = useState(false);
-  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number }[]>([]);
+  const [overlays, setOverlays] = useState<{ id: number; kind: "text" | "sticker" | "image"; value: string; color: string; font?: TextFont; align?: TextAlign; x?: number; y?: number; scale?: number; rot?: number }[]>([]);
   const [overlayText, setOverlayText] = useState("");
   const [overlayColor, setOverlayColor] = useState("#ffffff");
   const [keepOriginalSound, setKeepOriginalSound] = useState(true);
@@ -624,6 +634,9 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
   const [duration, setDuration] = useState(0);
+  const trimEndT = trimEnd || duration;
+  const trimStartPct = duration > 0 ? (trimStart / duration) * 100 : 0;
+  const trimEndPct = duration > 0 ? (trimEndT / duration) * 100 : 100;
   const [videoFilter, setVideoFilter] = useState("none");
   const [tags, setTags] = useState("");
   const [audience, setAudience] = useState<"everyone" | "followers">("everyone");
@@ -797,16 +810,46 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     while (j < pts.length - 1 && isRemovedSeg(pts, j)) j++;
     v.currentTime = j < pts.length - 1 ? pts[j] : trimStart;
   };
-  const splitAtPlayhead = () => {
-    const v = editorRef.current;
-    const t = v?.currentTime ?? editorTime;
-    const end = trimEnd || duration;
-    if (t <= trimStart + 0.1 || t >= end - 0.1) {
-      toast("Move the playhead inside the clip to split");
+  // Split: tap two points on the strip; the part between them is removed from the reel.
+  const splitTap = (t: number) => {
+    if (splitPending === null) {
+      setSplitPending(t);
       return;
     }
-    setCuts((c) => [...c, Math.round(t * 100) / 100]);
-    toast(`Split at ${(Math.round(t * 10) / 10).toFixed(1)}s: ${cuts.length + 2} parts. Use Remove part to drop one.`);
+    const a = Math.min(splitPending, t);
+    const b = Math.max(splitPending, t);
+    setSplitPending(null);
+    if (b - a < 0.2) {
+      toast("Tap two different points");
+      return;
+    }
+    const ra = Math.round(a * 100) / 100;
+    const rb = Math.round(b * 100) / 100;
+    setCuts((c) => [...c, ra, rb]);
+    setRemoved((r) => [...r, Math.round(ra * 100)]);
+    toast(`Removed ${(rb - ra).toFixed(1)}s`);
+  };
+  // Dragging the trim handles of the Adjust clip strip.
+  const startTrimDrag = (e: React.PointerEvent<HTMLElement>, which: "start" | "end") => {
+    e.stopPropagation();
+    const strip = trimStripRef.current;
+    if (!strip || duration <= 0) return;
+    const curEnd = trimEnd || duration;
+    const curStart = trimStart;
+    const move = (ev: PointerEvent) => {
+      const r = strip.getBoundingClientRect();
+      const t = Math.min(duration, Math.max(0, ((ev.clientX - r.left) / r.width) * duration));
+      if (which === "start") setTrimStart(Math.min(t, curEnd - 0.5));
+      else setTrimEnd(Math.max(t, curStart + 0.5));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
   const togglePartRemoved = () => {
     const pts = segmentPoints(duration);
@@ -912,6 +955,51 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   }, [editorOpen]);
 
   // Text, sticker and image overlays. Shown on the preview and in the editor.
+  // Two-finger pinch on a sticker, text or the song card scales and rotates it.
+  const ptrs = useRef(new Map<number, { x: number; y: number; target: string }>());
+  const pinchRef = useRef<{ id: string; base: { d: number; a: number; s: number; r: number } } | null>(null);
+  const pinchDown = (id: string, e: { pointerId: number; clientX: number; clientY: number }, cur: { s: number; r: number }) => {
+    ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY, target: id });
+    const all = [...ptrs.current.values()];
+    if (all.length === 2 && all[0].target === all[1].target) {
+      const [a, b] = all;
+      pinchRef.current = { id, base: { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, a: Math.atan2(b.y - a.y, b.x - a.x), s: cur.s, r: cur.r } };
+    }
+  };
+  useEffect(() => {
+    const move = (ev: PointerEvent) => {
+      const p = ptrs.current.get(ev.pointerId);
+      if (!p) return;
+      p.x = ev.clientX;
+      p.y = ev.clientY;
+      const pin = pinchRef.current;
+      const all = [...ptrs.current.values()];
+      if (!pin || all.length !== 2) return;
+      const [a, b] = all;
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      const sc = Math.min(3, Math.max(0.4, (pin.base.s * d) / pin.base.d));
+      const rot = pin.base.r + ((ang - pin.base.a) * 180) / Math.PI;
+      if (pin.id === "card") {
+        setCardScale(sc);
+        setCardRot(rot);
+      } else {
+        setOverlays((list) => list.map((x) => (String(x.id) === pin.id ? { ...x, scale: sc, rot } : x)));
+      }
+    };
+    const up = (ev: PointerEvent) => {
+      ptrs.current.delete(ev.pointerId);
+      if (ptrs.current.size < 2) pinchRef.current = null;
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
   const renderOverlays = () => (
     <>
     {overlays.map((o, i) => (
@@ -938,7 +1026,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         style={{
           left: `${o.x ?? 50}%`,
           top: `${o.y ?? 30 + ((i * 14) % 50)}%`,
-          transform: "translate(-50%, -50%)",
+          transform: `translate(-50%, -50%) rotate(${o.rot ?? 0}deg) scale(${o.scale ?? 1})`,
           color: o.color,
           fontFamily: o.font ? TEXT_FONTS[o.font] : undefined,
           textAlign: o.align ?? "center",
@@ -962,7 +1050,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           setCardEditOpen(true);
         }}
         className={`absolute touch-none w-[38%] max-w-[170px] overflow-hidden rounded-md shadow-xl ${cardStyle === 1 ? "bg-zinc-900 text-white" : cardStyle === 2 ? "bg-gradient-to-br from-fuchsia-600 to-indigo-700 text-white" : "bg-white text-zinc-900"}`}
-        style={{ left: `${musicCard.x}%`, top: `${musicCard.y}%`, transform: "translate(-50%, -50%)" }}
+        style={{ left: `${musicCard.x}%`, top: `${musicCard.y}%`, transform: `translate(-50%, -50%) rotate(${cardRot}deg) scale(${cardScale})` }}
       >
         {musicTrack.artwork ? (
           <img src={musicTrack.artwork} alt="" draggable={false} className="aspect-square w-full object-cover" />
@@ -994,6 +1082,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     const frame = e.currentTarget.parentElement;
     if (!frame || !musicCard) return;
     cardMoved.current = false; // a stale flag from an earlier drag must not swallow this tap
+    pinchDown("card", e, { s: cardScale, r: cardRot });
     const r = frame.getBoundingClientRect();
     const ox = musicCard.x;
     const oy = musicCard.y;
@@ -1002,6 +1091,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     let moved = false;
     let hot = false;
     const move = (ev: PointerEvent) => {
+      if (ptrs.current.size > 1) return; // two fingers: pinch, not drag
       const dx = ev.clientX - sx;
       const dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 6) return;
@@ -1037,6 +1127,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     const frame = e.currentTarget.parentElement;
     if (!frame) return;
     overlayMoved.current = false; // a stale flag from an earlier drag must not swallow this tap
+    pinchDown(String(o.id), e, { s: o.scale ?? 1, r: o.rot ?? 0 });
     const r = frame.getBoundingClientRect();
     const ox = o.x ?? 50;
     const oy = o.y ?? 30 + ((i * 14) % 50);
@@ -1045,6 +1136,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     let moved = false;
     let hot = false;
     const move = (ev: PointerEvent) => {
+      if (ptrs.current.size > 1) return; // two fingers: pinch, not drag
       const dx = ev.clientX - sx;
       const dy = ev.clientY - sy;
       if (!moved && Math.hypot(dx, dy) < 6) return;
@@ -1126,7 +1218,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const close = () => (page ? navigate({ to: "/feed" }) : ui.closeAll());
   const filmStyle = () => ({
     filter: videoFilter === "none" ? undefined : videoFilter,
-    transform: mirror ? "scaleX(-1)" : undefined,
+    transform: [mirror ? "scaleX(-1)" : "", cropRot ? `rotate(${cropRot}deg)` : ""].filter(Boolean).join(" ") || undefined,
   });
   // Leaving the music list returns to the mix screen when it was opened from there.
   const leaveMusic = () => {
@@ -1166,7 +1258,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setEditorOpen(false);
     setEditorPanel(null);
   };
-  const togglePanel = (p: "filter" | "speed" | "crop") => setEditorPanel((cur) => (cur === p ? null : p));
+  const togglePanel = (p: "filter" | "speed" | "crop" | "split") => setEditorPanel((cur) => (cur === p ? null : p));
   // Set the editor speed (0.25x to 3x, quarter steps) and apply it to both players.
   const applySpeed = (v: number) => {
     const sp = Math.min(3, Math.max(0.25, Math.round(v * 4) / 4));
@@ -1982,7 +2074,43 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </div>
                 </div>
               )}
-              {editorPanel && editorPanel !== "speed" && (
+              {editorPanel === "split" && (
+                <div className="mt-3 px-5">
+                  <p className="mb-2 text-center text-xs text-white/70">
+                    {splitPending === null ? "Tap two points on the clip. The part between them is removed." : `Now tap the second point (first at ${splitPending.toFixed(1)}s)`}
+                  </p>
+                  <div
+                    className="relative h-14 cursor-pointer overflow-hidden rounded-md border-2 border-[#facc15] bg-zinc-700"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      const span = trimEndT - trimStart;
+                      if (span <= 0) return;
+                      splitTap(trimStart + ((e.clientX - r.left) / r.width) * span);
+                    }}
+                  >
+                    {(() => {
+                      const pts = segmentPoints(duration);
+                      const span = trimEndT - trimStart;
+                      return pts.slice(0, -1).map((p, i) =>
+                        isRemovedSeg(pts, i) ? (
+                          <div key={`rm${i}`} className="absolute inset-y-0 bg-black/75" style={{ left: `${((p - trimStart) / span) * 100}%`, width: `${((pts[i + 1] - p) / span) * 100}%` }} />
+                        ) : null,
+                      );
+                    })()}
+                    {cuts.map((c) => (
+                      <div key={`cut${c}`} className="absolute inset-y-0 w-0.5 bg-white" style={{ left: `${((c - trimStart) / (trimEndT - trimStart)) * 100}%` }} />
+                    ))}
+                    {splitPending !== null && (
+                      <div className="absolute inset-y-0 w-1 bg-[#60a5fa]" style={{ left: `${((splitPending - trimStart) / (trimEndT - trimStart)) * 100}%` }} />
+                    )}
+                  </div>
+                  <div className="mt-2 flex justify-between text-[11px] text-white/60">
+                    <span>{trimStart.toFixed(1)}s</span>
+                    <span>{trimEndT.toFixed(1)}s</span>
+                  </div>
+                </div>
+              )}
+              {editorPanel && editorPanel !== "speed" && editorPanel !== "split" && (
                 <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
                   {editorPanel === "filter" &&
                     FILTERS.map((f) => (
@@ -2020,9 +2148,25 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       setCameraOpen(true);
                     },
                   },
-                  { label: "Adjust", icon: SlidersHorizontal, on: editorPanel === "filter", action: () => togglePanel("filter") },
+                  {
+                    label: "Adjust",
+                    icon: SlidersHorizontal,
+                    on: trimOpen,
+                    action: () => {
+                      trimSnap.current = { trimStart, trimEnd };
+                      setTrimOpen(true);
+                    },
+                  },
                   { label: "Speed", icon: Gauge, on: editorPanel === "speed", action: () => togglePanel("speed") },
-                  { label: "Crop", icon: Crop, on: editorPanel === "crop", action: () => togglePanel("crop") },
+                  {
+                    label: "Crop",
+                    icon: Crop,
+                    on: cropOpen || cropRot !== 0 || cropAspect !== "original",
+                    action: () => {
+                      cropSnap.current = { rot: cropRot, aspect: cropAspect };
+                      setCropOpen(true);
+                    },
+                  },
                   { label: "Mirror", icon: FlipHorizontal2, on: mirror, action: () => setMirror((m) => !m) },
                   {
                     label: "Reverse",
@@ -2042,14 +2186,13 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       toast(next ? "Reverse playback" : "Normal playback");
                     },
                   },
-                  { label: "Split", icon: Scissors, on: cuts.length > 0, action: splitAtPlayhead },
                   {
-                    label: "Cover",
-                    icon: ImagePlus,
-                    on: false,
+                    label: "Split",
+                    icon: Scissors,
+                    on: editorPanel === "split" || cuts.length > 0,
                     action: () => {
-                      closeEditor();
-                      setStep("edit");
+                      setSplitPending(null);
+                      togglePanel("split");
                     },
                   },
                 ].map((t) => (
@@ -2059,6 +2202,149 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                   </button>
                 ))}
               </div>
+              {trimOpen && (
+                <div className="absolute inset-0 z-[86] flex flex-col bg-black text-white">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const snap = trimSnap.current;
+                        if (snap) {
+                          setTrimStart(snap.trimStart);
+                          setTrimEnd(snap.trimEnd);
+                        }
+                        setTrimOpen(false);
+                      }}
+                      className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button type="button" onClick={() => setTrimOpen(false)} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                      Done
+                    </button>
+                  </div>
+                  <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+                    <div className="relative aspect-[9/16] max-h-full overflow-hidden rounded-xl bg-black">
+                      <video
+                        src={draft.previews[0]}
+                        muted
+                        autoPlay
+                        loop
+                        playsInline
+                        className="absolute inset-0 h-full w-full object-contain"
+                        onTimeUpdate={(e) => {
+                          const v = e.currentTarget;
+                          if (trimEndT > trimStart && (v.currentTime >= trimEndT || v.currentTime < trimStart)) v.currentTime = trimStart;
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-center text-base font-semibold">Adjust clip</p>
+                  <div className="px-6 pb-2 pt-3">
+                    <div ref={trimStripRef} className="relative h-14 select-none overflow-hidden rounded-md bg-zinc-700">
+                      {frames.map((f, i) => (
+                        <img key={i} src={f} alt="" draggable={false} className="absolute inset-y-0 h-full object-cover" style={{ left: `${(i / frames.length) * 100}%`, width: `${100 / frames.length}%` }} />
+                      ))}
+                      <div className="absolute inset-y-0 left-0 bg-black/60" style={{ width: `${trimStartPct}%` }} />
+                      <div className="absolute inset-y-0 right-0 bg-black/60" style={{ width: `${100 - trimEndPct}%` }} />
+                      <div className="absolute inset-y-0 border-y-[3px] border-[#facc15]" style={{ left: `${trimStartPct}%`, right: `${100 - trimEndPct}%` }} />
+                      <button
+                        type="button"
+                        aria-label="Trim start"
+                        onPointerDown={(e) => startTrimDrag(e, "start")}
+                        className="absolute inset-y-0 w-4 touch-none rounded-l-md bg-[#facc15]"
+                        style={{ left: `calc(${trimStartPct}% - 8px)` }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Trim end"
+                        onPointerDown={(e) => startTrimDrag(e, "end")}
+                        className="absolute inset-y-0 w-4 touch-none rounded-r-md bg-[#facc15]"
+                        style={{ left: `calc(${trimEndPct}% - 8px)` }}
+                      />
+                      <span className="absolute left-3 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs">{(trimEndT - trimStart).toFixed(1)}s</span>
+                    </div>
+                  </div>
+                  <p className="px-8 text-center text-sm text-white/60">Focus on the part of your clip you want included in your reel.</p>
+                  <div className="mt-auto flex justify-between px-8 pb-8 pt-6 text-sm">
+                    <button type="button" onClick={() => { setTrimStart(0); setTrimEnd(Math.min(duration, 15)); }} className="flex flex-col items-center gap-1.5">
+                      <Scissors className="h-6 w-6" />
+                      Auto trim
+                    </button>
+                    <button type="button" onClick={() => setTrimOpen(false)} className="flex flex-col items-center gap-1.5">
+                      <Check className="h-6 w-6" />
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+              {cropOpen && (
+                <div className="absolute inset-0 z-[86] flex flex-col bg-black text-white">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <button
+                      type="button"
+                      aria-label="Back"
+                      onClick={() => {
+                        const snap = cropSnap.current;
+                        if (snap) {
+                          setCropRot(snap.rot);
+                          setCropAspect(snap.aspect);
+                        }
+                        setCropOpen(false);
+                      }}
+                      className="grid h-10 w-10 place-items-center rounded-full bg-white/10"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
+                    <p className="text-sm font-semibold">Crop</p>
+                    <button type="button" aria-label="Done" onClick={() => setCropOpen(false)} className="grid h-10 w-10 place-items-center rounded-full bg-white/10">
+                      <Check className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="relative min-h-0 flex-1">
+                    <div className="absolute inset-0" style={{ containerType: "size" }}>
+                      <div className="absolute overflow-hidden bg-black" style={cropAspect === "original" ? { inset: 0 } : cropFrameStyle(cropAspect)}>
+                        <video
+                          src={draft.previews[0]}
+                          muted
+                          autoPlay
+                          loop
+                          playsInline
+                          className="absolute inset-0 h-full w-full object-cover"
+                          style={{ transform: `${mirror ? "scaleX(-1) " : ""}rotate(${cropRot}deg)` }}
+                        />
+                        <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+                          {Array.from({ length: 9 }).map((_, i) => (
+                            <div key={i} className="border border-white/35" />
+                          ))}
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 border-2 border-white" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4 px-6 pb-8 pt-4">
+                    <p className="text-center text-sm text-white/80">{cropRot}°</p>
+                    <SvSlider value={cropRot} min={-90} max={90} step={1} thickness={3} ariaLabel="Rotate" onChange={(v) => setCropRot(v)} />
+                    <div className="flex items-center gap-3">
+                      <button type="button" aria-label="Reset rotation" onClick={() => setCropRot(0)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">
+                        <RotateCcw className="h-5 w-5" />
+                      </button>
+                      <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {["original", "9:16", "1:1", "4:5", "16:9"].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setCropAspect(c)}
+                            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${cropAspect === c ? "bg-white text-black" : "bg-white/10"}`}
+                          >
+                            {c === "original" ? "Original" : c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               {editorAddOpen && (
                 <div className="absolute inset-0 z-[85] flex flex-col justify-end bg-black/60" onClick={() => setEditorAddOpen(false)}>
                   <div className="space-y-3 rounded-t-2xl bg-zinc-900 px-5 pb-8 pt-4" onClick={(e) => e.stopPropagation()}>

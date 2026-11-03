@@ -39,12 +39,20 @@ function ReelsPage() {
   })();
   const me = useMe();
   // The sound choice is remembered: unmuted once, the next Reels visit starts with sound (if the browser allows it).
-  const [muted, setMuted] = useState(() => {
-    try { return localStorage.getItem(MUTED_KEY) !== "0"; } catch { return true; }
-  });
+  // Sound is on by default. Only an account that muted Reels keeps them muted (remembered per account).
+  const muteKey = `${MUTED_KEY}:${me?.id ?? "guest"}`;
+  const [muted, setMuted] = useState(false);
+  const [muteLoaded, setMuteLoaded] = useState<string | null>(null);
   useEffect(() => {
-    try { localStorage.setItem(MUTED_KEY, muted ? "1" : "0"); } catch { /* storage unavailable: keep in memory only */ }
-  }, [muted]);
+    let saved = false;
+    try { saved = localStorage.getItem(muteKey) === "1"; } catch { /* storage unavailable */ }
+    setMuted(saved);
+    setMuteLoaded(muteKey);
+  }, [muteKey]);
+  useEffect(() => {
+    if (muteLoaded !== muteKey) return; // never write before the saved choice has been read
+    try { localStorage.setItem(muteKey, muted ? "1" : "0"); } catch { /* storage unavailable: keep in memory only */ }
+  }, [muted, muteKey, muteLoaded]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // A freshly opened Reels page always starts at the first reel, the same one the swipe preview shows.
