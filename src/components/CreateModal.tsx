@@ -873,6 +873,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     const n = cache.imgs.length;
     const t0 = performance.now();
     let last = -1;
+    let lastTimeSet = 0;
     let shown: HTMLCanvasElement | null = null;
     setRevRunning(true);
     setEditorPlaying(true);
@@ -890,7 +891,12 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         last = k;
         const im = cache.imgs[k];
         if (c && im && im.complete && im.naturalWidth) c.getContext("2d")?.drawImage(im, 0, 0, c.width, c.height);
-        setEditorTime(cache.times[k]);
+        // The time label updates about 4 times a second; re-rendering the editor on every frame is heavy on phones.
+        const now = performance.now();
+        if (now - lastTimeSet >= 250) {
+          lastTimeSet = now;
+          setEditorTime(cache.times[k]);
+        }
       }
       revRaf.current = requestAnimationFrame(tick);
     };
