@@ -1065,13 +1065,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
-  const togglePartRemoved = () => {
-    const pts = segmentPoints(duration);
-    const i = segmentIndexAt(pts, editorTime);
-    if (i < 0) return;
-    const key = Math.round(pts[i] * 100);
-    setRemoved((r) => (r.includes(key) ? r.filter((x) => x !== key) : [...r, key]));
-  };
 
   // Undo / redo for the editor: trim, filter, speed, cuts, removed parts, reverse and text/sticker overlays.
   type EditSnap = { trimStart: number; trimEnd: number; videoFilter: string; speed: number; overlays: typeof overlays; cuts: number[]; removed: number[]; reversed: boolean };
@@ -2234,13 +2227,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </>
                   )}
                 </div>
-                {cuts.length > 0 && (
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
-                      {removed.includes(Math.round((segmentPoints(duration)[Math.max(0, segmentIndexAt(segmentPoints(duration), editorTime))] ?? 0) * 100)) ? "Restore part" : "Remove part"}
-                    </button>
-                  </div>
-                )}
               </div>
               {editorPanel === "speed" && (
                 <div className="mt-3 space-y-4 px-5 pb-1">
