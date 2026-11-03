@@ -1020,14 +1020,14 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
   };
-  const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void, artwork?: string) => {
+  const timelineBar = (key: string, label: string, s: number, e: number, set: (a: number, b: number) => void, color: string, onTap?: () => void, artwork?: string, onRemove?: () => void) => {
     const span = Math.max(0.01, trimEndT - trimStart);
     const left = ((s - trimStart) / span) * 100;
     const width = ((Math.min(e, trimEndT) - s) / span) * 100;
     return (
       <div key={key} data-timeline-track className="relative h-8 min-w-0 flex-1 rounded-md bg-white/10">
         <div
-          className={`absolute top-0 flex h-full touch-none select-none items-center overflow-hidden rounded-md ${color}`}
+          className={`absolute top-0 flex h-full touch-none select-none items-center overflow-hidden rounded-md border-2 border-[#1877f2] bg-black ${color}`}
           style={{ left: `${left}%`, width: `${Math.max(4, width)}%` }}
           onPointerDown={(ev) => startBarDrag(ev, "move", s, e, set)}
           onClick={() => {
@@ -1038,10 +1038,24 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
             onTap?.();
           }}
         >
-          <span onPointerDown={(ev) => startBarDrag(ev, "start", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-black/70" />
+          <span onPointerDown={(ev) => startBarDrag(ev, "start", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-[#1877f2]" />
           {artwork && <img src={artwork} alt="" className="my-0.5 h-[calc(100%-4px)] aspect-square shrink-0 rounded object-cover" />}
           <span className="min-w-0 flex-1 truncate px-2 text-[11px] font-semibold">{label}</span>
-          <span onPointerDown={(ev) => startBarDrag(ev, "end", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-black/70" />
+          <span onPointerDown={(ev) => startBarDrag(ev, "end", s, e, set)} className="h-full w-3 shrink-0 cursor-ew-resize bg-[#1877f2]" />
+          {onRemove && (
+            <button
+              type="button"
+              aria-label={`Remove ${key.startsWith("audio") ? "audio" : "text"}`}
+              onPointerDown={(ev) => ev.stopPropagation()}
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onRemove();
+              }}
+              className="grid h-full w-7 shrink-0 place-items-center text-white/80"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -2286,7 +2300,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
               <div className="space-y-2 px-4 pt-3">
                 <div className="flex items-center gap-2">
                   {musicTrack ? (
-                    timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]", undefined, musicTrack.artwork)
+                    timelineBar("audio", musicTrack.title, audioRange.start, Math.min(audioRange.end, trimEndT), (a, b) => setAudioRange({ start: a, end: b }), "bg-[#1877f2]", undefined, musicTrack.artwork, () => setMusicTrack(null))
                   ) : (
                     <button type="button" onClick={() => setMusicOpen(true)} className="h-8 flex-1 rounded-md border border-dashed border-white/30 text-xs text-white/70">
                       + Audio
@@ -2319,6 +2333,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                             setTextAlign(o.align ?? "center");
                             setTextOpen(true);
                           },
+                          undefined,
+                          () => setOverlays((list) => list.filter((x) => x.id !== o.id)),
                         )}
                       </div>
                     ))
