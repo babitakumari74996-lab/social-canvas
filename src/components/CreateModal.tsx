@@ -146,7 +146,7 @@ function once(el: HTMLMediaElement, event: string): Promise<void> {
 }
 
 /** Still frames spread across a clip (9:16 JPEG data URLs), used to pick the reel cover. */
-async function captureFrames(src: string, count = 8): Promise<string[]> {
+async function captureFrames(src: string, count = 8, onFrames?: (f: string[]) => void): Promise<string[]> {
   const v = document.createElement("video");
   v.muted = true;
   v.playsInline = true;
@@ -170,6 +170,7 @@ async function captureFrames(src: string, count = 8): Promise<string[]> {
       const dw = v.videoWidth * k, dh = v.videoHeight * k;
       ctx.drawImage(v, (W - dw) / 2, (H - dh) / 2, dw, dh);
       out.push(c.toDataURL("image/jpeg", 0.8));
+      onFrames?.([...out]);
     } catch {
       break;
     }
@@ -1163,7 +1164,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
       setStep(createMode === "text" ? "text" : "pick");
       setDraft({ files: [], gallery: [], previews: [], filter: "none", zoom: 1 });
       setCaption(""); setLocation(""); setMusic(""); setTextPost(""); setTwitPhotos([]);
-      setCover(null); setFrames([]); setCameraOpen(false);
+      setCover(null); setFrames([]); framesSrc.current = undefined; setCameraOpen(false);
       setTrimStart(0); setTrimEnd(0); setDuration(0); setVideoFilter("none");
       setTags(""); setAudience("everyone"); setAlsoStory(false);
       setMusicTrack(null); setMusicOpen(false); setMixOpen(false); setVoiceOpen(false);
@@ -1177,17 +1178,22 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
 
   // Reel edit step: sample frames from the clip for the cover picker.
   const videoSrc = mode === "video" ? draft.previews[0] : undefined;
+  const framesSrc = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!open || (step !== "edit" && !editorOpen) || !videoSrc) return;
-    let cancelled = false;
+    // Capture each clip once; reopening the editor reuses the frames.
+    if (framesSrc.current === videoSrc) return;
+    framesSrc.current = videoSrc;
     setFrames([]);
-    captureFrames(videoSrc).then((f) => {
-      if (cancelled) return;
+    captureFrames(videoSrc, 8, (f) => {
+      if (framesSrc.current !== videoSrc) return;
       setFrames(f);
       setCover((c) => c ?? f[0] ?? null);
       setCoverIdx(0);
+    }).then((f) => {
+      if (framesSrc.current !== videoSrc) return;
+      setFrames(f);
     });
-    return () => { cancelled = true; };
   }, [open, step, editorOpen, videoSrc]);
 
   // Full-screen editor: start playing when it opens.
@@ -1505,6 +1511,20 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
         toast("Couldn't start the video. Tap play again.");
       });
     });
+  };
+  // Restore original: undo every cut and removed part.
+  const restoreOriginal = () => {
+    setCuts([]);
+    setRemoved([]);
+    setPins([]);
+    setEditorPanel(null);
+  };
+  // Cancel drops the split made in this session and returns to the original clip.
+  const cancelEditor = () => {
+    setCuts([]);
+    setRemoved([]);
+    setPins([]);
+    closeEditor();
   };
   const closeEditor = () => {
     editorRef.current?.pause();
@@ -2103,7 +2123,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
           {editorOpen && (
             <div className="absolute inset-0 z-[80] flex flex-col bg-black text-white">
               <div className="flex items-center justify-between px-4 py-3">
-                <button type="button" onClick={closeEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
+                <button type="button" onClick={cancelEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
                   Cancel
                 </button>
                 <button type="button" onClick={closeEditor} className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold">
@@ -2293,8 +2313,8 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                 )}
                 {cuts.length > 0 && (
                   <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
-                      {removed.includes(Math.round((segmentPoints(duration)[Math.max(0, segmentIndexAt(segmentPoints(duration), editorTime))] ?? 0) * 100)) ? "Restore part" : "Remove part"}
+                    <button type="button" onClick={restoreOriginal} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
+                      Restore original
                     </button>
                   </div>
                 )}
