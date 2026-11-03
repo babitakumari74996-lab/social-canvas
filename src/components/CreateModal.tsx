@@ -2211,6 +2211,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     if (!duration) return;
                     const r = e.currentTarget.getBoundingClientRect();
                     const x = (e.clientX - r.left) / r.width;
+                    if (editorPanel === "split") {
+                      placePin(x * duration);
+                      return;
+                    }
                     const near = (frac: number) => Math.abs(frac - x) * r.width < 18;
                     if (near(trimStart / duration)) dragRef.current = "start";
                     else if (near((trimEnd || duration) / duration)) dragRef.current = "end";
@@ -2252,6 +2256,11 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                       {cuts.map((c) => (
                         <div key={c} className="absolute inset-y-0 w-0.5 bg-cyan-300" style={{ left: `${(c / duration) * 100}%` }} />
                       ))}
+                      {pins.map((p) => (
+                        <div key={`pin${p}`} className="pointer-events-none absolute inset-y-0 w-0.5 bg-white" style={{ left: `${(p / duration) * 100}%` }}>
+                          <span className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#facc15]" />
+                        </div>
+                      ))}
                       {segmentPoints(duration).slice(0, -1).map((p, i, arr) =>
                         isRemovedSeg(segmentPoints(duration), i) ? (
                           <div
@@ -2265,6 +2274,23 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     </>
                   )}
                 </div>
+                {editorPanel === "split" && (
+                  <div className="mt-2">
+                    <p className="text-center text-xs text-white/60">
+                      {pins.length === 0 ? "Tap the clip above to place 2 pins." : pins.length === 1 ? "Place the second pin." : "Remove the part between the pins?"}
+                    </p>
+                    {pins.length === 2 && (
+                      <div className="mt-2 flex justify-center gap-2">
+                        <button type="button" onClick={() => setPins([])} className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold">
+                          Clear pins
+                        </button>
+                        <button type="button" onClick={cutOutBetweenPins} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
+                          Remove between pins
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {cuts.length > 0 && (
                   <div className="mt-2 flex gap-2">
                     <button type="button" onClick={togglePartRemoved} className="flex-1 rounded-md border border-dashed border-cyan-300/70 py-2 text-xs text-cyan-200">
@@ -2354,74 +2380,6 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     ))
                 )}
               </div>
-              {editorPanel === "split" && (
-                <div className="mt-3 px-5">
-                  <p className="mb-2 text-center text-xs text-white/60">
-                    {pins.length === 0 ? "Tap the clip to place 2 pins." : pins.length === 1 ? "Place the second pin." : "Remove the part between the pins?"}
-                  </p>
-                  <div
-                    className="relative flex h-14 overflow-hidden rounded-md border-2 border-[#facc15] bg-zinc-700"
-                    onClick={(e) => {
-                      const r = e.currentTarget.getBoundingClientRect();
-                      placePin(trimStart + ((e.clientX - r.left) / r.width) * Math.max(0.01, trimEndT - trimStart));
-                    }}
-                  >
-                    {frames.length > 0 && duration > 0 && (
-                      // The frames cover the whole clip; this layer shows only the trimmed range.
-                      <div className="pointer-events-none absolute inset-y-0" style={{ left: `${-(trimStart / Math.max(0.01, trimEndT - trimStart)) * 100}%`, width: `${(duration / Math.max(0.01, trimEndT - trimStart)) * 100}%` }}>
-                        {frames.map((f, i) => (
-                          <img key={`fr${i}`} src={f} alt="" draggable={false} className="absolute inset-y-0 h-full object-cover" style={{ left: `${(i / frames.length) * 100}%`, width: `${100 / frames.length}%` }} />
-                        ))}
-                      </div>
-                    )}
-                    {(() => {
-                      const pts = segmentPoints(duration);
-                      const span = Math.max(0.01, trimEndT - trimStart);
-                      return pts.slice(0, -1).map((p, i) => {
-                        const gone = isRemovedSeg(pts, i);
-                        return (
-                          <button
-                            key={`s${p}`}
-                            type="button"
-                            onClick={(e) => {
-                              if (!gone) return; // a live slice: the strip tap places a pin
-                              e.stopPropagation();
-                              toggleSlide(i);
-                            }}
-                            style={{ width: `${((pts[i + 1] - p) / span) * 100}%` }}
-                            className={`relative h-full shrink-0 border-r-2 border-[#facc15]/80 ${gone ? "bg-black" : "bg-transparent"}`}
-                          >
-                            {gone && <span className="absolute inset-0 grid place-items-center text-[10px] text-white/50">Removed</span>}
-                          </button>
-                        );
-                      });
-                    })()}
-                    {pins.map((p) => (
-                      <div
-                        key={`pin${p}`}
-                        className="pointer-events-none absolute inset-y-0 w-0.5 bg-white"
-                        style={{ left: `${((p - trimStart) / Math.max(0.01, trimEndT - trimStart)) * 100}%` }}
-                      >
-                        <span className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#facc15]" />
-                      </div>
-                    ))}
-                  </div>
-                  {pins.length === 2 && (
-                    <div className="mt-3 flex justify-center gap-2">
-                      <button type="button" onClick={() => setPins([])} className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold">
-                        Clear pins
-                      </button>
-                      <button type="button" onClick={cutOutBetweenPins} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
-                        Remove between pins
-                      </button>
-                    </div>
-                  )}
-                  <div className="mt-2 flex justify-between text-[11px] text-white/60">
-                    <span>{trimStart.toFixed(1)}s</span>
-                    <span>{trimEndT.toFixed(1)}s</span>
-                  </div>
-                </div>
-              )}
               {editorPanel && editorPanel !== "speed" && editorPanel !== "split" && (
                 <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
                   {editorPanel === "filter" &&
