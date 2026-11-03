@@ -537,7 +537,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [toolSheet, setToolSheet] = useState<null | "stickers">(null);
   // Full-screen reel tools (match the Facebook reel editor screens).
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop">(null);
+  const [editorPanel, setEditorPanel] = useState<null | "filter" | "speed" | "crop" | "split">(null);
   const [editorAddOpen, setEditorAddOpen] = useState(false);
   const editorVideoInput = useRef<HTMLInputElement>(null);
   // Editor speed choices (the camera keeps its own SPEEDS list).
@@ -591,8 +591,10 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
   const [trimOpen, setTrimOpen] = useState(false);
   const trimSnap = useRef<{ trimStart: number; trimEnd: number } | null>(null);
   const trimStripRef = useRef<HTMLDivElement>(null);
+  const [splitPending, setSplitPending] = useState<number | null>(null);
   const [cardScale, setCardScale] = useState(1);
   const [cardRot, setCardRot] = useState(0);
+  const [pins, setPins] = useState<number[]>([]); // up to two pin times (reel seconds) in the Split panel
   const [audioRange, setAudioRange] = useState<{ start: number; end: number }>({ start: 0, end: Number.POSITIVE_INFINITY });
   const [previewTime, setPreviewTime] = useState(0);
   const barMoved = useRef(false);
@@ -969,6 +971,35 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     v.currentTime = j < pts.length - 1 ? pts[j] : trimStart;
   };
   // Split: a tap on the strip cuts the clip there. In Remove mode, tapping a slice removes it (tap again to restore).
+  // Split panel: tap places pins (first tap = pin 1, second tap = pin 2). Cutting out removes the part between them.
+  const placePin = (t: number) => {
+    const ct = Math.round(t * 100) / 100;
+    if (ct <= trimStart + 0.1 || ct >= trimEndT - 0.1) {
+      toast("Tap inside the clip to place a pin");
+      return;
+    }
+    setPins((list) => {
+      if (list.length !== 1) return [ct];
+      if (Math.abs(list[0] - ct) < 0.1) return list;
+      return [list[0], ct].sort((a, b) => a - b);
+    });
+  };
+  const cutOutBetweenPins = () => {
+    if (pins.length !== 2) return;
+    const [a, b] = pins;
+    const end = trimEnd || duration;
+    const newCuts = [a, b].filter((c) => !cuts.some((x) => Math.abs(x - c) < 0.1));
+    const allCuts = [...cuts, ...newCuts];
+    const pts = [trimStart, ...allCuts.filter((c) => c > trimStart + 0.05 && c < end - 0.05).sort((x, y) => x - y), end];
+    const cutKeys: number[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (pts[i] >= a - 0.01 && pts[i + 1] <= b + 0.01) cutKeys.push(Math.round(pts[i] * 100));
+    }
+    setCuts(allCuts);
+    setRemoved((r) => [...r.filter((k) => !cutKeys.includes(k)), ...cutKeys]);
+    setPins([]);
+    toast(`Removed ${a.toFixed(1)}s to ${b.toFixed(1)}s`);
+  };
   const toggleSlide = (i: number) => {
     const pts = segmentPoints(duration);
     const key = Math.round(pts[i] * 100);
@@ -1480,7 +1511,7 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
     setEditorOpen(false);
     setEditorPanel(null);
   };
-  const togglePanel = (p: "filter" | "speed" | "crop") => setEditorPanel((cur) => (cur === p ? null : p));
+  const togglePanel = (p: "filter" | "speed" | "crop" | "split") => setEditorPanel((cur) => (cur === p ? null : p));
   // Set the editor speed (0.25x to 3x, quarter steps) and apply it to both players.
   const applySpeed = (v: number) => {
     const sp = Math.min(3, Math.max(0.25, Math.round(v * 4) / 4));
@@ -2323,7 +2354,75 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                     ))
                 )}
               </div>
-              {editorPanel && editorPanel !== "speed" && (
+              {editorPanel === "split" && (
+                <div className="mt-3 px-5">
+                  <p className="mb-2 text-center text-xs text-white/60">
+                    {pins.length === 0 ? "Tap the clip to place 2 pins." : pins.length === 1 ? "Place the second pin." : "Remove the part between the pins?"}
+                  </p>
+                  <div
+                    className="relative flex h-14 overflow-hidden rounded-md border-2 border-[#facc15] bg-zinc-700"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      placePin(trimStart + ((e.clientX - r.left) / r.width) * Math.max(0.01, trimEndT - trimStart));
+                    }}
+                  >
+                    {frames.length > 0 && duration > 0 && (
+                      // The frames cover the whole clip; this layer shows only the trimmed range.
+                      <div className="pointer-events-none absolute inset-y-0" style={{ left: `${-(trimStart / Math.max(0.01, trimEndT - trimStart)) * 100}%`, width: `${(duration / Math.max(0.01, trimEndT - trimStart)) * 100}%` }}>
+                        {frames.map((f, i) => (
+                          <img key={`fr${i}`} src={f} alt="" draggable={false} className="absolute inset-y-0 h-full object-cover" style={{ left: `${(i / frames.length) * 100}%`, width: `${100 / frames.length}%` }} />
+                        ))}
+                      </div>
+                    )}
+                    {(() => {
+                      const pts = segmentPoints(duration);
+                      const span = Math.max(0.01, trimEndT - trimStart);
+                      return pts.slice(0, -1).map((p, i) => {
+                        const gone = isRemovedSeg(pts, i);
+                        return (
+                          <button
+                            key={`s${p}`}
+                            type="button"
+                            onClick={(e) => {
+                              if (!gone) return; // a live slice: the strip tap places a pin
+                              e.stopPropagation();
+                              toggleSlide(i);
+                            }}
+                            style={{ width: `${((pts[i + 1] - p) / span) * 100}%` }}
+                            className={`relative h-full shrink-0 border-r-2 border-[#facc15]/80 ${gone ? "bg-black" : "bg-transparent"}`}
+                          >
+                            {gone && <span className="absolute inset-0 grid place-items-center text-[10px] text-white/50">Removed</span>}
+                          </button>
+                        );
+                      });
+                    })()}
+                    {pins.map((p) => (
+                      <div
+                        key={`pin${p}`}
+                        className="pointer-events-none absolute inset-y-0 w-0.5 bg-white"
+                        style={{ left: `${((p - trimStart) / Math.max(0.01, trimEndT - trimStart)) * 100}%` }}
+                      >
+                        <span className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-[#facc15]" />
+                      </div>
+                    ))}
+                  </div>
+                  {pins.length === 2 && (
+                    <div className="mt-3 flex justify-center gap-2">
+                      <button type="button" onClick={() => setPins([])} className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold">
+                        Clear pins
+                      </button>
+                      <button type="button" onClick={cutOutBetweenPins} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
+                        Remove between pins
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-2 flex justify-between text-[11px] text-white/60">
+                    <span>{trimStart.toFixed(1)}s</span>
+                    <span>{trimEndT.toFixed(1)}s</span>
+                  </div>
+                </div>
+              )}
+              {editorPanel && editorPanel !== "speed" && editorPanel !== "split" && (
                 <div className="mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
                   {editorPanel === "filter" &&
                     FILTERS.map((f) => (
@@ -2397,6 +2496,15 @@ export function CreateModal({ page = false }: { page?: boolean } = {}) {
                         }
                       }
                       toast(next ? "Reverse playback" : "Normal playback");
+                    },
+                  },
+                  {
+                    label: "Split",
+                    icon: Scissors,
+                    on: editorPanel === "split" || cuts.length > 0,
+                    action: () => {
+                      setSplitPending(null);
+                      togglePanel("split");
                     },
                   },
                 ].map((t) => (
